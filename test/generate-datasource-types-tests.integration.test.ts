@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { memoryReader } from "@deterministic-code/generators-common/deterministic-reader";
 import {
   DATASOURCE_TYPES_YAML,
-} from "@deterministic-code/generators-common/specification";
+} from "@deterministic-code/deterministic-specifications-typescript/parser";
 import type { GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import { generate } from "../src/generate-datasource-types-tests.ts";
 

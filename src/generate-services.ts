@@ -5,12 +5,12 @@ import { content, patch, type GenerateEntry } from "@deterministic-code/generato
 import {
   DeterministicParser,
   type IDeterministic,
-} from "@deterministic-code/generators-common/specification-parser";
+} from "@deterministic-code/deterministic-specifications-typescript/parser";
 import {
   SERVICES_YAML,
   type CustomServiceEntry,
   type ServiceCandidate,
-} from "@deterministic-code/generators-common/specification";
+} from "@deterministic-code/deterministic-specifications-typescript/parser";
 import { libraryImportSpecifier } from "./library-import.ts";
 import { Emit } from "./emit.ts";
 import {

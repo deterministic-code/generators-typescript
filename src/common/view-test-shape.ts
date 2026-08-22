@@ -4,7 +4,7 @@ import {
   type ShapedView,
   type ViewField,
   type ViewType,
-} from "@deterministic-code/generators-common/specification";
+} from "@deterministic-code/deterministic-specifications-typescript/parser";
 import { toNative } from "../base-type-converter.ts";
 import { valueTmpl } from "../resources/view-types-tests.ts";
 import { fakeTestData, fieldExpr } from "./fake-test-data.ts";

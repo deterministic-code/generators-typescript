@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { memoryReader } from "@deterministic-code/generators-common/deterministic-reader";
-import { VIEW_TYPES_YAML } from "@deterministic-code/generators-common/specification";
+import { VIEW_TYPES_YAML } from "@deterministic-code/deterministic-specifications-typescript/parser";
 import type { GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import { generate } from "../src/generate-view-types.ts";
 

@@ -4,7 +4,7 @@ import { memoryReader } from "@deterministic-code/generators-common/deterministi
 import {
   DATASOURCE_TYPES_YAML,
   VIEW_TYPES_YAML,
-} from "@deterministic-code/generators-common/specification";
+} from "@deterministic-code/deterministic-specifications-typescript/parser";
 import type { GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import { generate as generateFrontendTypes } from "../src/generate-frontend-types.ts";
 import { generate as generateFrontendTypesTests } from "../src/generate-frontend-types-tests.ts";

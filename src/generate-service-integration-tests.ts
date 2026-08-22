@@ -6,13 +6,13 @@ import { toNative } from "./base-type-converter.ts";
 import {
   DeterministicParser,
   type IDeterministic,
-} from "@deterministic-code/generators-common/specification-parser";
+} from "@deterministic-code/deterministic-specifications-typescript/parser";
 import {
   SERVICES_YAML,
   type DatasourceField,
   type DatasourceType,
   type SeedRow,
-} from "@deterministic-code/generators-common/specification";
+} from "@deterministic-code/deterministic-specifications-typescript/parser";
 import { joinImport, libraryImportSpecifier } from "./library-import.ts";
 import { genericTmpl } from "./resources/service-integration-tests.ts";
 import { createCasing } from "./common/default-casing.ts";

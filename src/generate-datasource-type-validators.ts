@@ -4,11 +4,11 @@ import { content, type GenerateEntry } from "@deterministic-code/generators-comm
 import {
   DeterministicParser,
   type IDeterministic,
-} from "@deterministic-code/generators-common/specification-parser";
+} from "@deterministic-code/deterministic-specifications-typescript/parser";
 import {
   DATASOURCE_TYPES_YAML,
   type DatasourceType,
-} from "@deterministic-code/generators-common/specification";
+} from "@deterministic-code/deterministic-specifications-typescript/parser";
 import { idTypeToZod, toZod, toZodDefault } from "./common/type-converters/native-to-zod.ts";
 import { Emit } from "./emit.ts";
 import { indexTmpl, typeTmpl } from "./resources/datasource-type-validators.ts";

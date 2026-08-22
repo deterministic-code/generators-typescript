@@ -4,13 +4,13 @@ import { content, type GenerateEntry } from "@deterministic-code/generators-comm
 import {
   DeterministicParser,
   type IDeterministic,
-} from "@deterministic-code/generators-common/specification-parser";
+} from "@deterministic-code/deterministic-specifications-typescript/parser";
 import {
   ROUTES_YAML,
   type CustomRouteEntry,
   type RouteByField,
   type RouteCandidate,
-} from "@deterministic-code/generators-common/specification";
+} from "@deterministic-code/deterministic-specifications-typescript/parser";
 import type { PackCasing } from "./common/default-casing.ts";
 import { libraryImportSpecifier } from "./library-import.ts";
 import { Emit } from "./emit.ts";
