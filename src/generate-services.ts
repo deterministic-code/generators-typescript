@@ -20,7 +20,10 @@ import {
 } from "./resources/services.ts";
 
 class Generator extends Emit {
+  private viewNames = new Set<string>();
+
   from(deterministic: IDeterministic): GenerateEntry[] {
+    this.viewNames = new Set(deterministic.viewTypes.map((view) => view.name));
     const { generics, customs } = deterministic.services;
     const entries: GenerateEntry[] = [
       ...generics.map((c) => this.generic(c)),
@@ -63,6 +66,12 @@ class Generator extends Emit {
       : this.imports.viewRel(candidate.name);
   }
 
+  private mutateView(name: string): string | undefined {
+    if (this.viewNames.has(`create_${name}`)) return `create_${name}`;
+    if (this.viewNames.has(`update_${name}`)) return `update_${name}`;
+    return undefined;
+  }
+
   private generic(candidate: ServiceCandidate): GenerateEntry {
     const { simpleDoc, descriptionDoc, libraryReferenceMode } = this.settings;
     const typeName = this.casing.convertTypes(candidate.name);
@@ -77,6 +86,21 @@ class Generator extends Emit {
         ? this.imports.datasourceRel(candidate.name)
         : this.imports.viewRel(candidate.name),
     );
+    const mutate = this.mutateView(candidate.name);
+    const mutateTypeName =
+      mutate === undefined ? false : this.casing.convertTypes(mutate);
+    const mutateModule =
+      mutate === undefined ? undefined : this.imports.viewRel(mutate);
+    const mutateImport =
+      mutate === undefined || mutateModule === undefined
+        ? false
+        : {
+            mutateTypeName,
+            mutateImportPath: this.imports.spec(
+              this.imports.serviceRel(candidate.name),
+              mutateModule,
+            ),
+          };
     const servicesImport = libraryImportSpecifier(
       "services",
       libraryReferenceMode,
@@ -90,6 +114,8 @@ class Generator extends Emit {
         typeImport: true,
         typeName,
         typeImportPath,
+        mutateTypeName,
+        mutateImport,
         servicesImport,
         interfaceName,
         className,
@@ -105,8 +131,12 @@ class Generator extends Emit {
       {
         module,
         exports: `${className}, ${interfaceName}`,
-        imports: typeModule,
-        uses: typeName,
+        imports: [typeModule, mutateModule]
+          .filter((value): value is string => value !== undefined)
+          .join(", "),
+        uses: [typeName, mutateTypeName === false ? undefined : mutateTypeName]
+          .filter((value): value is string => value !== undefined)
+          .join(", "),
       },
     );
   }

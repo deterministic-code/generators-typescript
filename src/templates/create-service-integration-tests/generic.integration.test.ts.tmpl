@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+{{&prelude}}import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { copyFile, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -8,11 +8,14 @@ import {
   SqliteStandardRepository,
 } from "{{repositoriesImport}}";
 import { {{className}} } from "{{serviceImport}}";
-
+{{#parentImports}}import { {{className}} } from "{{importPath}}";
+{{/parentImports}}
+{{#typeImports}}import type { {{names}} } from "{{fromPath}}";
+{{/typeImports}}
 const TABLE_NAME = {{&tableNameJson}};
 const primaryKeys = new PrimaryKeyService([
-  { entityName: {{&entityNameJson}}, primaryKeyColumn: "id", primaryKeyIdType: {{&pkIdTypeJson}} },
-]);
+{{#pkEntries}}  { entityName: {{&entityNameJson}}, primaryKeyColumn: {{&columnJson}}, primaryKeyIdType: {{&pkIdTypeJson}} },
+{{/pkEntries}}]);
 
 describe("{{className}} (sqlite integration)", () => {
   let tmpDir: string;
@@ -36,12 +39,12 @@ describe("{{className}} (sqlite integration)", () => {
     });
     await datasource.open();
     await datasource.query(`DELETE FROM ${TABLE_NAME}`);
-    const repository = new SqliteStandardRepository<{ id: {{idTsType}};{{#withUuid}} uuid: string;{{/withUuid}} created: string; updated: string }>(
+    const repository = new SqliteStandardRepository<{{rowTypeName}}>(
       datasource,
       TABLE_NAME,
       { entityName: {{&entityNameJson}}, primaryKeys },
     );
-    service = new {{className}}(repository as never{{&serviceOptions}});
+    service = new {{className}}(repository{{&serviceOptions}});
   });
 
   afterEach(async () => {
@@ -52,26 +55,56 @@ describe("{{className}} (sqlite integration)", () => {
   it("findAll returns [] on an empty table", async () => {
     expect(await service.findAll()).toEqual([]);
   });
-
+{{#canCreate}}
   it("create inserts a row and auto-populates {{stampCols}}", async () => {
-    const row = await service.create({} as never);
+    const row = await service.create({}{{#createTypeName}} as {{createTypeName}}{{/createTypeName}});
     const r = row as unknown as Record<string, unknown>;
     expect(typeof r.id).toBe("{{idTsType}}");
 {{#withUuid}}    expect(typeof r.uuid).toBe("string");
 {{/withUuid}}    expect(typeof r.created).toBe("string");
     expect(typeof r.updated).toBe("string");
   });
-
+{{/canCreate}}
   it("findById returns null for a missing id", async () => {
     expect(await service.findById({{&missingId}})).toBeNull();
   });
 
   it("update returns null for a missing id", async () => {
-    const result = await service.update({{&missingId}}, {} as never);
+    const result = await service.update({{&missingId}}, {});
     expect(result).toBeNull();
   });
 
   it("delete returns false when the row does not exist", async () => {
     expect(await service.delete({{&missingId}})).toBe(false);
   });
+
+{{#hierarchy}}
+  it("create, update, and delete with parents", async () => {
+{{#chainServices}}    const {{varName}} = new {{className}}(
+      new SqliteStandardRepository<{{rowTypeName}}>(datasource, {{&tableNameJson}}, {
+        entityName: {{&entityNameJson}},
+        primaryKeys,
+      }){{&serviceOptions}},
+    );
+{{/chainServices}}
+{{#creates}}{{#isLookup}}    const {{varName}} = await {{serviceVar}}.findById({{&seedId}});
+    expect({{varName}}).not.toBeNull();
+    if ({{varName}} === null) {
+      throw new Error({{&missingSeedErrorJson}});
+    }
+{{/isLookup}}{{^isLookup}}    const {{varName}} = await {{serviceVar}}.create({
+{{#fields}}      {{ident}}: {{&expr}},
+{{/fields}}    }{{#createTypeName}} as {{createTypeName}}{{/createTypeName}});
+{{/isLookup}}{{/creates}}
+{{#updates}}    const {{varName}}Updated = await {{serviceVar}}.update({{varName}}.{{pkIdent}}, {
+{{#fields}}      {{ident}}: {{&expr}},
+{{/fields}}    });
+    expect({{varName}}Updated).not.toBeNull();
+{{/updates}}
+{{#deletes}}    expect(await {{serviceVar}}.delete({{varName}}.{{pkIdent}})).toBe(true);
+    expect(await {{serviceVar}}.findById({{varName}}.{{pkIdent}})).toBeNull();
+{{/deletes}}  });
+{{/hierarchy}}{{#missingLookupSeed}}
+  // Seed data does not exist for readonly-lookup "{{lookupName}}", so this test (and the remainder) cannot be written.
+{{/missingLookupSeed}}
 });

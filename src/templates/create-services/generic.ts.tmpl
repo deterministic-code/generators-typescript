@@ -1,5 +1,6 @@
 {{#typeImport}}import { {{typeName}} } from "{{typeImportPath}}";
-{{/typeImport}}import { BaseService, type IStandardCrudService } from "{{servicesImport}}";
+{{/typeImport}}{{#mutateImport}}import { {{mutateTypeName}} } from "{{mutateImportPath}}";
+{{/mutateImport}}import { BaseService, type IStandardCrudService } from "{{servicesImport}}";
 
 {{#simpleDoc}}/** Service {{interfaceName}}. */
 {{/simpleDoc}}{{#descriptionDoc}}/**
@@ -8,7 +9,7 @@
  * Target: StandardCrud.
  * Fields: 0.
  */
-{{/descriptionDoc}}export type {{interfaceName}} = IStandardCrudService<{{typeName}}>;
+{{/descriptionDoc}}export type {{interfaceName}} = IStandardCrudService<{{typeName}}{{#mutateTypeName}}, {{mutateTypeName}}{{/mutateTypeName}}>;
 
 {{#simpleDoc}}/** Service {{className}}. */
 {{/simpleDoc}}{{#descriptionDoc}}/**
@@ -17,7 +18,7 @@
  * Target: StandardCrud.
  * Fields: 0.
  */
-{{/descriptionDoc}}export class {{className}} extends BaseService<{{typeName}}> {
+{{/descriptionDoc}}export class {{className}} extends BaseService<{{typeName}}{{#mutateTypeName}}, {{mutateTypeName}}{{/mutateTypeName}}> {
 {{#finders}}
   async {{method}}({{param}}: {{paramType}}): Promise<{{typeName}} | null> {
     const rows = await this.findBy([{ name: "{{field}}", value: {{param}} }]);
