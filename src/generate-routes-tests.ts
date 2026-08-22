@@ -4,14 +4,14 @@ import { content, type GenerateEntry } from "@deterministic-code/generators-comm
 import {
   DeterministicParser,
   type IDeterministic,
-} from "@deterministic-code/generators-common/specification-parser";
+} from "@deterministic-code/deterministic-specifications-typescript/parser";
 import {
   ROUTES_YAML,
   type DatasourceType,
   type RouteByField,
   type RouteCandidate,
   type ViewEnrichment,
-} from "@deterministic-code/generators-common/specification";
+} from "@deterministic-code/deterministic-specifications-typescript/parser";
 import {
   asIdType,
   fakeTestData,

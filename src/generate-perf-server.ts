@@ -3,7 +3,7 @@ import type { GenerateContext } from "@deterministic-code/generators-common/gene
 import { content, patch, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import {
   DATASOURCE_TYPES_YAML,
-} from "@deterministic-code/generators-common/specification";
+} from "@deterministic-code/deterministic-specifications-typescript/parser";
 import { fromSettings } from "@deterministic-code/generators-common/settings";
 import { createCasing } from "./common/default-casing.ts";
 import { libraryImportSpecifier } from "./library-import.ts";
