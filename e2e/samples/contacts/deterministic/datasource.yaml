@@ -1,0 +1,27 @@
+version: 1.0.0
+includes:
+  - types:
+      filter: tag == "datasource_type"
+types:
+  - contact_source:
+      fields:
+        - name:
+            is_unique: true
+  - contact_group:
+      fields:
+        - name:
+            is_unique: true
+  - legacy_contact:
+      mapping: OldContactsTbl
+      fields:
+        - key:
+            mapping: CntID
+            is_fixed_id: true
+        - first_name:
+            mapping: FirstNm
+        - last_name:
+            mapping: LastNm
+        - email:
+            mapping: EmailAddr
+        - imported_at:
+            mapping: ImpDate

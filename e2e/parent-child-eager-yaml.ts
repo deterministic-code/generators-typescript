@@ -7,19 +7,26 @@ export const PARENT_CHILD_EAGER_YAML: Record<string, string> = {
   "backend-app.yaml": `middleware: []
 handlers: []
 `,
-  "datasource_types.yaml": `types:
+  "types.yaml": `version: 1.0.0
+types:
   - status:
-      datasource_type: readonly-lookup
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - name:
             type: string
-            is_unique: true
   - project:
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - name:
             type: string
-            is_unique: true
+        - tasks:
+            type: task[]
+            references: task.project_id
   - task:
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - title:
             type: string
@@ -30,39 +37,45 @@ handlers: []
             type: number
             references: status.id
 `,
-  "datasource_seeds.yaml": `seeds:
+  "datasource.yaml": `version: 1.0.0
+includes:
+  - types:
+      filter: tag == "datasource_type"
+types:
+  - status:
+      fields:
+        - name:
+            is_unique: true
+  - project:
+      fields:
+        - name:
+            is_unique: true
+`,
+  "datasource_seeds.yaml": `version: 1.0.0
+seeds:
   - status:
       - id1:
           name: active
       - id2:
           name: archived
 `,
-  "view_types.yaml": `includes:
-  - datasource_types:
-      include: "*"
-      auto_enrich: true
-types:
-  - project:
-      inherits: datasource_types.project
-      fields:
-        - tasks:
-            type: datasource_types.task[]
-            references: datasource_types.task.project_id
-`,
-  "services.yaml": `includes:
-  - view_type_services:
-      filter: 'type is view_type || type is datasource_type'
+  "services.yaml": `version: 1.0.0
+includes:
+  - types:
+      filter: tag == "datasource_type"
 services: []
 `,
-  "routes.yaml": `includes:
-  - view_type_routes:
-      filter: 'type inherits datasource_types'
-      eager_path:
-        - project.tasks
-      eager_write_path:
-        - project.tasks
+  "routes.yaml": `version: 1.0.0
+includes:
+  - types:
+      filter: tag == "view_type"
 routes:
   - get_projects_by_name:
+  - project:
+      eager_read_path:
+        - tasks
+      eager_update_path:
+        - tasks
 `,
 };
 

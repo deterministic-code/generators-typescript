@@ -10,8 +10,8 @@ export const FULLSTACK_SAMPLE_NAMES = [
 export type FullstackSampleName = (typeof FULLSTACK_SAMPLE_NAMES)[number];
 
 const SAMPLE_FILES = [
-  "datasource_types.yaml",
-  "view_types.yaml",
+  "types.yaml",
+  "datasource.yaml",
   "routes.yaml",
 ] as const;
 
@@ -34,13 +34,15 @@ const BACKEND_APP_YAML = `middleware:
 handlers: []
 `;
 
-const SERVICES_YAML = `includes:
-  - view_type_services:
-      filter: 'type is view_type || type is datasource_type'
+const SERVICES_YAML = `version: 1.0.0
+includes:
+  - types:
+      filter: tag == "datasource_type"
 services: []
 `;
 
-const ROLE_SEEDS_YAML = `seeds:
+const ROLE_SEEDS_YAML = `version: 1.0.0
+seeds:
   - role:
       - id1:
           name: admin
@@ -48,7 +50,8 @@ const ROLE_SEEDS_YAML = `seeds:
           name: member
 `;
 
-const STATUS_SEEDS_YAML = `seeds:
+const STATUS_SEEDS_YAML = `version: 1.0.0
+seeds:
   - status:
       - id1:
           name: active
@@ -87,8 +90,8 @@ export const loadFullstackSampleYaml = async (
     "settings.yaml": SETTINGS_YAML,
     "backend-app.yaml": BACKEND_APP_YAML,
     "services.yaml": SERVICES_YAML,
-    "datasource_types.yaml": texts[0]!,
-    "view_types.yaml": texts[1]!,
+    "types.yaml": texts[0]!,
+    "datasource.yaml": texts[1]!,
     "routes.yaml": texts[2]!,
   };
   const seeds = seedsFor(name);

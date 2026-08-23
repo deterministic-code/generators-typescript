@@ -34,7 +34,8 @@ handlers: []
 `,
   "services.yaml": "services: []\n",
   "routes.yaml": "routes: []\n",
-  "datasource_types.yaml": "types: []\n",
+  "types.yaml": "version: 1.0.0\ntypes: []\n",
+  "datasource.yaml": "version: 1.0.0\ntypes: []\n",
 };
 
 type ExecErr = Error & { stdout?: string; stderr?: string; code?: unknown };

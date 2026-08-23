@@ -1,32 +1,34 @@
 version: 1.0.0
 includes:
-  - view_type_routes:
-      filter: type inherits datasource_types
-      eager_path:
-        - contact.addresses
-        - contact.phones
-        - contact_group.members
-      eager_write_path:
-        - contact.addresses
-        - contact.phones
-
+  - types:
+      filter: tag == "view_type"
 combined_routes:
   - contact:
       route: /api/contacts/{id}
-      combined_types:
+      combines:
         - address:
             route: /addresses
         - phone:
             route: /phones
   - contact_group:
       route: /api/contact-groups/{id}
-      combined_types:
+      combines:
         - contact:
             via: contact_group_member
             target: contact
             route: /members
 
 routes:
+  - contact:
+      eager_read_path:
+        - addresses
+        - phones
+      eager_update_path:
+        - addresses
+        - phones
+  - contact_group:
+      eager_read_path:
+        - members
   - import_contacts:
       path: /api/contacts/import
       method: POST
@@ -34,7 +36,7 @@ routes:
       request: import_contacts_request
       response: import_contacts_result
       service: ContactImportService
-      serviceMethod: import
+      function: import
       x-implementation: stub
 
   - migrate_legacy_contacts:
@@ -45,5 +47,5 @@ routes:
         contacts table.
       response: legacy_migration_result
       service: LegacyMigrationService
-      serviceMethod: migrate
+      function: migrate
       x-implementation: stub
