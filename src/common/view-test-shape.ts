@@ -1,18 +1,18 @@
 import { fill } from "@deterministic-code/generators-common/fill";
+import { unionMembers } from "@deterministic-code/generators-common/spec-types";
 import {
-  type DatasourceType,
-  type ShapedView,
-  type ViewField,
-  type ViewType,
+  type Type,
+  type TypeField,
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
 import { toNative } from "../base-type-converter.ts";
 import { valueTmpl } from "../resources/view-types-tests.ts";
 import { fakeTestData, fieldExpr } from "./fake-test-data.ts";
 import type { PackCasing } from "./default-casing.ts";
+import { fieldSize } from "./view-shape.ts";
 
 export type ShapeOpts = {
-  tables: Map<string, DatasourceType>;
-  views: Map<string, ViewType>;
+  tables: Map<string, Type>;
+  views: Map<string, Type>;
   referenceBackendType: boolean;
   casing: PackCasing;
 };
@@ -84,7 +84,7 @@ const scalarNode = (
     type: string;
     isNullable: boolean;
     hasDefault?: boolean;
-    size?: number;
+    size?: TypeField["size"];
   },
   accessPrefix: string,
   pathPrefix: string,
@@ -106,7 +106,7 @@ const scalarNode = (
     isObject: false,
     isPrimitive: true,
     isRoot,
-    expr: primitiveExpr(field.type, field.size),
+    expr: primitiveExpr(field.type, fieldSize(field)),
     nested: [],
   };
 };
@@ -125,7 +125,7 @@ const dsNodes = (
 };
 
 const viewFieldNode = (
-  field: ViewField,
+  field: TypeField,
   opts: ShapeOpts,
   visited: Set<string>,
   accessPrefix: string,
@@ -148,7 +148,7 @@ const viewFieldNode = (
       isObject: false,
       isPrimitive: true,
       isRoot,
-      expr: primitiveExpr(field.base, field.size),
+      expr: primitiveExpr(field.base, fieldSize(field)),
       nested: [],
     };
   }
@@ -156,11 +156,11 @@ const viewFieldNode = (
   const path = pathPrefix === "" ? field.name : `${pathPrefix}.${field.name}`;
   const access = `${accessPrefix}${fieldAccess(ident)}`;
   const childPrefix = field.isArray ? `${access}[0]` : access;
+  const isView = opts.views.has(field.base);
   const nested =
-    field.kind === "datasource" &&
-    (opts.referenceBackendType || !opts.views.has(field.base))
-      ? dsNodes(field.base, opts, childPrefix, path)
-      : viewNodes(field.base, opts, visited, childPrefix, path);
+    isView && !(opts.referenceBackendType && opts.tables.has(field.base))
+      ? viewNodes(field.base, opts, visited, childPrefix, path)
+      : dsNodes(field.base, opts, childPrefix, path);
   return {
     name: field.name,
     ident,
@@ -180,7 +180,7 @@ const viewFieldNode = (
 };
 
 const shapedNodes = (
-  view: ShapedView,
+  view: Type,
   opts: ShapeOpts,
   visited: Set<string>,
   accessPrefix: string,
@@ -203,8 +203,9 @@ export const viewNodes = (
   const view = opts.views.get(name);
   if (view === undefined) return [];
   const next = new Set(visited).add(name);
-  if (view.kind === "union") {
-    const member = view.members[0];
+  const members = unionMembers(view);
+  if (members !== undefined) {
+    const member = members[0];
     return member === undefined
       ? []
       : viewNodes(member, opts, next, accessPrefix, pathPrefix, isRoot);
@@ -213,7 +214,7 @@ export const viewNodes = (
 };
 
 export const shapedViewNodes = (
-  view: ShapedView,
+  view: Type,
   opts: ShapeOpts,
 ): ShapeNode[] =>
   shapedNodes(view, opts, new Set([view.name]), "", "", true);

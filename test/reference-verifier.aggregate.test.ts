@@ -14,46 +14,40 @@ import { generate as generateViewTypes } from "../src/generate-view-types.ts";
 
 const DS_YAML = `types:
   - user:
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - email:
             type: string
-            is_unique: true
             size: 256
   - role:
-      datasource_type: readonly-lookup
+      tags: [datasource_type, view_type, readonly_lookup]
+      inherits: set
       fields:
         - name:
             type: string
-            is_unique: true
-`;
-
-const VIEW_YAML = `includes:
-  - datasource_types:
-      include: "*"
-types: []
 `;
 
 const SERVICES_YAML = `includes:
-  - view_type_services:
-      filter: 'type is view_type'
+  - types:
+      filter: 'tag == "view_type"'
 services:
   - name: ReportService
 `;
 
 const ROUTES_YAML = `includes:
-  - view_type_routes:
-      filter: 'type is view_type || type is datasource_type'
+  - types:
+      filter: 'tag == "view_type" || tag == "datasource_type"'
 routes:
   - getReport:
       method: GET
       path: /api/report
       service: ReportService
-      serviceMethod: run
+      function: run
 `;
 
 const fixture = {
-  "datasource_types.yaml": DS_YAML,
-  "view_types.yaml": VIEW_YAML,
+  "types.yaml": DS_YAML,
   "services.yaml": SERVICES_YAML,
   "routes.yaml": ROUTES_YAML,
 };

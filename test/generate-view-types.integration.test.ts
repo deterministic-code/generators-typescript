@@ -7,16 +7,14 @@ import {
   fileReader,
   memoryReader,
 } from "@deterministic-code/generators-common/deterministic-reader";
-import {
-  DATASOURCE_TYPES_YAML,
-  VIEW_TYPES_YAML,
-} from "@deterministic-code/deterministic-specifications-typescript/parser";
+import { TYPES_YAML } from "@deterministic-code/generators-common/spec-types";
 import type { GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import { generate } from "../src/generate-view-types.ts";
 
-const DS_YAML = `types:
+const VIEW_YAML = `types:
   - user:
-      datasource_type: audit
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - email:
             type: string
@@ -27,47 +25,45 @@ const DS_YAML = `types:
             type: string
             is_nullable: true
   - role:
-      datasource_type: readonly-lookup
+      tags: [datasource_type, view_type, readonly_lookup]
+      inherits: set
       fields:
         - name:
             type: string
-            is_unique: true
   - tag:
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - label:
             type: string
-`;
-
-const VIEW_YAML = `includes:
-  - datasource_types:
-      include: "*"
-      auto_enrich: true
-types:
   - user_summary:
-      inherits: datasource_types.user
-      omit:
-        - nick_name
+      tags: [view_type]
+      inherits: user
+      remove_fields: [nick_name, role_id]
       fields:
         - display_name:
             type: string
   - payment:
+      tags: [view_type]
       one_of:
         - card_payment
         - cash_payment
   - card_payment:
+      tags: [view_type]
       fields:
         - amount:
             type: decimal
         - paid_at:
             type: datetime
         - tags:
-            type: datasource_types.tag[]
+            type: tag[]
         - owner:
             type: user_summary
         - note:
             type: string
             is_nullable: true
   - cash_payment:
+      tags: [view_type]
       fields:
         - amount:
             type: decimal
@@ -75,6 +71,7 @@ types:
 
 const SIMPLE_VIEW_YAML = `types:
   - card_payment:
+      tags: [view_type]
       fields:
         - amount:
             type: decimal
@@ -87,11 +84,10 @@ const SIMPLE_VIEW_YAML = `types:
 
 const fixtureReader = (
   viewYaml: string = VIEW_YAML,
-  dsYaml: string | undefined = DS_YAML,
+  dsYaml: string | undefined = undefined,
 ) =>
   memoryReader({
-    [VIEW_TYPES_YAML]: viewYaml,
-    ...(dsYaml === undefined ? {} : { [DATASOURCE_TYPES_YAML]: dsYaml }),
+    [TYPES_YAML]: viewYaml,
   });
 
 const entryBody = (entry: GenerateEntry): string => {
@@ -146,38 +142,21 @@ describe("generate view types", () => {
     return entryBody(requireEntry(map, file));
   };
 
-  it("rejects a missing view_types.yaml", async () => {
+  it("rejects a missing types.yaml", async () => {
     await assert.rejects(
       () =>
         generate({
           reader: memoryReader({}),
           settings: {},
         }),
-      /missing view_types\.yaml/,
+      /missing types\.yaml/,
     );
   });
 
-  it("rejects a datasource_types include without datasource_types.yaml", async () => {
-    await assert.rejects(
-      () =>
-        generate({
-          reader: memoryReader({
-            [VIEW_TYPES_YAML]: `includes:
-  - datasource_types:
-      include: "*"
-types: []
-`,
-          }),
-          settings: {},
-        }),
-      /no datasource_types\.yaml was provided/,
-    );
-  });
-
-  it("reads view_types.yaml from a file reader", async () => {
+  it("reads types.yaml from a file reader", async () => {
     const dir = await mkdtemp(join(tmpdir(), "generate-view-types-"));
     try {
-      await writeFile(join(dir, VIEW_TYPES_YAML), SIMPLE_VIEW_YAML);
+      await writeFile(join(dir, TYPES_YAML), SIMPLE_VIEW_YAML);
       const wrapped = await generate({
         reader: fileReader(dir),
         settings: { "codegen.schema_version": "2.0" },
@@ -202,9 +181,6 @@ types: []
         "payment.ts",
         "role.ts",
         "tag.ts",
-        "updateTag.ts",
-        "updateUser.ts",
-        "updateUserSummary.ts",
         "user.ts",
         "userSummary.ts",
       ],
@@ -252,10 +228,9 @@ types: []
     );
     assert.match(
       summary,
-      /export interface UserSummary extends Omit<User, "role_id" \| "nick_name"> \{/,
+      /export interface UserSummary extends Omit<User, "nick_name" \| "role_id"> \{/,
     );
     assert.match(summary, /display_name: string;/);
-    assert.match(summary, /role_name: string;/);
   });
 
   it("aliases a colliding inherited datasource class name", async () => {
@@ -264,11 +239,7 @@ types: []
       user,
       /import type \{ User as UserBase \} from "\.\.\/datasource\/user";/,
     );
-    assert.match(
-      user,
-      /export interface User extends Omit<UserBase, "role_id"> \{/,
-    );
-    assert.match(user, /role_name: string;/);
+    assert.match(user, /export interface User extends UserBase \{/);
   });
 
   it("skips the barrel when codegen.create_index is false", async () => {
@@ -317,14 +288,18 @@ types: []
       "contact.ts",
       {},
       `types:
+  - tag:
+      tags: [datasource_type, view_type]
+      inherits: set
+      fields:
+        - label:
+            type: string
   - contact:
-      inherits: datasource_types.user
+      tags: [view_type]
       fields:
         - address:
-            type: datasource_types.tag
-            references: datasource_types.tag.role_id
+            type: tag
 `,
-      DS_YAML,
     );
     assert.match(contact, /import type \{ Tag \} from "\.\.\/datasource\/tag";/);
     assert.match(contact, /address: Tag;/);

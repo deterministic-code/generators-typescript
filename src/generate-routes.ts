@@ -2,14 +2,19 @@ import { fill } from "@deterministic-code/generators-common/fill";
 import type { GenerateContext } from "@deterministic-code/generators-common/generate-context";
 import { content, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import {
-  DeterministicParser,
-  type IDeterministic,
-} from "@deterministic-code/deterministic-specifications-typescript/parser";
-import {
+  isReadonlyLookup,
   ROUTES_YAML,
+  tableByName,
+  tableKind,
+} from "@deterministic-code/generators-common/spec-types";
+import {
+  DeterministicParser,
   type CustomRouteEntry,
+  type IDeterministic,
   type RouteByField,
+  type DatasourceTable,
   type RouteCandidate,
+  type Type,
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
 import type { PackCasing } from "./common/default-casing.ts";
 import { libraryImportSpecifier } from "./library-import.ts";
@@ -63,7 +68,14 @@ const customRouteMeta = (entry: CustomRouteEntry, casing: PackCasing) => {
 };
 
 class Generator extends Emit {
+  private typesByName = new Map<string, Type>();
+  private tables = new Map<string, DatasourceTable>();
+
   from(deterministic: IDeterministic): GenerateEntry[] {
+    this.typesByName = new Map(
+      deterministic.expandedTypes.map((t) => [t.name, t]),
+    );
+    this.tables = tableByName(deterministic);
     const parsed = deterministic.routes;
     const customServices = new Set(
       deterministic.services.customs.map((entry) => entry.name),
@@ -105,8 +117,13 @@ class Generator extends Emit {
   ): GenerateEntry {
     const { simpleDoc, descriptionDoc } = this.settings;
     const entity = candidate.name;
-    const occ = this.settings.usesOptimisticConcurrency(candidate);
-    const readOnly = candidate.datasourceType === "readonly-lookup";
+    const type = this.typesByName.get(entity);
+    const table = this.tables.get(entity);
+    const occ = this.settings.usesOptimisticConcurrency({
+      tags: type?.tags ?? candidate.tags,
+      useOptimisticConcurrency: table?.useOptimisticConcurrency,
+    });
+    const readOnly = type !== undefined && isReadonlyLookup(type);
     const byFields = readOnly
       ? candidate.byFields.map((e) => ({
           ...e,
@@ -129,7 +146,7 @@ class Generator extends Emit {
         fnName,
         serviceInterfaceName,
         datasourceType:
-          candidate.datasourceType || (readOnly ? "readonly-lookup" : "standard"),
+          type === undefined ? "standard" : tableKind(type),
         occ,
         needsZod: byFieldsNeedsZod(byFields),
         hasByFields: byFields.length > 0,

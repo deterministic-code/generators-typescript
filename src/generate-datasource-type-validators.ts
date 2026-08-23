@@ -2,26 +2,37 @@ import { fill } from "@deterministic-code/generators-common/fill";
 import type { GenerateContext } from "@deterministic-code/generators-common/generate-context";
 import { content, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import {
+  datasourceTypesOf,
+  TYPES_YAML,
+} from "@deterministic-code/generators-common/spec-types";
+import {
   DeterministicParser,
   type IDeterministic,
-} from "@deterministic-code/deterministic-specifications-typescript/parser";
-import {
-  DATASOURCE_TYPES_YAML,
-  type DatasourceType,
+  type Type,
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
 import { idTypeToZod, toZod, toZodDefault } from "./common/type-converters/native-to-zod.ts";
+import { fieldSize } from "./common/view-shape.ts";
 import { Emit } from "./emit.ts";
 import { indexTmpl, typeTmpl } from "./resources/datasource-type-validators.ts";
+import type { TypeField } from "@deterministic-code/deterministic-specifications-typescript/parser";
 
-type FieldShape = {
-  name: string;
-  type: string;
-  isNullable: boolean;
-  references?: string;
-  minSize?: number;
-  size?: number;
-  hasDefault?: boolean;
-  defaultValue?: string | number | boolean | null;
+type FieldShape = Pick<
+  TypeField,
+  | "name"
+  | "type"
+  | "isNullable"
+  | "references"
+  | "minSize"
+  | "size"
+  | "hasDefault"
+  | "defaultValue"
+>;
+
+const fkTarget = (field: FieldShape): string | undefined => {
+  if (field.references === undefined) return undefined;
+  return Array.isArray(field.references)
+    ? field.references[1]
+    : field.references.split(".")[1];
 };
 
 const tightenString = (base: string, field: FieldShape): string => {
@@ -29,8 +40,9 @@ const tightenString = (base: string, field: FieldShape): string => {
   if (field.minSize !== undefined && field.minSize >= 0) {
     expr = `${expr}.min(${field.minSize})`;
   }
-  if (field.size !== undefined && field.size >= 0) {
-    expr = `${expr}.max(${field.size})`;
+  const max = fieldSize(field);
+  if (max !== undefined && max >= 0) {
+    expr = `${expr}.max(${max})`;
   }
   return expr;
 };
@@ -43,14 +55,14 @@ const tightenInteger = (
   let expr = `${base}.int()`;
   if (isFk || isIdLike) expr = `${expr}.nonnegative()`;
   if (field.minSize !== undefined) expr = `${expr}.min(${field.minSize})`;
-  if (field.size !== undefined) expr = `${expr}.max(${field.size})`;
+  const max = fieldSize(field);
+  if (max !== undefined) expr = `${expr}.max(${max})`;
   return expr;
 };
 
 const tightenExpr = (field: FieldShape): string => {
   const base = toZod(field.type);
-  const isFk =
-    typeof field.references === "string" && field.references.length > 0;
+  const isFk = fkTarget(field) !== undefined;
   const isIdLike = field.name === "id" || field.name.endsWith("_id");
 
   switch (field.type) {
@@ -74,7 +86,7 @@ const tightenExpr = (field: FieldShape): string => {
 
 const zodForField = (field: FieldShape, useZodId: boolean): string => {
   let expr =
-    useZodId || field.references?.split(".")[1] === "id"
+    useZodId || fkTarget(field) === "id"
       ? idTypeToZod(field.type)
       : tightenExpr(field);
   if (field.isNullable) expr = `${expr}.nullable()`;
@@ -86,7 +98,7 @@ const zodForField = (field: FieldShape, useZodId: boolean): string => {
 
 class Generator extends Emit {
   from(deterministic: IDeterministic): GenerateEntry[] {
-    const types = deterministic.expandedDatasourceTypes;
+    const types = datasourceTypesOf(deterministic);
     const entries = types.map((table) => this.validator(table));
     const index = this.imports.index(
       this.imports.datasourceValidator(types[0]?.name ?? "index"),
@@ -97,7 +109,7 @@ class Generator extends Emit {
     return entries;
   }
 
-  private validator(table: DatasourceType): GenerateEntry {
+  private validator(table: Type): GenerateEntry {
     const fields = table.fields.map((field) => ({
       ident: this.casing.fieldIdent(field.name),
       zodExpr: zodForField(field, field.name === "id"),
@@ -117,7 +129,7 @@ class Generator extends Emit {
   }
 
   private index(
-    types: DatasourceType[],
+    types: Type[],
     index: string,
   ): GenerateEntry {
     return content(
@@ -141,7 +153,7 @@ class Generator extends Emit {
 export const generate = async (
   ctx: GenerateContext,
 ): Promise<GenerateEntry[]> => {
-  await ctx.reader.read(DATASOURCE_TYPES_YAML);
+  await ctx.reader.read(TYPES_YAML);
   return new Generator(ctx.settings).from(
     await DeterministicParser(ctx.reader).parse(ctx.settings),
   );

@@ -2,12 +2,15 @@ import { fill } from "@deterministic-code/generators-common/fill";
 import type { GenerateContext } from "@deterministic-code/generators-common/generate-context";
 import { content, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import {
+  datasourceTypesOf,
+  TYPES_YAML,
+  unionMembers,
+  viewTypesOf,
+} from "@deterministic-code/generators-common/spec-types";
+import {
   DeterministicParser,
   type IDeterministic,
-} from "@deterministic-code/deterministic-specifications-typescript/parser";
-import {
-  VIEW_TYPES_YAML,
-  type ViewType,
+  type Type,
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
 import {
   fieldTestsTmpl,
@@ -56,10 +59,10 @@ class Generator extends Emit implements ShapeOpts {
   ) {
     super(raw, basePath);
     this.tables = new Map(
-      deterministic.expandedDatasourceTypes.map((t) => [t.name, t]),
+      datasourceTypesOf(deterministic).map((t) => [t.name, t]),
     );
     this.views = new Map(
-      deterministic.expandedViewTypes.map((v) => [v.name, v]),
+      viewTypesOf(deterministic).map((v) => [v.name, v]),
     );
     this.referenceBackendType = referenceBackendType;
   }
@@ -68,9 +71,10 @@ class Generator extends Emit implements ShapeOpts {
     return [...this.views.values()].map((view) => this.tests(view));
   }
 
-  private tests(view: ViewType): GenerateEntry {
+  private tests(view: Type): GenerateEntry {
+    const members = unionMembers(view);
     const fields =
-      view.kind === "shaped" ? shapedViewNodes(view, this) : [];
+      members === undefined ? shapedViewNodes(view, this) : [];
     const src = this.imports.view(view.name);
     return content(
       this.imports.test(src, view.name),
@@ -80,8 +84,8 @@ class Generator extends Emit implements ShapeOpts {
         className: this.casing.convertTypes(view.name),
         viewName: view.name,
         typeImport: this.imports.testSpec(src, view.name),
-        isShaped: view.kind === "shaped",
-        isUnion: view.kind === "union",
+        isShaped: members === undefined,
+        isUnion: members !== undefined,
         fixture: fields.length === 0 ? "{}" : renderObject(fields),
         fieldTests: fields
           .map((field) =>
@@ -89,8 +93,8 @@ class Generator extends Emit implements ShapeOpts {
           )
           .join(""),
         members:
-          view.kind === "union"
-            ? view.members.map((name) => ({
+          members !== undefined
+            ? members.map((name) => ({
                 name: this.casing.convertTypes(name),
                 memberClass: this.casing.convertTypes(name),
                 memberImport: this.imports.spec(
@@ -112,7 +116,7 @@ export const generate = async (
   basePath = ".",
   referenceBackendType = true,
 ): Promise<GenerateEntry[]> => {
-  await ctx.reader.read(VIEW_TYPES_YAML);
+  await ctx.reader.read(TYPES_YAML);
   const deterministic = await DeterministicParser(ctx.reader).parse(
     ctx.settings,
   );

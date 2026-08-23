@@ -6,33 +6,46 @@ import { generate } from "../src/generate-service-tests.ts";
 
 const DS_YAML = `types:
   - user:
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - email:
             type: string
-            is_unique: true
             size: 256
   - role:
-      datasource_type: readonly-lookup
+      tags: [datasource_type, view_type, readonly_lookup]
+      inherits: set
       fields:
         - name:
             type: string
+  - sku:
+      tags: [datasource_type, view_type]
+      fields:
+        - code:
+            type: string
+`;
+
+const DATASOURCE = `includes:
+  - types:
+      filter: tag == "datasource_type"
+types:
+  - user:
+      fields:
+        - email:
+            is_unique: true
+  - role:
+      fields:
+        - name:
             is_unique: true
   - sku:
       fields:
         - code:
-            type: string
-            primary_key: true
-`;
-
-const VIEW_YAML = `includes:
-  - datasource_types:
-      include: "*"
-types: []
+            is_fixed_id: true
 `;
 
 const SERVICES_YAML = `includes:
-  - view_type_services:
-      filter: 'type is view_type'
+  - types:
+      filter: 'tag == "view_type"'
 services:
   - name: ReportService
 `;
@@ -44,8 +57,8 @@ const NO_INCLUDES = `services:
 const fixtureReader = (files: Record<string, string>) => memoryReader(files);
 
 const yaml = {
-  "datasource_types.yaml": DS_YAML,
-  "view_types.yaml": VIEW_YAML,
+  "types.yaml": DS_YAML,
+  "datasource.yaml": DATASOURCE,
   "services.yaml": SERVICES_YAML,
 };
 

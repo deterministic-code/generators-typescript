@@ -6,7 +6,7 @@ import {
   type IDeterministic,
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
 import { fromSettings } from "@deterministic-code/generators-common/settings";
-import { ROUTES_YAML } from "@deterministic-code/deterministic-specifications-typescript/parser";
+import { ROUTES_YAML } from "@deterministic-code/generators-common/spec-types";
 import { libraryImportSpecifier } from "./library-import.ts";
 import { e2eTmpl } from "./resources/routes-e2e.ts";
 

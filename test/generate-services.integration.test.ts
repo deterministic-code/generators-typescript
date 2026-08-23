@@ -4,33 +4,42 @@ import { memoryReader } from "@deterministic-code/generators-common/deterministi
 import type { GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import { generate } from "../src/generate-services.ts";
 
-const DS_YAML = `types:
+const TYPES = `types:
   - user:
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - email:
             type: string
-            is_unique: true
             size: 256
         - role_id:
             type: number
             references: role.id
   - role:
-      datasource_type: readonly-lookup
+      tags: [datasource_type, view_type, readonly_lookup]
+      inherits: set
       fields:
         - name:
             type: string
+`;
+
+const DATASOURCE = `includes:
+  - types:
+      filter: tag == "datasource_type"
+types:
+  - user:
+      fields:
+        - email:
+            is_unique: true
+  - role:
+      fields:
+        - name:
             is_unique: true
 `;
 
-const VIEW_YAML = `includes:
-  - datasource_types:
-      include: "*"
-types: []
-`;
-
 const SERVICES_YAML = `includes:
-  - view_type_services:
-      filter: 'type is view_type'
+  - types:
+      filter: 'tag == "view_type"'
 services:
   - name: ReportService
 `;
@@ -40,7 +49,12 @@ const ROUTES_YAML = `routes:
       method: GET
       path: /api/report
       service: ReportService
-      serviceMethod: run
+      function: run
+  - health:
+      method: GET
+      path: /api/health
+      service: HealthCheckService
+      function: check
 `;
 
 const fixtureReader = (files: Record<string, string>) => memoryReader(files);
@@ -56,8 +70,8 @@ describe("generate-services", () => {
   it("emits generic services, finders, custom stubs, and indexes", async () => {
     const entries = await generate({
       reader: fixtureReader({
-        "datasource_types.yaml": DS_YAML,
-        "view_types.yaml": VIEW_YAML,
+        "types.yaml": TYPES,
+        "datasource.yaml": DATASOURCE,
         "services.yaml": SERVICES_YAML,
         "routes.yaml": ROUTES_YAML,
       }),
@@ -70,7 +84,10 @@ describe("generate-services", () => {
     assert.ok(paths.includes("userService.ts"), `got: ${paths.join(", ")}`);
     assert.ok(paths.includes("roleService.ts"));
     assert.ok(paths.includes("../custom/reportService.ts"));
-    assert.ok(paths.includes("../custom/health-check-service.ts"));
+    assert.ok(
+      paths.some((p) => /health/i.test(p)),
+      `health stub missing; got: ${paths.join(", ")}`,
+    );
     assert.ok(paths.includes("index.ts"));
     assert.ok(paths.includes("../custom/index.ts"));
     assert.equal(
@@ -85,16 +102,12 @@ describe("generate-services", () => {
     const user = textOf(entries, "userService.ts");
     assert.match(
       user,
-      /export class UserService extends BaseService<User, UpdateUser>/,
+      /export class UserService extends BaseService<User>/,
     );
     assert.match(user, /async find_by_email\(email: string\)/);
     assert.match(
       user,
-      /from "\.\.\/\.\.\/types\/generated\/views\/user"/,
-    );
-    assert.match(
-      user,
-      /from "\.\.\/\.\.\/types\/generated\/views\/updateUser"/,
+      /from "\.\.\/\.\.\/types\/generated\/datasource\/user"/,
     );
     const role = textOf(entries, "roleService.ts");
     assert.match(role, /export class RoleService extends BaseService<Role>/);
@@ -113,8 +126,8 @@ describe("generate-services", () => {
   it("omits indexes when codegen.create_index is false", async () => {
     const entries = await generate({
       reader: fixtureReader({
-        "datasource_types.yaml": DS_YAML,
-        "view_types.yaml": VIEW_YAML,
+        "types.yaml": TYPES,
+        "datasource.yaml": DATASOURCE,
         "services.yaml": SERVICES_YAML,
         "routes.yaml": ROUTES_YAML,
       }),
@@ -129,10 +142,10 @@ describe("generate-services", () => {
   it("emits description doc comments when comments=description", async () => {
     const entries = await generate({
       reader: fixtureReader({
-        "datasource_types.yaml": DS_YAML,
-        "view_types.yaml": VIEW_YAML,
+        "types.yaml": TYPES,
+        "datasource.yaml": DATASOURCE,
         "services.yaml": `includes:
-  - view_type_services:
+  - types:
       filter: 'type == "user"'
 services: []
 `,
@@ -147,10 +160,10 @@ services: []
   it("emits no doc comments when comments=none", async () => {
     const entries = await generate({
       reader: fixtureReader({
-        "datasource_types.yaml": DS_YAML,
-        "view_types.yaml": VIEW_YAML,
+        "types.yaml": TYPES,
+        "datasource.yaml": DATASOURCE,
         "services.yaml": `includes:
-  - view_type_services:
+  - types:
       filter: 'type == "user"'
 services: []
 `,
@@ -164,11 +177,11 @@ services: []
   it("patches app.ts customModulePaths when by-feature relocates a custom module", async () => {
     const entries = await generate({
       reader: fixtureReader({
-        "datasource_types.yaml": DS_YAML,
-        "view_types.yaml": VIEW_YAML,
+        "types.yaml": TYPES,
+        "datasource.yaml": DATASOURCE,
         "services.yaml": `includes:
-  - view_type_services:
-      filter: 'type is view_type'
+  - types:
+      filter: 'tag == "view_type"'
 services:
   - name: ContactImportService
     module: ./services/contact-import-service

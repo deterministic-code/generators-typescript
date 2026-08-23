@@ -4,27 +4,23 @@ import { memoryReader } from "@deterministic-code/generators-common/deterministi
 import type { GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import { generate } from "../src/generate-service-integration-tests.ts";
 
-const VIEW_YAML = `includes:
-  - datasource_types:
-      include: "*"
-types: []
-`;
-
 const SERVICES_YAML = `includes:
-  - view_type_services:
-      filter: 'type is view_type || type is datasource_type'
+  - types:
+      filter: 'tag == "datasource_type"'
 services: []
 `;
 
 const CONTACTS_DS = `types:
   - contact_source:
-      datasource_type: "readonly-lookup"
+      tags: [datasource_type, view_type, readonly_lookup]
+      inherits: set
       fields:
         - name:
             type: string
             size: 64
-            is_unique: true
   - contact:
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - contact_source_id:
             type: number
@@ -34,6 +30,8 @@ const CONTACTS_DS = `types:
         - last_name:
             type: string
   - address:
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - contact_id:
             type: number
@@ -43,12 +41,13 @@ const CONTACTS_DS = `types:
         - city:
             type: string
   - contact_group:
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - name:
             type: string
-            is_unique: true
   - contact_group_member:
-      datasource_type: "many-to-many"
+      tags: [datasource_type, view_type, many_to_many]
       fields:
         - contact_id:
             type: number
@@ -56,17 +55,6 @@ const CONTACTS_DS = `types:
         - contact_group_id:
             type: number
             references: contact_group.id
-  - legacy_contact:
-      skip_migrations: true
-      fields:
-        - key:
-            type: string
-            primary_key: true
-  - contact_change_log:
-      target: None
-      fields:
-        - occurred_at:
-            type: datetime
 `;
 
 const SEEDS = `seeds:
@@ -92,8 +80,7 @@ const textOf = (entries: GenerateEntry[], path: string): string => {
 const generateContacts = (seeds: string) =>
   generate({
     reader: memoryReader({
-      "datasource_types.yaml": CONTACTS_DS,
-      "view_types.yaml": VIEW_YAML,
+      "types.yaml": CONTACTS_DS,
       "services.yaml": SERVICES_YAML,
       "datasource_seeds.yaml": seeds,
     }),
@@ -114,8 +101,7 @@ describe("generate-service-integration-tests", () => {
   it("keeps the authored table name when pluralize is off", async () => {
     const entries = await generate({
       reader: memoryReader({
-        "datasource_types.yaml": CONTACTS_DS,
-        "view_types.yaml": VIEW_YAML,
+        "types.yaml": CONTACTS_DS,
         "services.yaml": SERVICES_YAML,
         "datasource_seeds.yaml": SEEDS,
       }),
@@ -128,14 +114,13 @@ describe("generate-service-integration-tests", () => {
     assert.match(body, /const TABLE_NAME = "contact_group_member"/);
   });
 
-  it("skips skip_migrations and target None tables", async () => {
+  it("emits integration tests for persisted tables", async () => {
     const entries = await generateContacts(SEEDS);
     const names = entries
       .filter((e) => e.kind === "content")
       .map((e) => e.filename);
     assert.ok(names.includes("addressService.integration.test.ts"));
-    assert.ok(!names.includes("legacyContactService.integration.test.ts"));
-    assert.ok(!names.includes("contactChangeLogService.integration.test.ts"));
+    assert.ok(names.includes("contactGroupMemberService.integration.test.ts"));
   });
 
   it("creates parents, updates the item and parents, then deletes in reverse", async () => {
@@ -157,11 +142,7 @@ describe("generate-service-integration-tests", () => {
     assert.match(body, /SqliteStandardRepository<Contact>/);
     assert.match(body, /SqliteStandardRepository<ContactSource>/);
     assert.match(body, /import type \{ Address \} from /);
-    assert.match(body, /import type \{ UpdateAddress \} from /);
     assert.match(body, /import type \{ Contact \} from /);
-    assert.match(body, /import type \{ UpdateContact \} from /);
-    assert.match(body, /as UpdateContact/);
-    assert.match(body, /as UpdateAddress/);
     assert.match(body, /contact_source\.id/);
     assert.match(body, /contact\.id/);
     assert.doesNotMatch(body, /as \{ /);

@@ -5,22 +5,24 @@ import { generate } from "../src/generate-perf-server.ts";
 
 const DS = `types:
   - user:
+      tags: [datasource_type]
+      inherits: set
       fields:
         - email:
             type: string
 `;
 
 describe("generate-perf-server", () => {
-  it("rejects a missing datasource_types.yaml", async () => {
+  it("rejects a missing types.yaml", async () => {
     await assert.rejects(
       () => generate({ reader: memoryReader({}), settings: {} }),
-      /datasource_types\.yaml is required/,
+      /types\.yaml is required/,
     );
   });
 
   it("emits the server, vitest config, and package.json patch", async () => {
     const entries = await generate({
-      reader: memoryReader({ "datasource_types.yaml": DS }),
+      reader: memoryReader({ "types.yaml": DS }),
       settings: {},
     });
     const names = entries.map((e) => e.filename);
@@ -40,7 +42,7 @@ describe("generate-perf-server", () => {
 
   it("uses a bundled app import when requested", async () => {
     const entries = await generate({
-      reader: memoryReader({ "datasource_types.yaml": DS }),
+      reader: memoryReader({ "types.yaml": DS }),
       settings: {
         "languages.typescript.library_reference_mode": "bundled",
       },

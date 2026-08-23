@@ -3,12 +3,17 @@ import type { GenerateContext } from "@deterministic-code/generators-common/gene
 import { content, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import { verifyEntries } from "@deterministic-code/generators-common/reference-verifier";
 import {
-  DeterministicParser,
-  type IDeterministic,
-} from "@deterministic-code/deterministic-specifications-typescript/parser";
+  datasourceTypesOf,
+  isPkField,
+  tableByName,
+  tableKind,
+  TYPES_YAML,
+} from "@deterministic-code/generators-common/spec-types";
 import {
-  DATASOURCE_TYPES_YAML,
-  type DatasourceType,
+  DeterministicParser,
+  type DatasourceTable,
+  type IDeterministic,
+  type Type,
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
 import { toNative } from "./base-type-converter.ts";
 import { Emit } from "./emit.ts";
@@ -17,8 +22,11 @@ import { libraryImportSpecifier } from "./library-import.ts";
 
 class Generator extends Emit {
   from(deterministic: IDeterministic): GenerateEntry[] {
-    const types = deterministic.expandedDatasourceTypes;
-    const entries = types.map((dsType) => this.type(dsType));
+    const types = datasourceTypesOf(deterministic);
+    const tables = tableByName(deterministic);
+    const entries = types.map((dsType) =>
+      this.type(dsType, tables.get(dsType.name)),
+    );
     const index = this.imports.index(
       this.imports.datasource(types[0]?.name ?? "index"),
     );
@@ -28,7 +36,7 @@ class Generator extends Emit {
     return entries;
   }
 
-  private type(dsType: DatasourceType): GenerateEntry {
+  private type(dsType: Type, table: DatasourceTable | undefined): GenerateEntry {
     const { schemaVersion, simpleDoc, descriptionDoc, libraryReferenceMode } =
       this.settings;
     const className = this.casing.convertTypes(dsType.name);
@@ -39,7 +47,7 @@ class Generator extends Emit {
       ident: this.casing.fieldIdent(f.name),
       tsType: toNative(f.type),
       nullable: f.isNullable,
-      isPrimaryKey: f.isPrimaryKey === true,
+      isPrimaryKey: isPkField(f, dsType, table),
     }));
     const idField =
       fields.find((f) => f.isPrimaryKey) ?? fields.find((f) => f.name === "id");
@@ -65,7 +73,7 @@ class Generator extends Emit {
         simpleDoc,
         descriptionDoc,
         className,
-        datasourceType: dsType.datasourceType,
+        datasourceType: tableKind(dsType),
         fieldCount: String(fields.length),
         extendsClause,
         fields,
@@ -74,7 +82,7 @@ class Generator extends Emit {
     );
   }
 
-  private index(types: DatasourceType[], index: string): GenerateEntry {
+  private index(types: Type[], index: string): GenerateEntry {
     const modules = types.map((t) => this.imports.datasourceRel(t.name));
     const exports = types.map((t) => this.casing.convertTypes(t.name)).join(", ");
     return content(
@@ -102,7 +110,7 @@ class Generator extends Emit {
 export const generate = async (
   ctx: GenerateContext,
 ): Promise<GenerateEntry[]> => {
-  await ctx.reader.read(DATASOURCE_TYPES_YAML);
+  await ctx.reader.read(TYPES_YAML);
   const entries = new Generator(ctx.settings).from(
     await DeterministicParser(ctx.reader).parse(ctx.settings),
   );

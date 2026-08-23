@@ -132,7 +132,7 @@
     "verify:prepare": "npm ci && npm run build"
   },
   "dependencies": {
-    "@deterministic-code/deterministic-specifications-typescript": "github:deterministic-code/deterministic-specifications-typescript",
+    "@deterministic-code/deterministic-specifications-typescript": "github:deterministic-code/deterministic-specifications-typescript#slim-public-api",
     "@deterministic-code/generators-common": "github:deterministic-code/generators-common#main",
     "@deterministic-code/patch-merger": "github:deterministic-code/patch-merger",
     "mustache": "^4.2.0",

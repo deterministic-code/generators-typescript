@@ -2,13 +2,17 @@ import { fill } from "@deterministic-code/generators-common/fill";
 import type { GenerateContext } from "@deterministic-code/generators-common/generate-context";
 import { content, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import {
-  DeterministicParser,
-  type IDeterministic,
-} from "@deterministic-code/deterministic-specifications-typescript/parser";
-import {
+  datasourceTypesOf,
+  pkName,
   SERVICES_YAML,
-  type DatasourceType,
+  tableByName,
+} from "@deterministic-code/generators-common/spec-types";
+import {
+  DeterministicParser,
+  type DatasourceTable,
+  type IDeterministic,
   type ServiceCandidate,
+  type Type,
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
 import {
   asIdType,
@@ -22,14 +26,17 @@ import { createCasing } from "./common/default-casing.ts";
 import { Emit } from "./emit.ts";
 
 class Generator extends Emit {
-  private readonly datasources: DatasourceType[];
+  private readonly types: Type[];
+  private readonly tables: Map<string, DatasourceTable>;
 
   constructor(
     raw: Record<string, string>,
-    datasources: DatasourceType[],
+    types: Type[],
+    tables: Map<string, DatasourceTable>,
   ) {
     super(raw);
-    this.datasources = datasources;
+    this.types = types;
+    this.tables = tables;
   }
 
   from(deterministic: IDeterministic): GenerateEntry[] {
@@ -37,9 +44,10 @@ class Generator extends Emit {
   }
 
   private test(candidate: ServiceCandidate): GenerateEntry {
-    const table = this.datasources.find((d) => d.name === candidate.name);
+    const table = this.types.find((d) => d.name === candidate.name);
+    const overlay = this.tables.get(candidate.name);
     const column =
-      table?.fields.find((f) => f.isPrimaryKey === true)?.name ?? "id";
+      table !== undefined ? pkName(table, overlay) : "id";
     const pkType =
       table?.fields.find((f) => f.name === column)?.type ?? "integer";
     const src = this.imports.service(candidate.name);
@@ -76,7 +84,8 @@ export const generate = async (
   return withFakerPackagePatch(
     new Generator(
       ctx.settings,
-      deterministic.expandedDatasourceTypes,
+      datasourceTypesOf(deterministic),
+      tableByName(deterministic),
     ).from(deterministic),
   );
 };

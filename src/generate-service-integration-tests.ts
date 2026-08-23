@@ -4,15 +4,23 @@ import { content, type GenerateEntry } from "@deterministic-code/generators-comm
 import pluralize from "pluralize";
 import { toNative } from "./base-type-converter.ts";
 import {
-  DeterministicParser,
-  type IDeterministic,
-} from "@deterministic-code/deterministic-specifications-typescript/parser";
-import {
+  datasourceTypesOf,
+  isPkField,
+  isReadonlyLookup,
+  pkName,
   SERVICES_YAML,
-  type DatasourceField,
-  type DatasourceType,
+  tableByName,
+  viewTypesOf,
+} from "@deterministic-code/generators-common/spec-types";
+import {
+  DeterministicParser,
+  type DatasourceTable,
+  type IDeterministic,
   type SeedRow,
+  type Type,
+  type TypeField,
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
+import { fieldSize, refParent } from "./common/view-shape.ts";
 import { joinImport, libraryImportSpecifier } from "./library-import.ts";
 import { genericTmpl } from "./resources/service-integration-tests.ts";
 import { createCasing } from "./common/default-casing.ts";
@@ -32,28 +40,27 @@ const physicalTableName = (name: string, pluralizeFlag: boolean): string =>
     ? name.replace(/[^_]+$/, (token) => pluralize(token))
     : name;
 
-const tableByName = (
+const findType = (
   name: string,
-  datasources: DatasourceType[],
-): DatasourceType | undefined => datasources.find((d) => d.name === name);
+  types: Type[],
+): Type | undefined => types.find((d) => d.name === name);
 
-const isEligible = (table: DatasourceType | undefined): table is DatasourceType =>
-  table !== undefined && !table.skipMigrations && table.target !== "None";
+const isEligible = (table: Type | undefined): table is Type =>
+  table !== undefined;
 
 /** All in-set `references` parents, recursively, parent before child. Matches generators-common `datasourceTypeAncestry`. */
 const referencedAncestry = (
-  types: readonly DatasourceType[],
+  types: readonly Type[],
   name: string,
 ): string[] => {
   const typeNames = new Set(types.map((type) => type.name));
   const byName = new Map(types.map((type) => [type.name, type]));
   if (!byName.has(name)) return [];
-  const parentsOf = (type: DatasourceType): string[] => {
+  const parentsOf = (type: Type): string[] => {
     const parents: string[] = [];
     const seen = new Set<string>();
     for (const field of type.fields) {
-      if (field.references === undefined) continue;
-      const parent = field.references.split(".")[0];
+      const parent = refParent(field);
       if (
         parent === undefined ||
         parent.length === 0 ||
@@ -88,16 +95,19 @@ const referencedAncestry = (
 const serviceVarName = (className: string): string =>
   `${className.slice(0, 1).toLowerCase()}${className.slice(1)}`;
 
-const pkColumn = (table: DatasourceType): string =>
-  table.fields.find((f) => f.isPrimaryKey === true)?.name ?? "id";
+const pkColumn = (table: Type, overlay?: DatasourceTable): string =>
+  pkName(table, overlay);
 
-const writableScalars = (table: DatasourceType): DatasourceField[] => {
-  const pk = pkColumn(table);
+const writableScalars = (
+  table: Type,
+  overlay?: DatasourceTable,
+): TypeField[] => {
+  const pk = pkColumn(table, overlay);
   return table.fields.filter(
     (field) =>
       !SYSTEM_COLUMNS.has(field.name) &&
       field.name !== pk &&
-      field.isPrimaryKey !== true &&
+      !isPkField(field, table, overlay) &&
       field.references === undefined &&
       !field.isNullable &&
       field.hasDefault !== true,
@@ -105,12 +115,11 @@ const writableScalars = (table: DatasourceType): DatasourceField[] => {
 };
 
 const fkFields = (
-  table: DatasourceType,
+  table: Type,
   typeNames: ReadonlySet<string>,
-): DatasourceField[] =>
+): TypeField[] =>
   table.fields.filter((field) => {
-    if (field.references === undefined) return false;
-    const parent = field.references.split(".")[0];
+    const parent = refParent(field);
     return parent !== undefined && typeNames.has(parent);
   });
 
@@ -134,18 +143,20 @@ class Generator extends Emit {
 
   from(deterministic: IDeterministic): GenerateEntry[] {
     const { generics } = deterministic.services;
-    const datasources = deterministic.expandedDatasourceTypes;
+    const datasources = datasourceTypesOf(deterministic);
+    const overlays = tableByName(deterministic);
     const mode = this.settings.libraryReferenceMode;
     const typeNames = new Set(datasources.map((table) => table.name));
-    const viewNames = new Set(deterministic.viewTypes.map((view) => view.name));
+    const viewNames = new Set(viewTypesOf(deterministic).map((view) => view.name));
     const entries = generics.flatMap((c) => {
-      const table = tableByName(c.name, datasources);
+      const table = findType(c.name, datasources);
       if (!isEligible(table)) return [];
       return [
         this.test(
           c.name,
           table,
           datasources,
+          overlays,
           typeNames,
           viewNames,
           deterministic.datasourceSeeds,
@@ -190,33 +201,37 @@ class Generator extends Emit {
 
   private test(
     entity: string,
-    table: DatasourceType,
-    datasources: DatasourceType[],
+    table: Type,
+    datasources: Type[],
+    overlays: Map<string, DatasourceTable>,
     typeNames: ReadonlySet<string>,
     viewNames: ReadonlySet<string>,
     seeds: Map<string, SeedRow[]>,
     mode: string | undefined,
   ): GenerateEntry {
-    const pkField =
-      table.fields.find((f) => f.isPrimaryKey === true) ??
+    const overlay = overlays.get(table.name);
+    const pk =
+      table.fields.find((f) => isPkField(f, table, overlay)) ??
       table.fields.find((f) => f.name === "id");
+    const pkField = pk;
     const path = this.imports.serviceIntegrationTest(entity);
     const isUuid = pkField?.type === "uuid";
     const withUuid = table.fields.some((f) => f.name === "uuid");
     const className = this.casing.serviceClassName(entity);
     const chainNames = [...referencedAncestry(datasources, entity), entity];
     const missingLookup = chainNames.find((name) => {
-      const node = tableByName(name, datasources);
-      if (node?.datasourceType !== "readonly-lookup") return false;
+      const node = findType(name, datasources);
+      if (node === undefined || !isReadonlyLookup(node)) return false;
       return (seeds.get(name) ?? []).length === 0;
     });
-    const isLookup = table.datasourceType === "readonly-lookup";
+    const isLookup = isReadonlyLookup(table);
     const hierarchy =
       missingLookup === undefined && !isLookup
         ? this.hierarchyTokens(
             entity,
             chainNames,
             datasources,
+            overlays,
             typeNames,
             viewNames,
             seeds,
@@ -247,9 +262,9 @@ class Generator extends Emit {
           physicalTableName(entity, this.pluralizeTableNames),
         ),
         pkEntries: chainNames.flatMap((name) => {
-          const node = tableByName(name, datasources);
+          const node = findType(name, datasources);
           if (node === undefined) return [];
-          const column = pkColumn(node);
+          const column = pkColumn(node, overlays.get(name));
           const col = node.fields.find((f) => f.name === column);
           return [
             {
@@ -284,7 +299,8 @@ class Generator extends Emit {
   private hierarchyTokens(
     entity: string,
     chainNames: string[],
-    datasources: DatasourceType[],
+    datasources: Type[],
+    overlays: Map<string, DatasourceTable>,
     typeNames: ReadonlySet<string>,
     viewNames: ReadonlySet<string>,
     seeds: Map<string, SeedRow[]>,
@@ -298,8 +314,8 @@ class Generator extends Emit {
       ),
     }));
     const chainServices = parents.map((name) => {
-      const node = tableByName(name, datasources)!;
-      const column = pkColumn(node);
+      const node = findType(name, datasources)!;
+      const column = pkColumn(node, overlays.get(name));
       const col = node.fields.find((f) => f.name === column);
       const className = this.casing.serviceClassName(name);
       return {
@@ -314,10 +330,10 @@ class Generator extends Emit {
       };
     });
     const creates = chainNames.map((name) => {
-      const node = tableByName(name, datasources)!;
+      const node = findType(name, datasources)!;
       const isSubject = name === entity;
       const className = this.casing.serviceClassName(name);
-      const lookup = node.datasourceType === "readonly-lookup";
+      const lookup = isReadonlyLookup(node);
       const seed = (seeds.get(name) ?? [])[0];
       const mutate = mutateViewName(name, viewNames);
       return {
@@ -328,30 +344,30 @@ class Generator extends Emit {
         missingSeedErrorJson: JSON.stringify(`expected seeded ${name}`),
         createTypeName:
           mutate === undefined ? false : this.casing.convertTypes(mutate),
-        fields: this.payloadFields(node, typeNames, datasources),
+        fields: this.payloadFields(node, typeNames, datasources, overlays),
       };
     });
     const writable = chainNames.filter((name) => {
-      const node = tableByName(name, datasources);
-      return node !== undefined && node.datasourceType !== "readonly-lookup";
+      const node = findType(name, datasources);
+      return node !== undefined && !isReadonlyLookup(node);
     });
     const updates = [...writable].reverse().map((name) => {
-      const node = tableByName(name, datasources)!;
+      const node = findType(name, datasources)!;
       const isSubject = name === entity;
       const className = this.casing.serviceClassName(name);
-      const column = pkColumn(node);
       return {
         serviceVar: isSubject ? "service" : serviceVarName(className),
         varName: isSubject ? "row" : this.casing.convertFields(name),
-        pkIdent: this.casing.fieldIdent(column),
-        fields: this.scalarFields(node),
+        updatedVarName: `${isSubject ? "row" : this.casing.convertFields(name)}Updated`,
+        pkIdent: this.casing.fieldIdent(pkColumn(node, overlays.get(name))),
+        fields: this.scalarFields(node, overlays.get(name)),
       };
     });
     const deletes = [...writable].reverse().map((name) => {
-      const node = tableByName(name, datasources)!;
+      const node = findType(name, datasources)!;
       const isSubject = name === entity;
       const className = this.casing.serviceClassName(name);
-      const column = pkColumn(node);
+      const column = pkColumn(node, overlays.get(name));
       return {
         serviceVar: isSubject ? "service" : serviceVarName(className),
         varName: isSubject ? "row" : this.casing.convertFields(name),
@@ -361,25 +377,29 @@ class Generator extends Emit {
     return { parentImports, chainServices, creates, updates, deletes };
   }
 
-  private scalarFields(table: DatasourceType): { ident: string; expr: string }[] {
-    return writableScalars(table).map((field) => ({
+  private scalarFields(
+    table: Type,
+    overlay?: DatasourceTable,
+  ): { ident: string; expr: string }[] {
+    return writableScalars(table, overlay).map((field) => ({
       ident: this.casing.fieldIdent(field.name),
       expr: fieldExpr(fakeTestData, field.type, {
         nativeType: toNative(field.type),
-        size: field.size,
+        size: fieldSize(field),
       }),
     }));
   }
 
   private payloadFields(
-    table: DatasourceType,
+    table: Type,
     typeNames: ReadonlySet<string>,
-    datasources: DatasourceType[],
+    datasources: Type[],
+    overlays: Map<string, DatasourceTable>,
   ): { ident: string; expr: string }[] {
     const fks = fkFields(table, typeNames).map((field) => {
-      const parentName = field.references!.split(".")[0]!;
-      const parent = tableByName(parentName, datasources)!;
-      const column = pkColumn(parent);
+      const parentName = refParent(field)!;
+      const parent = findType(parentName, datasources)!;
+      const column = pkColumn(parent, overlays.get(parentName));
       const pkIdent = this.casing.fieldIdent(column);
       const parentVar = this.casing.convertFields(parentName);
       return {
