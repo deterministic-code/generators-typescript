@@ -1,20 +1,22 @@
 version: 1.0.0
 types:
-  # readonly-lookup — origin classifier for a contact.
+  # Origin classifier for a contact.
   - contact_source:
-      datasource_type: "readonly-lookup"
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - name:
             type: string
             size: 64
-            is_unique: true
         - description:
             type: string
             size: unlimited
             is_nullable: true
 
-  # CRUD — primary contact record.
+  # Primary contact record, plus nested addresses and phones.
   - contact:
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - contact_source_id:
             type: number
@@ -33,9 +35,17 @@ types:
             type: string
             size: unlimited
             is_nullable: true
+        - addresses:
+            type: address[]
+            references: address.contact_id
+        - phones:
+            type: phone[]
+            references: phone.contact_id
 
-  # CRUD — postal address attached to a contact.
+  # Postal address attached to a contact.
   - address:
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - contact_id:
             type: number
@@ -63,8 +73,10 @@ types:
             size: 64
             is_nullable: true
 
-  # CRUD — phone number attached to a contact.
+  # Phone number attached to a contact.
   - phone:
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - contact_id:
             type: number
@@ -77,21 +89,25 @@ types:
             size: 32
             is_nullable: true
 
-  # CRUD — user-defined group of contacts.
+  # User-defined group of contacts, plus M2M members.
   - contact_group:
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - name:
             type: string
             size: 128
-            is_unique: true
         - description:
             type: string
             size: unlimited
             is_nullable: true
+        - members:
+            type: contact[]
+            references: contact_group_member.contact_group_id
 
-  # M2M — membership in a contact_group.
+  # Membership in a contact_group.
   - contact_group_member:
-      datasource_type: "many-to-many"
+      tags: [datasource_type, many_to_many]
       fields:
         - contact_id:
             type: number
@@ -100,17 +116,15 @@ types:
             type: number
             references: contact_group.id
 
-  # Non-CRUD — legacy contact table imported from an older application.
+  # Legacy contact table imported from an older application.
   # Physical table `OldContactsTbl` keeps PascalCase + truncated names;
-  # datasource_mappings below bridges those to canonical snake_case.
+  # datasource.yaml mappings bridge those to canonical snake_case.
   - legacy_contact:
-      skip_migrations: true
-      target: Crud
+      tags: [datasource_type]
       fields:
         - key:
             type: string
             size: 64
-            primary_key: true
         - first_name:
             type: string
             size: 128
@@ -125,10 +139,9 @@ types:
             type: datetime
             is_nullable: true
 
-  # No-PK append-only audit fixture — exercises target: None.
+  # No-PK append-only audit fixture.
   - contact_change_log:
-      skip_migrations: true
-      target: None
+      tags: [datasource_type]
       fields:
         - occurred_at:
             type: datetime
@@ -141,17 +154,32 @@ types:
             type: string
             size: unlimited
 
-datasource_mappings:
-  - legacy_contact:
-      source: OldContactsTbl
-      field_mappings:
-        - key:
-            source: CntID
-        - first_name:
-            source: FirstNm
-        - last_name:
-            source: LastNm
-        - email:
-            source: EmailAddr
-        - imported_at:
-            source: ImpDate
+  # Request shape for ContactImportService.
+  - import_contacts_request:
+      fields:
+        - source:
+            type: string
+            size: 64
+        - payload:
+            type: string
+            size: unlimited
+
+  - import_contacts_result:
+      fields:
+        - imported_count:
+            type: number
+        - skipped_count:
+            type: number
+        - failed_count:
+            type: number
+
+  # Response shape for LegacyMigrationService.
+  - legacy_migration_result:
+      fields:
+        - migrated_count:
+            type: number
+        - skipped_count:
+            type: number
+        - completed_at:
+            type: datetime
+            is_nullable: true

@@ -1,7 +1,7 @@
 version: 1.0.0
 includes:
-  - view_type_services:
-      filter: type is datasource_type || (type inherits datasource_types)
+  - types:
+      filter: tag == "datasource_type"
 
 services:
   - name: ContactImportService
@@ -12,5 +12,5 @@ services:
   - name: LegacyMigrationService
     module: ./services/legacy-migration-service
     description: Copies rows from the legacy OldContactsTbl into the canonical
-      contacts table using the declared datasource_mappings, returning a
+      contacts table using the declared datasource mappings, returning a
       legacy_migration_result.
