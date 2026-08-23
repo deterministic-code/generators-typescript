@@ -6,23 +6,17 @@ import { createCasing } from "../src/common/default-casing.ts";
 import { generate } from "../src/generate-client-bindings.ts";
 
 const yaml = {
-  "datasource_types.yaml": `types:
+  "types.yaml": `types:
   - contact_source:
-      datasource_type: readonly-lookup
+      tags: [datasource_type, view_type, readonly_lookup]
+      inherits: set
       fields:
         - name:
             type: string
-            is_unique: true
-`,
-  "view_types.yaml": `includes:
-  - datasource_types:
-      include: "*"
-      auto_enrich: true
-types: []
 `,
   "routes.yaml": `includes:
-  - view_type_routes:
-      filter: 'type is view_type || type is datasource_type'
+  - types:
+      filter: 'tag == "view_type" || tag == "datasource_type"'
 `,
 };
 

@@ -1,20 +1,17 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { memoryReader } from "@deterministic-code/generators-common/deterministic-reader";
-import {
-  DATASOURCE_TYPES_YAML,
-  VIEW_TYPES_YAML,
-} from "@deterministic-code/deterministic-specifications-typescript/parser";
+import { TYPES_YAML } from "@deterministic-code/generators-common/spec-types";
 import type { GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import { generate } from "../src/generate-view-type-validators.ts";
 
-const DS_YAML = `types:
+const VIEW_YAML = `types:
   - user:
-      datasource_type: audit
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - email:
             type: string
-            size: 256
         - role_id:
             type: number
             references: role.id
@@ -22,49 +19,45 @@ const DS_YAML = `types:
             type: string
             is_nullable: true
   - role:
-      datasource_type: readonly-lookup
+      tags: [datasource_type, view_type, readonly_lookup]
+      inherits: set
       fields:
         - name:
             type: string
-            is_unique: true
   - tag:
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - label:
             type: string
-`;
-
-const VIEW_YAML = `includes:
-  - datasource_types:
-      include: "*"
-      auto_enrich: true
-types:
   - user_summary:
-      inherits: datasource_types.user
-      omit:
-        - nick_name
+      tags: [view_type]
+      inherits: user
+      remove_fields: [nick_name, role_id]
       fields:
         - display_name:
             type: string
-            min_size: 1
-            size: 64
   - payment:
+      tags: [view_type]
       one_of:
         - card_payment
         - cash_payment
   - card_payment:
+      tags: [view_type]
       fields:
         - amount:
             type: decimal
         - paid_at:
             type: datetime
         - tags:
-            type: datasource_types.tag[]
+            type: tag[]
         - owner:
             type: user_summary
         - note:
             type: string
             is_nullable: true
   - cash_payment:
+      tags: [view_type]
       fields:
         - amount:
             type: decimal
@@ -72,20 +65,23 @@ types:
 
 const SIMPLE_VIEW_YAML = `types:
   - card_payment:
+      tags: [view_type]
       fields:
         - amount:
             type: decimal
         - paid_at:
             type: datetime
+        - note:
+            type: string
+            is_nullable: true
 `;
 
 const fixtureReader = (
   viewYaml: string = VIEW_YAML,
-  dsYaml: string | undefined = DS_YAML,
+  dsYaml: string | undefined = undefined,
 ) =>
   memoryReader({
-    [VIEW_TYPES_YAML]: viewYaml,
-    ...(dsYaml === undefined ? {} : { [DATASOURCE_TYPES_YAML]: dsYaml }),
+    [TYPES_YAML]: viewYaml,
   });
 
 const entryBody = (entry: GenerateEntry): string => {
@@ -140,31 +136,14 @@ describe("generate view type validators", () => {
     return entryBody(requireEntry(map, file));
   };
 
-  it("rejects a missing view_types.yaml", async () => {
+  it("rejects a missing types.yaml", async () => {
     await assert.rejects(
       () =>
         generate({
           reader: memoryReader({}),
           settings: {},
         }),
-      /missing view_types\.yaml/,
-    );
-  });
-
-  it("rejects a datasource_types include without datasource_types.yaml", async () => {
-    await assert.rejects(
-      () =>
-        generate({
-          reader: memoryReader({
-            [VIEW_TYPES_YAML]: `includes:
-  - datasource_types:
-      include: "*"
-types: []
-`,
-          }),
-          settings: {},
-        }),
-      /no datasource_types\.yaml was provided/,
+      /missing types\.yaml/,
     );
   });
 
@@ -179,9 +158,6 @@ types: []
         "payment.ts",
         "role.ts",
         "tag.ts",
-        "updateTag.ts",
-        "updateUser.ts",
-        "updateUserSummary.ts",
         "user.ts",
         "userSummary.ts",
       ],
@@ -243,7 +219,7 @@ types: []
     );
     assert.match(
       summary,
-      /export const UserSummarySchema = DatasourceUserSchema\.omit\(\{ "role_id": true, "nick_name": true \}\)\.partial\(\{ id: true \}\)\.extend\(\{\n  display_name: z\.string\(\)\.trim\(\)\.min\(1\)\.max\(64\),\n  role_name: z\.string\(\)\.trim\(\),\n\}\);/,
+      /export const UserSummarySchema = DatasourceUserSchema\.omit\(\{ "nick_name": true, "role_id": true \}\)\.partial\(\{ id: true \}\)\.extend\(\{\n  display_name: z\.string\(\)\.trim\(\),\n\}\);/,
     );
     assert.doesNotMatch(summary, /create_UserSummarySchema/);
     assert.doesNotMatch(summary, /update_UserSummarySchema/);
@@ -257,21 +233,11 @@ types: []
     );
     assert.match(
       user,
-      /export const UserSchema = DatasourceUserSchema\.omit\(\{ "role_id": true \}\)\.extend\(\{\n  role_name: z\.string\(\)\.trim\(\),\n\}\);/,
+      /export const UserSchema = DatasourceUserSchema;/,
     );
     assert.doesNotMatch(user, /export const UpdateUserSchema/);
     assert.doesNotMatch(user, /export const CreateUserSchema/);
     assert.doesNotMatch(user, /export const PatchUserSchema/);
-  });
-
-  it("omits only parent stamps on parser-derived update views", async () => {
-    const updateUser = await bodyOf("updateUser.ts");
-    assert.match(
-      updateUser,
-      /export const UpdateUserSchema = DatasourceUserSchema\.omit\(\{ "role_id": true, "id": true, "uuid": true, "created": true, "updated": true \}\)\.extend\(\{\n  role_name: z\.string\(\)\.trim\(\),\n\}\);/,
-    );
-    assert.doesNotMatch(updateUser, /export const CreateUserSchema/);
-    assert.doesNotMatch(updateUser, /export const PatchUserSchema/);
   });
 
   it("does not omit missing audit columns on readonly-lookup views", async () => {
@@ -300,7 +266,6 @@ types: []
     );
     assert.match(index, /export \{ PaymentSchema \} from "\.\/payment";/);
     assert.match(index, /export \{ UserSchema \} from "\.\/user";/);
-    assert.match(index, /export \{ UpdateUserSchema \} from "\.\/updateUser";/);
     assert.match(index, /export \{ RoleSchema \} from "\.\/role";/);
     assert.match(
       index,
@@ -317,75 +282,25 @@ types: []
     assert.match(card, /schema-version: 9.9/);
   });
 
-  it("datasource.id_type=uuid drops uuid from inherited update omits", async () => {
-    const updateUser = await bodyOf("updateUser.ts", {
-      "datasource.id_type": "uuid",
-    });
-    assert.match(
-      updateUser,
-      /export const UpdateUserSchema = DatasourceUserSchema\.omit\(\{ "role_id": true, "id": true, "created": true, "updated": true \}\)/,
-    );
-    assert.doesNotMatch(
-      updateUser,
-      /UpdateUserSchema = DatasourceUserSchema\.omit\(\{[^}]*"uuid"/,
-    );
-  });
-
-  it("omits only keys present on a custom-PK parent when OCC is off", async () => {
-    const dsYaml = `types:
+  it("aliases a dual-tagged view onto its datasource schema", async () => {
+    const body = await bodyOf(
+      "legacyContact.ts",
+      {},
+      `types:
   - legacy_contact:
+      tags: [datasource_type, view_type]
       fields:
         - key:
             type: string
-            size: 64
-            primary_key: true
         - first_name:
             type: string
-`;
-    const viewYaml = `includes:
-  - datasource_types:
-      include: "*"
-types: []
-`;
-    const settings = { "datasource.use_optimistic_concurrency": "false" };
-    const passThrough = await bodyOf(
-      "legacyContact.ts",
-      settings,
-      viewYaml,
-      dsYaml,
+`,
     );
     assert.match(
-      passThrough,
+      body,
       /export const LegacyContactSchema = DatasourceLegacyContactSchema;/,
     );
-    assert.doesNotMatch(passThrough, /export const UpdateLegacyContactSchema/);
-    assert.doesNotMatch(passThrough, /\.omit\(/);
-
-    const update = await bodyOf(
-      "updateLegacyContact.ts",
-      settings,
-      viewYaml,
-      dsYaml,
-    );
-    assert.match(
-      update,
-      /export const UpdateLegacyContactSchema = DatasourceLegacyContactSchema\.omit\(\{ "key": true \}\);/,
-    );
-    assert.doesNotMatch(update, /"id": true/);
-    assert.doesNotMatch(update, /"created": true/);
-    assert.doesNotMatch(update, /"updated": true/);
-
-    const create = await bodyOf(
-      "createLegacyContact.ts",
-      settings,
-      viewYaml,
-      dsYaml,
-    );
-    assert.match(
-      create,
-      /export const CreateLegacyContactSchema = DatasourceLegacyContactSchema;/,
-    );
-    assert.doesNotMatch(create, /\.omit\(/);
+    assert.doesNotMatch(body, /\.omit\(/);
   });
 
 });

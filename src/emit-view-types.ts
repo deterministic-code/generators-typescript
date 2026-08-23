@@ -2,16 +2,21 @@ import { fill } from "@deterministic-code/generators-common/fill";
 import type { GenerateContext } from "@deterministic-code/generators-common/generate-context";
 import { content, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import {
+  authoredViewTypesOf,
+  tableKind,
+  TYPES_YAML,
+  typeHasTag,
+  unionMembers,
+  viewTypesOf,
+} from "@deterministic-code/generators-common/spec-types";
+import {
   DeterministicParser,
   type IDeterministic,
-} from "@deterministic-code/deterministic-specifications-typescript/parser";
-import {
-  VIEW_TYPES_YAML,
-  type ShapedView,
-  type ViewField,
-  type ViewType,
+  type Type,
+  type TypeField,
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
 import { toNative } from "./base-type-converter.ts";
+import { fieldRefKind, isAlias } from "./common/view-shape.ts";
 import { Emit } from "./emit.ts";
 import {
   indexTmpl as defaultIndexTmpl,
@@ -52,6 +57,7 @@ const groupImports = (
 class Generator extends Emit {
   private readonly referenceBackendType: boolean;
   private readonly templates: ViewTypeTemplates;
+  private typesByName = new Map<string, Type>();
 
   constructor(raw: Record<string, string>, mode: ViewEmitMode) {
     super(raw, mode.basePath ?? ".", mode.datasourceBasePath ?? ".");
@@ -63,10 +69,13 @@ class Generator extends Emit {
   }
 
   from(deterministic: IDeterministic): GenerateEntry[] {
-    const expandedByName = new Map(
-      deterministic.expandedViewTypes.map((v) => [v.name, v]),
+    this.typesByName = new Map(
+      deterministic.expandedTypes.map((t) => [t.name, t]),
     );
-    const views = deterministic.viewTypes;
+    const expandedByName = new Map(
+      viewTypesOf(deterministic).map((v) => [v.name, v]),
+    );
+    const views = authoredViewTypesOf(deterministic);
     const entries = views.map((v) => this.view(v, expandedByName.get(v.name)));
     const index = this.imports.index(this.imports.view(views[0]?.name ?? "index"));
     if (index && this.settings.createIndex) {
@@ -110,7 +119,7 @@ class Generator extends Emit {
     return !this.referenceBackendType && kind === "datasource" ? "view" : kind;
   }
 
-  private collectImports(view: ViewType) {
+  private collectImports(view: Type, expanded: Type | undefined) {
     const self = view.name;
     const entries: Array<{ original: string; alias?: string; fromPath: string }> =
       [];
@@ -127,17 +136,32 @@ class Generator extends Emit {
       entries.push({ original, alias, fromPath });
     };
     const refs: Array<{ entity: string; kind: "view" | "datasource" }> = [];
-    if (view.kind === "shaped") {
-      if (this.referenceBackendType && view.inherits !== null) {
-        refs.push({ entity: view.inherits, kind: "datasource" });
-      }
-      for (const f of view.fields) {
-        if (f.kind === "datasource" || f.kind === "view") {
-          refs.push({ entity: f.base, kind: this.importKind(f.kind) });
-        }
-      }
+    const members = unionMembers(view);
+    if (members !== undefined) {
+      for (const m of members) refs.push({ entity: m, kind: "view" });
     } else {
-      for (const m of view.members) refs.push({ entity: m, kind: "view" });
+      const parentName = isAlias(view) ? view.name : view.inherits;
+      const parentType =
+        parentName === undefined ? undefined : this.typesByName.get(parentName);
+      if (
+        this.referenceBackendType &&
+        parentName !== undefined &&
+        parentName !== "set" &&
+        parentName !== "dictionary" &&
+        (isAlias(view) ||
+          (parentType !== undefined && typeHasTag(parentType, "datasource_type")))
+      ) {
+        refs.push({
+          entity: parentName,
+          kind: "datasource",
+        });
+      }
+      const fields = this.emitFields(view, expanded);
+      for (const f of fields) {
+        const refKind = fieldRefKind(f, this.typesByName);
+        if (refKind === "primitive") continue;
+        refs.push({ entity: f.base, kind: this.importKind(refKind) });
+      }
     }
     for (const { entity, kind } of refs) {
       if (kind === "view" && entity === self) continue;
@@ -153,50 +177,61 @@ class Generator extends Emit {
   }
 
   private fieldTs(
-    field: ViewField,
+    field: TypeField,
     aliasByClass: Map<string, string>,
   ): string {
+    const refKind = fieldRefKind(field, this.typesByName);
     const base =
-      field.kind === "primitive"
+      refKind === "primitive"
         ? toNative(field.base)
         : (aliasByClass.get(field.base) ?? this.casing.convertTypes(field.base));
     return field.isArray ? `${base}[]` : base;
   }
 
   private extendsType(
-    view: ShapedView,
+    view: Type,
     aliasByClass: Map<string, string>,
   ): string | undefined {
-    if (!this.referenceBackendType || view.inherits === null) return undefined;
-    const inheritCls = view.inherits;
+    if (!this.referenceBackendType) return undefined;
+    const parentName = isAlias(view) ? view.name : view.inherits;
+    if (
+      parentName === undefined ||
+      parentName === "set" ||
+      parentName === "dictionary"
+    ) {
+      return undefined;
+    }
+    const parentType = this.typesByName.get(parentName);
+    if (parentType !== undefined && !typeHasTag(parentType, "datasource_type") && !isAlias(view)) {
+      return undefined;
+    }
     const parent =
-      aliasByClass.get(inheritCls) ?? this.casing.convertTypes(inheritCls);
-    const omitKeys = [
-      ...view.enrichments.map((e) => e.fkColumn),
-      ...view.omit,
-    ];
+      aliasByClass.get(parentName) ?? this.casing.convertTypes(parentName);
+    const omitKeys = view.removeFields ?? [];
     if (omitKeys.length === 0) return parent;
     return `Omit<${parent}, ${omitKeys.map((k) => JSON.stringify(this.casing.convertFields(k))).join(" | ")}>`;
   }
 
+  private emitFields(view: Type, expanded: Type | undefined): TypeField[] {
+    if (unionMembers(view) !== undefined) return [];
+    if (this.referenceBackendType && isAlias(view)) return [];
+    if (this.referenceBackendType && this.extendsType(view, new Map()) !== undefined) {
+      return view.fields;
+    }
+    return expanded?.fields ?? view.fields;
+  }
+
   private view(
-    view: ViewType,
-    expanded: ViewType | undefined,
+    view: Type,
+    expanded: Type | undefined,
   ): GenerateEntry {
     const { schemaVersion, simpleDoc, descriptionDoc } = this.settings;
     const className = this.casing.convertTypes(view.name);
-    const { imports, aliasByClass } = this.collectImports(view);
-    const isUnion = view.kind === "union";
-    const parent = isUnion
-      ? undefined
-      : this.extendsType(view, aliasByClass);
-    const fields = isUnion
-      ? []
-      : this.referenceBackendType
-        ? view.fields
-        : expanded?.kind === "shaped"
-          ? expanded.fields
-          : view.fields;
+    const { imports, aliasByClass } = this.collectImports(view, expanded);
+    const members = unionMembers(view);
+    const isUnion = members !== undefined;
+    const parent = isUnion ? undefined : this.extendsType(view, aliasByClass);
+    const fields = this.emitFields(view, expanded);
     const path = this.imports.view(view.name);
     return content(
       path,
@@ -207,9 +242,9 @@ class Generator extends Emit {
         simpleDoc,
         descriptionDoc,
         className,
-        datasourceType: isUnion ? "standard" : (view.inherits ?? "standard"),
+        datasourceType: isUnion ? "standard" : tableKind(view),
         target: isUnion ? "UnionView" : "ShapedView",
-        fieldCount: String(isUnion ? view.members.length : fields.length),
+        fieldCount: String(isUnion ? members.length : fields.length),
         isUnion,
         isShaped: !isUnion,
         hasExtends: parent !== undefined,
@@ -221,7 +256,7 @@ class Generator extends Emit {
           nullable: f.isNullable,
         })),
         unionMembers: isUnion
-          ? view.members.map((m) => this.casing.convertTypes(m)).join(" | ")
+          ? members.map((m) => this.casing.convertTypes(m)).join(" | ")
           : "",
       }),
       { module: this.imports.viewRel(view.name), exports: className },
@@ -233,7 +268,7 @@ export const generateViewTypes = async (
   ctx: GenerateContext,
   mode: ViewEmitMode = {},
 ): Promise<GenerateEntry[]> => {
-  await ctx.reader.read(VIEW_TYPES_YAML);
+  await ctx.reader.read(TYPES_YAML);
   return new Generator(ctx.settings, mode).from(
     await DeterministicParser(ctx.reader).parse(ctx.settings),
   );

@@ -6,35 +6,47 @@ import { generate } from "../src/generate-routes-tests.ts";
 
 const DS_YAML = `types:
   - user:
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - email:
             type: string
-            is_unique: true
         - role_id:
             type: number
             references: role.id
   - role:
-      datasource_type: readonly-lookup
+      tags: [datasource_type, view_type, readonly_lookup]
+      inherits: set
       fields:
         - name:
             type: string
-            is_unique: true
   - order:
-      use_optimistic_concurrency: true
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - label:
             type: string
 `;
 
-const VIEW_YAML = `includes:
-  - datasource_types:
-      include: "*"
-types: []
+const DATASOURCE = `includes:
+  - types:
+      filter: tag == "datasource_type"
+types:
+  - user:
+      fields:
+        - email:
+            is_unique: true
+  - role:
+      fields:
+        - name:
+            is_unique: true
+  - order:
+      use_optimistic_concurrency: true
 `;
 
 const ROUTES_YAML = `includes:
-  - view_type_routes:
-      filter: 'type is view_type || type is datasource_type'
+  - types:
+      filter: 'tag == "view_type" || tag == "datasource_type"'
 routes:
   - users_by_email:
 `;
@@ -50,8 +62,8 @@ const textOf = (entries: GenerateEntry[], path: string): string => {
 };
 
 const yaml = {
-  "datasource_types.yaml": DS_YAML,
-  "view_types.yaml": VIEW_YAML,
+  "types.yaml": DS_YAML,
+  "datasource.yaml": DATASOURCE,
   "routes.yaml": ROUTES_YAML,
 };
 

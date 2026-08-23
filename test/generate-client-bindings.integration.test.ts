@@ -8,27 +8,34 @@ import { generate as generateMockTests } from "../src/generate-client-bindings-m
 import { projectClientBindings } from "../src/client-bindings-ir.ts";
 import { httpPathFromRoutesApi } from "../src/common/http-path.ts";
 
-const DS_YAML = `types:
+const TYPES = `types:
   - user:
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - email:
             type: string
-            is_unique: true
         - role_id:
             type: number
             references: role.id
   - role:
-      datasource_type: readonly-lookup
+      tags: [datasource_type, view_type, readonly_lookup]
+      inherits: set
       fields:
         - name:
             type: string
-            is_unique: true
   - project:
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - name:
             type: string
-            is_unique: true
+        - tasks:
+            type: task[]
+            references: task.project_id
   - task:
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - title:
             type: string
@@ -36,27 +43,15 @@ const DS_YAML = `types:
             type: number
             references: project.id
   - card_payment:
+      tags: [datasource_type, view_type]
       fields:
         - amount:
             type: decimal
 `;
 
-const VIEW_YAML = `includes:
-  - datasource_types:
-      include: "*"
-      auto_enrich: true
-types:
-  - project:
-      inherits: datasource_types.project
-      fields:
-        - tasks:
-            type: datasource_types.task[]
-            references: datasource_types.task.project_id
-`;
-
 const ROUTES_YAML = `includes:
-  - view_type_routes:
-      filter: 'type is view_type || type is datasource_type'
+  - types:
+      filter: 'tag == "view_type" || tag == "datasource_type"'
       eager_path:
         - project.tasks
       eager_write_path:
@@ -70,13 +65,12 @@ routes:
       response: missing_shape
 combined_routes:
   - project:
-      combined_types:
+      combines:
         - task
 `;
 
 const yaml = {
-  "datasource_types.yaml": DS_YAML,
-  "view_types.yaml": VIEW_YAML,
+  "types.yaml": TYPES,
   "routes.yaml": ROUTES_YAML,
 };
 

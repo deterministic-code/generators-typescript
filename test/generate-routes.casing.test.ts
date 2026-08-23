@@ -8,30 +8,29 @@ import { createImportGenerator } from "../src/import-generator.ts";
 
 const DS_YAML = `types:
   - contact:
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - first_name:
             type: string
   - contact_group:
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - name:
             type: string
   - contact_source:
-      datasource_type: readonly-lookup
+      tags: [datasource_type, readonly_lookup]
+      inherits: set
       fields:
         - name:
             type: string
             is_unique: true
 `;
 
-const VIEW_YAML = `includes:
-  - datasource_types:
-      include: "*"
-types: []
-`;
-
 const ROUTES_YAML = `includes:
-  - view_type_routes:
-      filter: 'type is view_type || type is datasource_type'
+  - types:
+      filter: 'tag == "view_type" || tag == "datasource_type"'
 routes:
   - import_contacts:
       path: /api/contacts/import
@@ -43,8 +42,7 @@ routes:
 
 const fixtureReader = () =>
   memoryReader({
-    "datasource_types.yaml": DS_YAML,
-    "view_types.yaml": VIEW_YAML,
+    "types.yaml": DS_YAML,
     "routes.yaml": ROUTES_YAML,
   });
 
@@ -85,8 +83,8 @@ const assertServiceImport = (
 };
 
 const CUSTOM_ROUTES_YAML = `includes:
-  - view_type_routes:
-      filter: 'type is view_type || type is datasource_type'
+  - types:
+      filter: 'tag == "view_type" || tag == "datasource_type"'
 routes:
   - import_contacts:
       path: /api/contacts/import
@@ -105,8 +103,7 @@ const generateCustomRoutes = async (settings: Record<string, string>) => {
   const files = new Map<string, string>();
   for (const entry of await generate({
     reader: memoryReader({
-      "datasource_types.yaml": DS_YAML,
-      "view_types.yaml": VIEW_YAML,
+      "types.yaml": DS_YAML,
       "routes.yaml": CUSTOM_ROUTES_YAML,
     }),
     settings,

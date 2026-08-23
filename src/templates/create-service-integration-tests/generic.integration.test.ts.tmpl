@@ -96,10 +96,10 @@ describe("{{className}} (sqlite integration)", () => {
 {{#fields}}      {{ident}}: {{&expr}},
 {{/fields}}    }{{#createTypeName}} as {{createTypeName}}{{/createTypeName}});
 {{/isLookup}}{{/creates}}
-{{#updates}}    const {{varName}}Updated = await {{serviceVar}}.update({{varName}}.{{pkIdent}}, {
+{{#updates}}    const {{updatedVarName}} = await {{serviceVar}}.update({{varName}}.{{pkIdent}}, {
 {{#fields}}      {{ident}}: {{&expr}},
 {{/fields}}    });
-    expect({{varName}}Updated).not.toBeNull();
+    expect({{updatedVarName}}).not.toBeNull();
 {{/updates}}
 {{#deletes}}    expect(await {{serviceVar}}.delete({{varName}}.{{pkIdent}})).toBe(true);
     expect(await {{serviceVar}}.findById({{varName}}.{{pkIdent}})).toBeNull();

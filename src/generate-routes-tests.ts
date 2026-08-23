@@ -2,15 +2,18 @@ import { fill } from "@deterministic-code/generators-common/fill";
 import type { GenerateContext } from "@deterministic-code/generators-common/generate-context";
 import { content, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import {
-  DeterministicParser,
-  type IDeterministic,
-} from "@deterministic-code/deterministic-specifications-typescript/parser";
-import {
+  isReadonlyLookup,
+  pkName,
   ROUTES_YAML,
-  type DatasourceType,
+  tableByName,
+} from "@deterministic-code/generators-common/spec-types";
+import {
+  DeterministicParser,
+  type DatasourceTable,
+  type IDeterministic,
   type RouteByField,
   type RouteCandidate,
-  type ViewEnrichment,
+  type Type,
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
 import {
   asIdType,
@@ -31,12 +34,6 @@ import {
   readonlyTmpl,
 } from "./resources/routes-tests.ts";
 import { Emit } from "./emit.ts";
-
-const fkMockSuffix = (enrichments: ViewEnrichment[]): string =>
-  enrichments.map((e) => `, ${e.fkColumn}: 1`).join("");
-
-const requestNameSuffix = (enrichments: ViewEnrichment[]): string =>
-  enrichments.map((e) => `, ${e.newField}: "${e.targetTable}-1"`).join("");
 
 const byFieldTokens = (
   mountPath: string,
@@ -90,17 +87,17 @@ const byFieldsBlock = (
     .join("");
 
 class Generator extends Emit {
-  private readonly datasources: DatasourceType[];
-  private readonly enrichmentsByEntity: Map<string, ViewEnrichment[]>;
+  private readonly types: Type[];
+  private readonly tables: Map<string, DatasourceTable>;
 
   constructor(
     raw: Record<string, string>,
-    datasources: DatasourceType[],
-    enrichmentsByEntity: Map<string, ViewEnrichment[]>,
+    types: Type[],
+    tables: Map<string, DatasourceTable>,
   ) {
     super(raw);
-    this.datasources = datasources;
-    this.enrichmentsByEntity = enrichmentsByEntity;
+    this.types = types;
+    this.tables = tables;
   }
 
   from(deterministic: IDeterministic): GenerateEntry[] {
@@ -108,16 +105,19 @@ class Generator extends Emit {
   }
 
   private test(candidate: RouteCandidate): GenerateEntry {
-    const table = this.datasources.find((d) => d.name === candidate.name);
+    const table = this.types.find((d) => d.name === candidate.name);
+    const overlay = this.tables.get(candidate.name);
     const column =
-      table?.fields.find((f) => f.isPrimaryKey === true)?.name ?? "id";
+      table !== undefined ? pkName(table, overlay) : "id";
     const pkType =
       table?.fields.find((f) => f.name === column)?.type ?? "integer";
     const path = this.imports.routeTest(candidate.name);
     const fileBase = candidate.name;
     const mountPath = `/api/${candidate.name}`;
-    const enrichments = this.enrichmentsByEntity.get(candidate.name) ?? [];
-    const occ = this.settings.usesOptimisticConcurrency(candidate);
+    const occ = this.settings.usesOptimisticConcurrency({
+      tags: table?.tags ?? candidate.tags,
+      useOptimisticConcurrency: overlay?.useOptimisticConcurrency,
+    });
     const ifMatch = occ ? `.set("If-Match", occToken)` : "";
     const shared = {
       prelude: preludeSource(fakeTestData),
@@ -133,10 +133,10 @@ class Generator extends Emit {
       mountPath,
       idFieldName: column,
       idExpr: fakeTestData.id(asIdType(pkType)),
-      fkSuffix: fkMockSuffix(enrichments),
+      fkSuffix: "",
       byFieldsBlock: byFieldsBlock(mountPath, candidate.byFields, ifMatch),
     };
-    if (candidate.datasourceType === "readonly-lookup") {
+    if (table !== undefined && isReadonlyLookup(table)) {
       return content(path, fill(readonlyTmpl, shared));
     }
     return content(
@@ -144,7 +144,7 @@ class Generator extends Emit {
       fill(crudTmpl, {
         ...shared,
         entity: candidate.name,
-        nameSuffix: requestNameSuffix(enrichments),
+        nameSuffix: "",
         occDecl: occ ? `  const occToken = new Date().toISOString();\n` : "",
         ifMatch,
         occCallArg: occ ? `, { expectedUpdated: occToken }` : "",
@@ -160,14 +160,11 @@ export const generate = async (
   const deterministic = await DeterministicParser(ctx.reader).parse(
     ctx.settings,
   );
-  const views = deterministic.viewTypes;
   return withFakerPackagePatch(
     new Generator(
       ctx.settings,
-      deterministic.expandedDatasourceTypes,
-      new Map(
-        views.map((v) => [v.name, v.kind === "shaped" ? v.enrichments : []]),
-      ),
+      deterministic.expandedTypes,
+      tableByName(deterministic),
     ).from(deterministic),
   );
 };

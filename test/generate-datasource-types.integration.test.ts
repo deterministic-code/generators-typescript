@@ -7,36 +7,42 @@ import {
   fileReader,
   memoryReader,
 } from "@deterministic-code/generators-common/deterministic-reader";
-import {
-  DATASOURCE_TYPES_YAML,
-} from "@deterministic-code/deterministic-specifications-typescript/parser";
+import { TYPES_YAML } from "@deterministic-code/generators-common/spec-types";
 import type { GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import { generate } from "../src/generate-datasource-types.ts";
 
 const FIXTURE_YAML = `types:
   - user:
-      datasource_type: audit
+      tags: [datasource_type]
+      inherits: set
       fields:
         - email:
             type: string
             size: 256
         - role_id:
+            type: number
             references: role.id
         - uuid:
             type: uuid
+        - created:
+            type: datetime
+        - updated:
+            type: datetime
         - created_at:
             type: datetime
         - nick_name:
             type: string
             is_nullable: true
   - role:
+      tags: [datasource_type]
+      inherits: set
       fields:
         - name:
             type: string
 `;
 
 const fixtureReader = () =>
-  memoryReader({ [DATASOURCE_TYPES_YAML]: FIXTURE_YAML });
+  memoryReader({ [TYPES_YAML]: FIXTURE_YAML });
 
 const entryBody = (entry: GenerateEntry): string => {
   if ("contents" in entry) return String(entry.contents);
@@ -83,31 +89,31 @@ describe("generate", () => {
 
   it("exists reports presence without a prior pathExists probe", async () => {
     const memory = fixtureReader();
-    assert.equal(await memory.exists(DATASOURCE_TYPES_YAML), true);
+    assert.equal(await memory.exists(TYPES_YAML), true);
     assert.equal(await memory.exists("view_types.yaml"), false);
     const dir = await mkdtemp(join(tmpdir(), "generate-datasource-types-"));
     try {
       const files = fileReader(dir);
-      assert.equal(await files.exists(DATASOURCE_TYPES_YAML), false);
-      await writeFile(join(dir, DATASOURCE_TYPES_YAML), FIXTURE_YAML);
-      assert.equal(await files.exists(DATASOURCE_TYPES_YAML), true);
+      assert.equal(await files.exists(TYPES_YAML), false);
+      await writeFile(join(dir, TYPES_YAML), FIXTURE_YAML);
+      assert.equal(await files.exists(TYPES_YAML), true);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
   });
 
-  it("rejects a missing datasource_types.yaml", async () => {
+  it("rejects a missing types.yaml", async () => {
     await assert.rejects(
       () =>
         generate({
           reader: memoryReader({}),
           settings: {},
         }),
-      /missing datasource_types\.yaml/,
+      /missing types\.yaml/,
     );
   });
 
-  it("rejects a missing datasource_types.yaml from a file reader", async () => {
+  it("rejects a missing types.yaml from a file reader", async () => {
     const dir = await mkdtemp(join(tmpdir(), "generate-datasource-types-"));
     try {
       await assert.rejects(
@@ -116,17 +122,17 @@ describe("generate", () => {
             reader: fileReader(dir),
             settings: {},
           }),
-        /missing datasource_types\.yaml/,
+        /missing types\.yaml/,
       );
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
   });
 
-  it("reads datasource_types.yaml from a file reader", async () => {
+  it("reads types.yaml from a file reader", async () => {
     const dir = await mkdtemp(join(tmpdir(), "generate-datasource-types-"));
     try {
-      await writeFile(join(dir, DATASOURCE_TYPES_YAML), FIXTURE_YAML);
+      await writeFile(join(dir, TYPES_YAML), FIXTURE_YAML);
       const wrapped = await generate({
         reader: fileReader(dir),
         settings: { "codegen.schema_version": "2.0" },
@@ -207,7 +213,7 @@ describe("generate", () => {
     const user = await userBody({ comments: "description" });
     assert.match(user, /\/\*\*/);
     assert.match(user, /\* Type User\./);
-    assert.match(user, /\* Datasource type: audit\./);
+    assert.match(user, /\* Datasource type: standard\./);
     assert.match(user, /\* Target: StandardCrud\./);
     assert.match(user, /\* Fields: 8\./);
   });
@@ -238,11 +244,10 @@ describe("generate", () => {
     assert.match(user, /StandardDataSource<string, Date>/);
   });
 
-  it("datasource.id_type=uuid drops the uuid column", async () => {
+  it("datasource.id_type=uuid uses a string id", async () => {
     const user = await userBody({ "datasource.id_type": "uuid" });
     assert.match(user, /export interface User extends StandardDataSource<string, Date>/);
-    assert.doesNotMatch(user, /^\s*uuid:/m);
-    assert.match(user, /role_id: string;/);
+    assert.match(user, /role_id: number;/);
   });
 
   it("unknown datasource.id_type falls back to number ids", async () => {
@@ -253,9 +258,10 @@ describe("generate", () => {
   it("readonly-lookup extends StandardDataSource with only the id type", async () => {
     const entries = await generate({
       reader: memoryReader({
-        [DATASOURCE_TYPES_YAML]: `types:
+        [TYPES_YAML]: `types:
   - contact_source:
-      datasource_type: readonly-lookup
+      tags: [datasource_type, readonly_lookup]
+      inherits: set
       fields:
         - name:
             type: string

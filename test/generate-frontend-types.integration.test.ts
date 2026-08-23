@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { memoryReader } from "@deterministic-code/generators-common/deterministic-reader";
-import {
-  DATASOURCE_TYPES_YAML,
-  VIEW_TYPES_YAML,
-} from "@deterministic-code/deterministic-specifications-typescript/parser";
+import { TYPES_YAML } from "@deterministic-code/generators-common/spec-types";
 import type { GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import { generate as generateFrontendTypes } from "../src/generate-frontend-types.ts";
 import { generate as generateFrontendTypesTests } from "../src/generate-frontend-types-tests.ts";
@@ -15,58 +12,68 @@ import { generate as generateViewTypesTests } from "../src/generate-view-types-t
 import { generate as generateViewTypeValidators } from "../src/generate-view-type-validators.ts";
 import { generate as generateViewTypeValidatorsTests } from "../src/generate-view-type-validators-tests.ts";
 
-const DS_YAML = `types:
-  - tag:
-      fields:
-        - label:
-            type: string
+const VIEW_YAML = `types:
   - user:
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - email:
             type: string
         - role_id:
             type: number
             references: role.id
+        - nick_name:
+            type: string
+            is_nullable: true
   - role:
-      datasource_type: readonly-lookup
+      tags: [datasource_type, view_type, readonly_lookup]
+      inherits: set
       fields:
         - name:
             type: string
-            is_unique: true
-`;
-
-const VIEW_YAML = `includes:
-  - datasource_types:
-      include: "*"
-      auto_enrich: true
-types:
+  - tag:
+      tags: [datasource_type, view_type]
+      inherits: set
+      fields:
+        - label:
+            type: string
+  - user_summary:
+      tags: [view_type]
+      inherits: user
+      remove_fields: [nick_name, role_id]
+      fields:
+        - display_name:
+            type: string
+  - payment:
+      tags: [view_type]
+      one_of:
+        - card_payment
+        - cash_payment
   - card_payment:
+      tags: [view_type]
       fields:
         - amount:
             type: decimal
         - paid_at:
             type: datetime
         - tags:
-            type: datasource_types.tag[]
+            type: tag[]
         - owner:
-            type: user
+            type: user_summary
         - note:
             type: string
             is_nullable: true
-  - payment:
-      one_of:
-        - card_payment
-        - cash_payment
   - cash_payment:
+      tags: [view_type]
       fields:
         - amount:
             type: decimal
 `;
 
+
 const ctx = {
   reader: memoryReader({
-    [VIEW_TYPES_YAML]: VIEW_YAML,
-    [DATASOURCE_TYPES_YAML]: DS_YAML,
+    [TYPES_YAML]: VIEW_YAML,
   }),
   settings: {},
 };
@@ -115,10 +122,10 @@ const referenced = {
 };
 
 describe("generate-frontend-types", () => {
-  it("rejects a missing view_types.yaml", async () => {
+  it("rejects a missing types.yaml", async () => {
     await assert.rejects(
       () => generateFrontendTypes({ reader: memoryReader({}), settings: {} }),
-      /missing view_types\.yaml/,
+      /missing types\.yaml/,
     );
   });
 
@@ -129,7 +136,7 @@ describe("generate-frontend-types", () => {
     const card = files.get("cardPayment.ts") ?? "";
     assert.doesNotMatch(user, /extends /);
     assert.match(user, /email: string;/);
-    assert.match(user, /role_name: string;/);
+    assert.match(user, /role_id: number;/);
     assert.match(card, /from "\.\/tag"/);
     assert.doesNotMatch(card, /types\/generated\/datasource/);
     assert.equal(
@@ -141,8 +148,9 @@ describe("generate-frontend-types", () => {
   it("inlines nothing when datasource_types.yaml is absent", async () => {
     const frontend = await generateFrontendTypes({
       reader: memoryReader({
-        [VIEW_TYPES_YAML]: `types:
+        [TYPES_YAML]: `types:
   - cash_payment:
+      tags: [view_type]
       fields:
         - amount:
             type: decimal
@@ -164,7 +172,7 @@ describe("generate-frontend-types", () => {
       card,
       /from "\.\.\/\.\.\/\.\.\/types\/generated\/datasource\/tag"/,
     );
-    assert.match(card, /from "\.\/user"/);
+    assert.match(card, /from "\.\/userSummary"/);
   });
 });
 
@@ -207,7 +215,7 @@ describe("generate-frontend-validators", () => {
       card,
       /from "\.\.\/\.\.\/\.\.\/types\/generated\/datasource\/validators\/tag"/,
     );
-    assert.match(card, /from "\.\/user"/);
+    assert.match(card, /from "\.\/userSummary"/);
   });
 });
 
@@ -223,49 +231,29 @@ describe("generate-frontend-validators-tests", () => {
     );
   });
 
-  it("nests enrichment fields on included datasource views", async () => {
+  it("covers nested type fields on a project view", async () => {
     const frontend = await generateFrontendValidatorsTests({
       reader: memoryReader({
-        [DATASOURCE_TYPES_YAML]: `types:
-  - status:
-      datasource_type: readonly-lookup
-      fields:
-        - name:
-            type: string
-            is_unique: true
-  - project:
-      fields:
-        - name:
-            type: string
-            is_unique: true
+        [TYPES_YAML]: `types:
   - task:
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
         - title:
             type: string
-        - project_id:
-            type: number
-            references: project.id
-        - status_id:
-            type: number
-            references: status.id
-`,
-        [VIEW_TYPES_YAML]: `includes:
-  - datasource_types:
-      include: "*"
-      auto_enrich: true
-types:
   - project:
-      inherits: datasource_types.project
+      tags: [view_type]
       fields:
+        - name:
+            type: string
         - tasks:
-            type: datasource_types.task[]
-            references: datasource_types.task.project_id
+            type: task[]
 `,
       }),
       settings: {},
     });
     const project = byBase(frontend).get("project.test.ts") ?? "";
-    assert.match(project, /project_name:/);
-    assert.match(project, /status_name:/);
+    assert.match(project, /name:/);
+    assert.match(project, /tasks:/);
   });
 });

@@ -1,20 +1,20 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { memoryReader } from "@deterministic-code/generators-common/deterministic-reader";
-import {
-  DATASOURCE_TYPES_YAML,
-} from "@deterministic-code/deterministic-specifications-typescript/parser";
+import { TYPES_YAML } from "@deterministic-code/generators-common/spec-types";
 import type { GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import { generate } from "../src/generate-datasource-types-tests.ts";
 
 const FIXTURE_YAML = `types:
   - user:
-      datasource_type: audit
+      tags: [datasource_type]
+      inherits: set
       fields:
         - email:
             type: string
             size: 256
         - role_id:
+            type: number
             references: role.id
         - uuid:
             type: uuid
@@ -30,13 +30,15 @@ const FIXTURE_YAML = `types:
         - avatar:
             type: binary
   - role:
+      tags: [datasource_type]
+      inherits: set
       fields:
         - name:
             type: string
 `;
 
 const fixtureReader = () =>
-  memoryReader({ [DATASOURCE_TYPES_YAML]: FIXTURE_YAML });
+  memoryReader({ [TYPES_YAML]: FIXTURE_YAML });
 
 const entryBody = (entry: GenerateEntry): string => {
   if ("contents" in entry) return String(entry.contents);
@@ -83,14 +85,14 @@ describe("generate datasource types tests", () => {
     return entryBody(requireEntry(map, userFile));
   };
 
-  it("rejects a missing datasource_types.yaml", async () => {
+  it("rejects a missing types.yaml", async () => {
     await assert.rejects(
       () =>
         generate({
           reader: memoryReader({}),
           settings: {},
         }),
-      /missing datasource_types\.yaml/,
+      /missing types\.yaml/,
     );
   });
 
@@ -119,8 +121,6 @@ describe("generate datasource types tests", () => {
     const fields = [
       "id",
       "uuid",
-      "created",
-      "updated",
       "email",
       "role_id",
       "created_at",
@@ -136,7 +136,6 @@ describe("generate datasource types tests", () => {
     assert.match(user, /it\("allows setting nick_name to null"/);
     assert.doesNotMatch(user, /it\("allows setting email to null"/);
     assert.match(user, /import \{ faker \} from "@faker-js\/faker"/);
-    assert.match(user, /created: faker\.date\.recent\(\)/);
     assert.match(user, /email: faker\.string\.alphanumeric\(\{ length: 256 \}\)/);
     assert.match(user, /active: faker\.datatype\.boolean\(\)/);
     assert.match(user, /balance: faker\.commerce\.price\(\)/);
@@ -146,10 +145,8 @@ describe("generate datasource types tests", () => {
     const user = await userBody({ "datasource.id_type": "uuid" });
     assert.match(user, /it\("gets id"/);
     assert.match(user, /it\("sets id"/);
-    assert.doesNotMatch(user, /it\("gets uuid"/);
-    assert.doesNotMatch(user, /it\("sets uuid"/);
     assert.match(user, /const initial = faker\.string\.uuid\(\);/);
-    assert.match(user, /role_id: faker\.string\.uuid\(\)/);
+    assert.match(user, /role_id: faker\.number\.int/);
   });
 
   it("uses integer literals when datasource.id_type=biginteger", async () => {

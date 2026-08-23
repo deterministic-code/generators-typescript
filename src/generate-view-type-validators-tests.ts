@@ -2,13 +2,15 @@ import { fill } from "@deterministic-code/generators-common/fill";
 import type { GenerateContext } from "@deterministic-code/generators-common/generate-context";
 import { content, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import {
+  datasourceTypesOf,
+  TYPES_YAML,
+  unionMembers,
+  viewTypesOf,
+} from "@deterministic-code/generators-common/spec-types";
+import {
   DeterministicParser,
   type IDeterministic,
-} from "@deterministic-code/deterministic-specifications-typescript/parser";
-import {
-  VIEW_TYPES_YAML,
-  type ShapedView,
-  type ViewType,
+  type Type,
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
 import {
   fakeTestData,
@@ -121,10 +123,10 @@ class Generator extends Emit implements ShapeOpts {
   ) {
     super(raw, basePath);
     this.tables = new Map(
-      deterministic.expandedDatasourceTypes.map((t) => [t.name, t]),
+      datasourceTypesOf(deterministic).map((t) => [t.name, t]),
     );
     this.views = new Map(
-      deterministic.expandedViewTypes.map((v) => [v.name, v]),
+      viewTypesOf(deterministic).map((v) => [v.name, v]),
     );
     this.referenceBackendType = referenceBackendType;
   }
@@ -133,7 +135,7 @@ class Generator extends Emit implements ShapeOpts {
     return [...this.views.values()].map((view) => this.tests(view));
   }
 
-  private shapedCases(view: ShapedView): CaseTok[] {
+  private shapedCases(view: Type): CaseTok[] {
     const fields = shapedViewNodes(view, this);
     const declared = view.fields.map((declaredField) => {
       const node = fields.find((f) => f.name === declaredField.name);
@@ -184,8 +186,8 @@ class Generator extends Emit implements ShapeOpts {
     return cases;
   }
 
-  private unionCases(view: Extract<ViewType, { kind: "union" }>): CaseTok[] {
-    const cases = view.members.map((name) => ({
+  private unionCases(view: Type): CaseTok[] {
+    const cases = (unionMembers(view) ?? []).map((name) => ({
       name: escapeTestName(
         `accepts a ${this.casing.convertTypes(name)} member`,
       ),
@@ -202,7 +204,7 @@ class Generator extends Emit implements ShapeOpts {
     return cases;
   }
 
-  private tests(view: ViewType): GenerateEntry {
+  private tests(view: Type): GenerateEntry {
     const src = this.imports.viewValidator(view.name);
     return content(
       this.imports.test(src, view.name),
@@ -213,7 +215,7 @@ class Generator extends Emit implements ShapeOpts {
         viewName: view.name,
         schemaImport: this.imports.testSpec(src, view.name),
         cases:
-          view.kind === "union"
+          unionMembers(view) !== undefined
             ? this.unionCases(view)
             : this.shapedCases(view),
       }),
@@ -226,7 +228,7 @@ export const generate = async (
   basePath = ".",
   referenceBackendType = true,
 ): Promise<GenerateEntry[]> => {
-  await ctx.reader.read(VIEW_TYPES_YAML);
+  await ctx.reader.read(TYPES_YAML);
   const deterministic = await DeterministicParser(ctx.reader).parse(
     ctx.settings,
   );

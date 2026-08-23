@@ -3,13 +3,17 @@ import { fill } from "@deterministic-code/generators-common/fill";
 import type { GenerateContext } from "@deterministic-code/generators-common/generate-context";
 import { content, patch, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import {
-  DeterministicParser,
-  type IDeterministic,
-} from "@deterministic-code/deterministic-specifications-typescript/parser";
-import {
   SERVICES_YAML,
+  tableKind,
+  typeHasTag,
+  viewTypesOf,
+} from "@deterministic-code/generators-common/spec-types";
+import {
+  DeterministicParser,
   type CustomServiceEntry,
+  type IDeterministic,
   type ServiceCandidate,
+  type Type,
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
 import { libraryImportSpecifier } from "./library-import.ts";
 import { Emit } from "./emit.ts";
@@ -23,10 +27,13 @@ class Generator extends Emit {
   private viewNames = new Set<string>();
 
   from(deterministic: IDeterministic): GenerateEntry[] {
-    this.viewNames = new Set(deterministic.viewTypes.map((view) => view.name));
+    const typesByName = new Map(
+      deterministic.expandedTypes.map((t) => [t.name, t]),
+    );
+    this.viewNames = new Set(viewTypesOf(deterministic).map((view) => view.name));
     const { generics, customs } = deterministic.services;
     const entries: GenerateEntry[] = [
-      ...generics.map((c) => this.generic(c)),
+      ...generics.map((c) => this.generic(c, typesByName.get(c.name))),
       ...customs.map((c) => this.custom(c)),
     ];
     if (this.settings.createIndex) {
@@ -60,8 +67,12 @@ class Generator extends Emit {
     );
   }
 
-  private typeModule(candidate: ServiceCandidate): string {
-    return candidate.kind === "datasource_type"
+  private isDatasource(type: Type | undefined): boolean {
+    return type !== undefined && typeHasTag(type, "datasource_type");
+  }
+
+  private typeModule(candidate: ServiceCandidate, type: Type | undefined): string {
+    return this.isDatasource(type)
       ? this.imports.datasourceRel(candidate.name)
       : this.imports.viewRel(candidate.name);
   }
@@ -72,17 +83,20 @@ class Generator extends Emit {
     return undefined;
   }
 
-  private generic(candidate: ServiceCandidate): GenerateEntry {
+  private generic(
+    candidate: ServiceCandidate,
+    type: Type | undefined,
+  ): GenerateEntry {
     const { simpleDoc, descriptionDoc, libraryReferenceMode } = this.settings;
     const typeName = this.casing.convertTypes(candidate.name);
     const className = this.casing.serviceClassName(candidate.name);
     const interfaceName = this.casing.serviceInterfaceName(candidate.name);
     const generatePath = this.imports.service(candidate.name);
     const module = this.imports.serviceRel(candidate.name);
-    const typeModule = this.typeModule(candidate);
+    const typeModule = this.typeModule(candidate, type);
     const typeImportPath = this.imports.spec(
       this.imports.serviceRel(candidate.name),
-      candidate.kind === "datasource_type"
+      this.isDatasource(type)
         ? this.imports.datasourceRel(candidate.name)
         : this.imports.viewRel(candidate.name),
     );
@@ -119,7 +133,7 @@ class Generator extends Emit {
         servicesImport,
         interfaceName,
         className,
-        datasourceType: candidate.datasourceType ?? "standard",
+        datasourceType: type === undefined ? "standard" : tableKind(type),
         finders: candidate.byFields.map((bf) => ({
           method: this.casing.finderMethod(bf.field),
           param: this.casing.fieldIdent(bf.field),
