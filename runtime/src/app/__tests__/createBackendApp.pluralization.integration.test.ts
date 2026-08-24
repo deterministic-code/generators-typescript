@@ -17,7 +17,7 @@ async function buildApp(
     datasourceData,
     routesData: ROUTES_DATA,
     ddl,
-    settingsConfig: { pluralizeTableNames: pluralize, idType: 'integer' },
+    settingsConfig: { pluralizeTableNames: pluralize },
   });
   return { app, close: cleanup };
 }

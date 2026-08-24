@@ -53,7 +53,7 @@ describe('createBackendApp — datasource_mappings.field_mappings end-to-end via
       datasourceData: DATASOURCE_DATA,
       routesData: ROUTES_DATA,
       ddl: TEST_DDL,
-      settingsConfig: { idType: 'integer' },
+      settingsConfig: {},
     }));
   });
 

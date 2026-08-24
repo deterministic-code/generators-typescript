@@ -43,7 +43,7 @@ describe('createBackendApp — settings.pluralize_datatable_names honored at run
       datasourceData: DATASOURCE_DATA,
       routesData: ROUTES_DATA,
       ddl: PLURAL_DDL,
-      settingsConfig: { pluralizeTableNames: true, idType: 'integer' },
+      settingsConfig: { pluralizeTableNames: true },
     }));
   });
 
@@ -87,7 +87,7 @@ describe('createBackendApp — pluralizeTableNames=false preserves singular YAML
       datasourceData: DATASOURCE_DATA,
       routesData: ROUTES_DATA,
       ddl: SINGULAR_DDL,
-      settingsConfig: { pluralizeTableNames: false, idType: 'integer' },
+      settingsConfig: { pluralizeTableNames: false },
     }));
   });
 

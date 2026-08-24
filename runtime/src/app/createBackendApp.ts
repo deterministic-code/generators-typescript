@@ -10,10 +10,9 @@ import express, {
 } from 'express';
 
 import { buildRepoForBackend, PrimaryKeyService, type DatabaseConnection } from '../repositories';
-import type { StandardIdType } from '../repositories/standardFieldConverting';
 import { createNameMapper, resolveFieldConverters } from '../repositories/createNameMapper';
 import type { ITypeFieldConverter, SupportedDatasource } from '../converters/ITypeFieldConverter';
-import { convertersFromSettings } from '../converters/registry';
+import { getDefaultConverters } from '../converters/registry';
 import {
   DataSourceMiddlewareLookup,
   errorHandler,
@@ -599,7 +598,6 @@ class BackendAppBuilder {
     this.crudSpecs =
       options.crudSpecs ??
       parseCrudRouteSpecs(this.datasourceDoc, this.routesDoc, {
-        projectIdType: this.settingsConfig.idType as StandardIdType,
         viewTypesDoc: this.viewTypesDoc,
       });
     this.datasourceData = options.datasourceData ?? (this.datasourceDoc as DatasourceData);
@@ -668,10 +666,7 @@ class BackendAppBuilder {
   private convertersForConnection(): ReadonlyMap<string, ITypeFieldConverter> | undefined {
     const dialect = this.conn.type;
     if (dialect !== 'sqlite' && dialect !== 'mysql' && dialect !== 'postgres') return undefined;
-    return convertersFromSettings(
-      { datasource: { datetime: this.settingsConfig.datetime, uuid: this.settingsConfig.uuid } },
-      dialect satisfies SupportedDatasource,
-    );
+    return getDefaultConverters(dialect satisfies SupportedDatasource, 'typescript');
   }
 
   private buildContext(): void {

@@ -114,12 +114,6 @@ describe("generate datasource type validators", () => {
     assert.match(user, /score: z\.number\(\)\.min\(0\)/);
   });
 
-  it("drops the uuid column and uses uuid ids when datasource.id_type=uuid", async () => {
-    const user = await userBody({ "datasource.id_type": "uuid" });
-    assert.match(user, /id: z\.string\(\)\.uuid\(\)/);
-    assert.match(user, /role_id: z\.number\(\)\.int\(\)\.nonnegative\(\)/);
-  });
-
   it("skips the barrel when codegen.create_index is false", async () => {
     const byName = indexEntries(
       await generateWith({ "codegen.create_index": "false" }),

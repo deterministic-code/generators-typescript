@@ -52,7 +52,7 @@ function bootWithSpec(spec: CrudRouteSpec) {
   } as unknown as DatabaseConnection;
   return createBackendApp(conn, {
     backendAppConfig: { middleware: [], handlers: [], statics: [] },
-    settingsConfig: { pluralizeTableNames: true, idType: 'integer' as const },
+    settingsConfig: { pluralizeTableNames: true },
     routeSpecs: [],
     serviceSpecs: [],
     crudSpecs: [spec],

@@ -41,7 +41,6 @@ describe('createBackendApp — use_optimistic_concurrency honored at runtime', (
       ddl: DDL,
       settingsConfig: {
         pluralizeTableNames: true,
-        idType: 'integer',
         useOptimisticConcurrency: true,
       },
     }));

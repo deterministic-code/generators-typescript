@@ -9,9 +9,6 @@ settings:
       - mysql
       - postgres
   datasource:
-    id_type: integer
-    uuid: string
-    datetime: native
     pluralize_datatable_names: true
     use_stored_procedures: false
     use_optimistic_concurrency: false

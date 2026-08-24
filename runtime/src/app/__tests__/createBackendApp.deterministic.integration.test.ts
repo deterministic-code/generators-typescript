@@ -178,7 +178,7 @@ describe('createBackendApp end-to-end against kitchen-sink deterministic/ fixtur
 
     app = await createBackendApp(conn, {
       backendAppConfig: { middleware: [], handlers: [], statics: [] },
-      settingsConfig: { pluralizeTableNames: false, idType: 'integer' as const },
+      settingsConfig: { pluralizeTableNames: false },
       deterministicRoot: fixtureDir,
       routeSpecs: [],
       serviceSpecs: [],

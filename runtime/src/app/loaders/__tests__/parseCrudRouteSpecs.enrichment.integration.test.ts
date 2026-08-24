@@ -19,7 +19,7 @@ async function loadKitchenSinkSpecs() {
   const datasourceDoc = await loadYaml('datasource_types.yaml');
   const routesDoc = await loadYaml('routes.yaml');
   const viewTypesDoc = await loadYaml('view_types.yaml');
-  return parseCrudRouteSpecs(datasourceDoc, routesDoc, { projectIdType: 'integer', viewTypesDoc });
+  return parseCrudRouteSpecs(datasourceDoc, routesDoc, { viewTypesDoc });
 }
 
 describe('parseCrudRouteSpecs nested enrichment (kitchen-sink YAML)', () => {

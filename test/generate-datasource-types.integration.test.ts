@@ -234,27 +234,6 @@ describe("generate", () => {
     );
   });
 
-  it("datasource.id_type=biginteger uses number ids", async () => {
-    const user = await userBody({ "datasource.id_type": "biginteger" });
-    assert.match(user, /StandardDataSource<number, Date>/);
-  });
-
-  it("datasource.id_type=string uses string ids", async () => {
-    const user = await userBody({ "datasource.id_type": "string" });
-    assert.match(user, /StandardDataSource<string, Date>/);
-  });
-
-  it("datasource.id_type=uuid uses a string id", async () => {
-    const user = await userBody({ "datasource.id_type": "uuid" });
-    assert.match(user, /export interface User extends StandardDataSource<string, Date>/);
-    assert.match(user, /role_id: number;/);
-  });
-
-  it("unknown datasource.id_type falls back to number ids", async () => {
-    const user = await userBody({ "datasource.id_type": "mystery" });
-    assert.match(user, /StandardDataSource<number, Date>/);
-  });
-
   it("readonly-lookup extends StandardDataSource with only the id type", async () => {
     const entries = await generate({
       reader: memoryReader({

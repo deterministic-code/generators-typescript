@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { makeDecimalFieldConverter } from '../decimalFieldConverter';
-import { convertersFromSettings } from '../registry';
+import { getDefaultConverters } from '../registry';
 
 describe('decimalFieldConverter', () => {
   it('stringifies whatever the driver returns so the language value is an exact decimal string', () => {
@@ -18,7 +18,7 @@ describe('decimalFieldConverter', () => {
 
   it('is registered for every dialect', () => {
     for (const dialect of ['sqlite', 'mysql', 'postgres'] as const) {
-      const map = convertersFromSettings({}, dialect);
+      const map = getDefaultConverters(dialect, 'typescript');
       expect(map.get('decimal')?.datasourceType).toBe('decimal');
       expect(map.get('decimal')?.from('1.5')).toBe('1.5');
     }

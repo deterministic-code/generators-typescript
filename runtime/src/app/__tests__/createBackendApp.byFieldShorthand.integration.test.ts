@@ -43,7 +43,7 @@ describe('createBackendApp — byField shorthand end-to-end via Express', () => 
     datasourceData: DATASOURCE_DATA,
     routesData: ROUTES_DATA,
     ddl: TEST_DDL,
-    settingsConfig: { idType: 'integer' },
+    settingsConfig: {},
     onCrudSpecs: (crudSpecs) => {
       const widgetSpec = crudSpecs.find((s) => s.entityName === 'widget');
       if (!widgetSpec) throw new Error('widget CRUD spec missing — parser dropped the entity');

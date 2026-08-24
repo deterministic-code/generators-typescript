@@ -27,7 +27,7 @@ export const SQLITE_DB_FILE = "dev.sqlite";
 export const MINIMAL_DETERMINISTIC_YAML: Record<string, string> = {
   "settings.yaml": `settings:
   datasource:
-    id_type: integer
+    pluralize_datatable_names: true
 `,
   "backend-app.yaml": `middleware: []
 handlers: []

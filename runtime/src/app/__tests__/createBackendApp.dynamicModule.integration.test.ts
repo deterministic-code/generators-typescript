@@ -20,7 +20,7 @@ describe('createBackendApp dynamic module loading', () => {
     createBackendApp(memoryConn(), {
       deterministicRoot,
       srcRoot,
-      settingsConfig: { pluralizeTableNames: true, idType: 'integer' as const },
+      settingsConfig: { pluralizeTableNames: true },
     });
 
   beforeEach(async () => {

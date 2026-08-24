@@ -141,21 +141,6 @@ describe("generate datasource types tests", () => {
     assert.match(user, /balance: faker\.commerce\.price\(\)/);
   });
 
-  it("drops the uuid column and uses string ids when datasource.id_type=uuid", async () => {
-    const user = await userBody({ "datasource.id_type": "uuid" });
-    assert.match(user, /it\("gets id"/);
-    assert.match(user, /it\("sets id"/);
-    assert.match(user, /const initial = faker\.string\.uuid\(\);/);
-    assert.match(user, /role_id: faker\.number\.int/);
-  });
-
-  it("uses integer literals when datasource.id_type=biginteger", async () => {
-    const user = await userBody({ "datasource.id_type": "biginteger" });
-    assert.match(user, /id: faker\.number\.int\(\{ min: 1 \}\)/);
-    assert.match(user, /const next = faker\.number\.int\(\{ min: 1 \}\);/);
-    assert.match(user, /const sample = \(\): User =>/);
-  });
-
   it("writes codegen.schema_version into the file header", async () => {
     const user = await userBody({ "codegen.schema_version": "9.9" });
     assert.match(user, /schema-version: 9.9/);

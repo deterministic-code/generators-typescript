@@ -36,7 +36,7 @@ const baseOptions = {
     TerminalHandler: TerminalHandler as unknown as new (...a: unknown[]) => unknown,
   },
   middlewareLookup: noopLookup,
-  settingsConfig: { pluralizeTableNames: true, idType: 'integer' as const },
+  settingsConfig: { pluralizeTableNames: true },
 };
 
 describe('createBackendApp hook ordering', () => {

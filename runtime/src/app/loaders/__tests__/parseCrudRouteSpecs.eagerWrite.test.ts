@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { buildBodySchema, parseCrudRouteSpecs } from '../parseCrudRouteSpecs';
 
 const parseSpecs = (datasourceDoc: unknown, routesDoc: unknown, viewTypesDoc?: unknown) =>
-  parseCrudRouteSpecs(datasourceDoc, routesDoc, { projectIdType: 'integer', viewTypesDoc });
+  parseCrudRouteSpecs(datasourceDoc, routesDoc, { viewTypesDoc });
 
 type DatasourceDoc = Parameters<typeof parseCrudRouteSpecs>[0];
 type RoutesDoc = Parameters<typeof parseCrudRouteSpecs>[1];

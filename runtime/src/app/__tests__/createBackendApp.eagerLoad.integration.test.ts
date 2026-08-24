@@ -180,7 +180,7 @@ describe('createBackendApp with eager_load', () => {
       serviceSpecs,
       viewTypesDoc,
       viewTypesAutoEnrich: false,
-      settingsConfig: { pluralizeTableNames: true, idType: 'integer' as const },
+      settingsConfig: { pluralizeTableNames: true },
     });
   });
 
