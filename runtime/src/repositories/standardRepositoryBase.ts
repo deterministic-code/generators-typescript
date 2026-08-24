@@ -1,10 +1,9 @@
 import { PreconditionFailedError } from '../errors/AppError';
 import type { SupportedDatasource } from '../converters/ITypeFieldConverter';
 import { getDefaultConverters } from '../converters/registry';
-import { IStandardCrudRepository } from './IStandardCrudRepository';
+import { IStandardCrudRepository, type StandardSystemKeys } from './IStandardCrudRepository';
 import { PrimaryKey } from './PrimaryKey';
 import { IDatasource } from './IDatasource';
-import { StandardDataSource } from '../types/StandardDataSource';
 import { assertValidIdentifier } from './sqlIdentifier';
 import { placeholderList } from './sqlPlaceholders';
 import {
@@ -46,11 +45,10 @@ export interface StandardDialectConfig {
  * here once.
  */
 export abstract class AbstractStandardRepository<
-  T extends StandardDataSource<TId, TDate>,
+  T extends { id: TId },
   TId,
-  TDate,
 >
-  implements IStandardCrudRepository<T, TId, TDate>, StandardSpHost<T, TId>
+  implements IStandardCrudRepository<T, TId>, StandardSpHost<T, TId>
 {
   protected readonly tableName: string;
   readonly fieldConverter: StandardFieldConverter;
@@ -192,7 +190,7 @@ export abstract class AbstractStandardRepository<
     );
   }
 
-  async add(data: Omit<T, keyof StandardDataSource<TId, TDate>>): Promise<T> {
+  async add(data: Omit<T, StandardSystemKeys>): Promise<T> {
     const now = new Date();
     const record = data as Record<string, unknown>;
     if (this.spClient) return createViaSp<T, TId>(this, record, now);
@@ -212,7 +210,7 @@ export abstract class AbstractStandardRepository<
 
   async update(
     id: TId,
-    data: Partial<Omit<T, keyof StandardDataSource<TId, TDate>>>,
+    data: Partial<Omit<T, StandardSystemKeys>>,
     opts?: { expectedUpdated?: string },
   ): Promise<T | null> {
     if (this.spClient) {
@@ -257,7 +255,7 @@ export abstract class AbstractStandardRepository<
   async updateBy(
     column: string,
     value: unknown,
-    data: Partial<Omit<T, keyof StandardDataSource<TId, TDate>>>,
+    data: Partial<Omit<T, StandardSystemKeys>>,
   ): Promise<T[]> {
     const { setClauses, boundValues } = this.mutationSet(data as Record<string, unknown>);
     const values = [...boundValues, this.fieldConverter.applyTo(column, value)];

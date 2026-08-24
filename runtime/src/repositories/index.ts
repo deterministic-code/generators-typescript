@@ -4,7 +4,7 @@ export { PrimaryKey } from './PrimaryKey';
 export { PrimaryKeyService } from './PrimaryKeyService';
 export type { PrimaryKeyRegistration } from './PrimaryKeyService';
 export type { IPrimaryKeyService } from './IPrimaryKeyService';
-export type { IStandardCrudRepository } from './IStandardCrudRepository';
+export type { IStandardCrudRepository, StandardSystemKeys } from './IStandardCrudRepository';
 export type { IDatasource } from './IDatasource';
 export type { ISetup } from './ISetup';
 

@@ -1,5 +1,6 @@
 import { ICrudService } from './ICrudService';
 import type { PrimaryKey } from '../../repositories/PrimaryKey';
+import type { StandardSystemKeys } from '../../repositories/IStandardCrudRepository';
 
 /**
  * The row shape every standard CRUD service, router, and enrichment wrapper is
@@ -22,7 +23,7 @@ export type StandardRow = {
  */
 export interface IStandardCrudService<
   T extends StandardRow,
-  TMutate = Omit<T, 'id' | 'uuid' | 'created' | 'updated'>,
+  TMutate = Omit<T, StandardSystemKeys>,
 > extends ICrudService<T, TMutate> {
   readonly primaryKey: PrimaryKey;
 }

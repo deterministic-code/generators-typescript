@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { IStandardCrudRepository } from '../IStandardCrudRepository';
+import {
+  IStandardCrudRepository,
+  type StandardSystemKeys,
+} from '../IStandardCrudRepository';
 import type { IPrimaryKeyService } from '../IPrimaryKeyService';
 import type { StandardIdType } from '../standardFieldConverting';
-import { StandardDataSource } from '../../types/StandardDataSource';
 import { quoteIdentifier } from '../sqlIdentifier';
 import type { OracleDatasource } from './OracleDatasource';
 import { DatasourceBackedRepository } from '../PrimaryKeyBearingRepository';
@@ -14,12 +16,11 @@ export interface OracleStandardRepositoryOptions {
 }
 
 export class OracleStandardRepository<
-  T extends StandardDataSource<TId, TDate>,
+  T extends { id: TId },
   TId = number,
-  TDate = string,
 >
   extends DatasourceBackedRepository<OracleDatasource>
-  implements IStandardCrudRepository<T, TId, TDate>
+  implements IStandardCrudRepository<T, TId>
 {
   protected readonly tableName: string;
   protected readonly idType: StandardIdType;
@@ -59,7 +60,7 @@ export class OracleStandardRepository<
     );
   }
 
-  async add(data: Omit<T, keyof StandardDataSource<TId, TDate>>): Promise<T> {
+  async add(data: Omit<T, StandardSystemKeys>): Promise<T> {
     const now = new Date().toISOString();
     let id: TId | undefined;
 
@@ -101,7 +102,7 @@ export class OracleStandardRepository<
 
   async update(
     id: TId,
-    data: Partial<Omit<T, keyof StandardDataSource<TId, TDate>>>,
+    data: Partial<Omit<T, StandardSystemKeys>>,
   ): Promise<T | null> {
     const now = new Date().toISOString();
     const entries: Array<[string, unknown]> = [
@@ -128,7 +129,7 @@ export class OracleStandardRepository<
   async updateBy(
     column: string,
     value: unknown,
-    data: Partial<Omit<T, keyof StandardDataSource<TId, TDate>>>,
+    data: Partial<Omit<T, StandardSystemKeys>>,
   ): Promise<T[]> {
     const matched = await this.findBy(column, value);
     if (matched.length === 0) return [];

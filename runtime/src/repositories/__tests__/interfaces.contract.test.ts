@@ -3,15 +3,17 @@ import type { IRepository } from '../IRepository';
 import type { IDatasource } from '../IDatasource';
 import type { ISetup } from '../ISetup';
 import type { ICrudRepository, OptimisticConcurrencyOptions } from '../ICrudRepository';
-import type { IStandardCrudRepository } from '../IStandardCrudRepository';
-import type { StandardDataSource } from '../../types/StandardDataSource';
+import type { IStandardCrudRepository, StandardSystemKeys } from '../IStandardCrudRepository';
 
 interface ExampleRow {
   id: number;
   name: string;
 }
 
-interface ExampleStandardRow extends StandardDataSource {
+interface ExampleStandardRow {
+  id: number;
+  created: string;
+  updated: string;
   name: string;
 }
 
@@ -56,15 +58,15 @@ describe('repositories interface contracts', () => {
     expectTypeOf<ICrudRepository<ExampleRow>['delete']>().returns.resolves.toEqualTypeOf<boolean>();
   });
 
-  it('IStandardCrudRepository omits StandardDataSource keys from add/update payloads', () => {
+  it('IStandardCrudRepository omits system keys from add/update payloads', () => {
     expectTypeOf<IStandardCrudRepository<ExampleStandardRow>>().toHaveProperty('query');
     expectTypeOf<IStandardCrudRepository<ExampleStandardRow>['add']>().parameters.toEqualTypeOf<
-      [Omit<ExampleStandardRow, keyof StandardDataSource>]
+      [Omit<ExampleStandardRow, StandardSystemKeys>]
     >();
     expectTypeOf<IStandardCrudRepository<ExampleStandardRow>['update']>().parameters.toEqualTypeOf<
       [
         number,
-        Partial<Omit<ExampleStandardRow, keyof StandardDataSource>>,
+        Partial<Omit<ExampleStandardRow, StandardSystemKeys>>,
         OptimisticConcurrencyOptions?,
       ]
     >();

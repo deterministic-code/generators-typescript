@@ -9,7 +9,7 @@ export function joinImport(base: string, file: string): string {
   return `${normalized}${file}`;
 }
 
-/** Resolve the import specifier for the deterministic library at `subpath` (e.g. "services" | "routes" | "types" | "app"; "" is the package root). `mode` undefined is treated as "npm"; only "bundled" redirects to the vendored `_deterministic/…js` relative to `generatedFileRelToProjectRoot`. */
+/** Resolve the import specifier for the deterministic library at `subpath` (e.g. "services" | "routes" | "app"; "" is the package root). `mode` undefined is treated as "npm"; only "bundled" redirects to the vendored `_deterministic/…js` relative to `generatedFileRelToProjectRoot`. */
 export function libraryImportSpecifier(
   subpath: string,
   mode: string | undefined,

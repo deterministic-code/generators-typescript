@@ -1,1 +1,1 @@
-export { generateViewTypes as generate } from "./emit-view-types.ts";
+export { generateViewTypes as generate } from "./emit-shaped-types.ts";

@@ -1,4 +1,3 @@
-import { StandardDataSource } from '../../types/StandardDataSource';
 import { quoteMysqlIdentifier } from '../sqlIdentifier';
 import { AbstractStandardRepository, type StandardDialectConfig } from '../standardRepositoryBase';
 import { type StandardRepositoryOptions } from '../standardFieldConverting';
@@ -21,10 +20,9 @@ const MYSQL_DIALECT: StandardDialectConfig = {
 };
 
 export class MysqlStandardRepository<
-  T extends StandardDataSource<TId, TDate>,
+  T extends { id: TId },
   TId = number,
-  TDate = string,
-> extends AbstractStandardRepository<T, TId, TDate> {
+> extends AbstractStandardRepository<T, TId> {
   constructor(
     datasource: MysqlDatasource,
     tableName: string,

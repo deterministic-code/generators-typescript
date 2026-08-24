@@ -1,4 +1,3 @@
-import { StandardDataSource } from '../../types/StandardDataSource';
 import { quoteIdentifier } from '../sqlIdentifier';
 import { AbstractStandardRepository, type StandardDialectConfig } from '../standardRepositoryBase';
 import { type StandardRepositoryOptions } from '../standardFieldConverting';
@@ -20,10 +19,9 @@ const SQLITE_DIALECT: StandardDialectConfig = {
 };
 
 export class SqliteStandardRepository<
-  T extends StandardDataSource<TId, TDate>,
+  T extends { id: TId },
   TId = number,
-  TDate = string,
-> extends AbstractStandardRepository<T, TId, TDate> {
+> extends AbstractStandardRepository<T, TId> {
   constructor(
     datasource: SqliteDatasource,
     tableName: string,
