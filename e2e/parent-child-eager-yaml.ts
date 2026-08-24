@@ -1,7 +1,6 @@
 export const PARENT_CHILD_EAGER_YAML: Record<string, string> = {
   "settings.yaml": `settings:
   datasource:
-    id_type: integer
     pluralize_datatable_names: true
 `,
   "backend-app.yaml": `middleware: []
@@ -82,7 +81,6 @@ routes:
 export const PARENT_CHILD_SETTINGS: Record<string, string> = {
   application_name: "parent-child-e2e",
   app_generate_complexity: "deterministic",
-  "datasource.id_type": "integer",
   "datasource.pluralize_datatable_names": "true",
   "backend.datasources": "sqlite",
 };

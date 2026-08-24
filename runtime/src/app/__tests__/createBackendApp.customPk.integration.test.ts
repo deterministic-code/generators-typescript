@@ -42,7 +42,7 @@ describe('createBackendApp — custom primary key end-to-end via Express', () =>
     datasourceData: DATASOURCE_DATA,
     routesData: ROUTES_DATA,
     ddl: TEST_DDL,
-    settingsConfig: { idType: 'integer' },
+    settingsConfig: {},
   });
 
   it('POST /api/legacy-contacts creates a row keyed by `key`', async () => {

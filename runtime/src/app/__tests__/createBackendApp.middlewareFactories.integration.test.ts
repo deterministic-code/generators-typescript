@@ -26,7 +26,7 @@ class GreeterService {
 }
 
 const BASE_APP_OPTIONS = {
-  settingsConfig: { pluralizeTableNames: true, idType: 'integer' as const },
+  settingsConfig: { pluralizeTableNames: true },
   routeSpecs: [],
   crudSpecs: [],
   datasourceData: { types: [] },

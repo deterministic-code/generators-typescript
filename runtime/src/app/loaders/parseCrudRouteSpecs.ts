@@ -786,15 +786,22 @@ function toCrudFieldDef(name: string, raw: RawField): CrudFieldDef | null {
   return out;
 }
 
-/** Resolves the PK column for every entity so no downstream consumer has to literal-default it. A declared `primary_key: true` non-id field (the `legacy_contact.key` pattern) sets both the column and its id shape (`string`/`uuid` skip parseInt; anything else keeps the integer contract). An entity with no declared PK gets the implicit auto-increment `id` — a structural contract constant, not a settings value — and leaves `primaryKeyIdType` unset so the router/repo derive it from the project id_type. */
+const idTypeFromField = (type: string | undefined): StandardIdType => {
+  if (type === 'string' || type === 'uuid' || type === 'biginteger') return type;
+  return 'integer';
+};
+
+/** Resolves the PK column for every entity so no downstream consumer has to literal-default it. A declared `primary_key: true` non-id field (the `legacy_contact.key` pattern) sets both the column and its id shape (`string`/`uuid` skip parseInt; anything else keeps the integer contract). An authored `id` field supplies the implicit PK type. Otherwise the implicit auto-increment `id` is integer. */
 function assignPrimaryKey(spec: CrudRouteSpec, fields: Array<[string, RawField]>): void {
+  const idField = fields.find(([name]) => name === 'id');
+  if (idField !== undefined) {
+    spec.primaryKeyIdType = idTypeFromField(idField[1].type);
+  }
   for (const [fieldName, fdef] of fields) {
     const fdefMaybePk = fdef as RawField & { primary_key?: boolean };
     if (fdefMaybePk.primary_key !== true || fieldName === 'id') continue;
     spec.primaryKeyColumn = fieldName;
-    if (fdef.type === 'string') spec.primaryKeyIdType = 'string';
-    else if (fdef.type === 'uuid') spec.primaryKeyIdType = 'uuid';
-    else spec.primaryKeyIdType = 'integer';
+    spec.primaryKeyIdType = idTypeFromField(fdef.type);
     return;
   }
 }
@@ -803,8 +810,6 @@ interface CrudSpecContext {
   datasourceDoc: unknown;
   routesDoc: unknown;
   viewTypesDoc?: unknown;
-  /** The project id_type from settings — the id shape an implicit `id` PK inherits. */
-  projectIdType: StandardIdType;
   nestedOnlyNames: ReturnType<typeof collectNestedOnlyEntities>;
   byFieldByEntity: ReturnType<typeof collectByFieldRoutes>;
 }
@@ -840,9 +845,9 @@ function buildCrudSpec(entityName: string, body: RawType, ctx: CrudSpecContext):
   const spec: CrudRouteSpec = {
     pathSegment: kebabPlural(entityName),
     entityName,
-    // The implicit auto-increment `id` + the settings project id_type; assignPrimaryKey overrides both when the entity declares a custom primary_key. Resolved here so no consumer literal-defaults them.
+    // Implicit auto-increment `id` is integer; assignPrimaryKey overrides when the entity authors `id` or a custom primary_key.
     primaryKeyColumn: 'id',
-    primaryKeyIdType: ctx.projectIdType,
+    primaryKeyIdType: 'integer',
     columns: fields.map(([name]) => name),
     ...(body.datasource_type === 'readonly-lookup' && { readonly: true }),
     ...(body.datasource_type === 'many-to-many' && { m2m: true }),
@@ -866,14 +871,13 @@ function buildCrudSpec(entityName: string, body: RawType, ctx: CrudSpecContext):
 export function parseCrudRouteSpecs(
   datasourceDoc: unknown,
   routesDoc: unknown,
-  opts: { projectIdType: StandardIdType; viewTypesDoc?: unknown },
+  opts?: { viewTypesDoc?: unknown },
 ): CrudRouteSpec[] {
   const types = readTypes(datasourceDoc);
   const ctx: CrudSpecContext = {
     datasourceDoc,
     routesDoc,
-    viewTypesDoc: opts.viewTypesDoc,
-    projectIdType: opts.projectIdType,
+    viewTypesDoc: opts?.viewTypesDoc,
     nestedOnlyNames: collectNestedOnlyEntities(routesDoc, types),
     byFieldByEntity: collectByFieldRoutes(routesDoc, datasourceDoc),
   };

@@ -8,6 +8,7 @@ const DATASOURCE_DATA = {
       member: {
         target: 'Crud',
         fields: [
+          { id: { type: 'uuid' } },
           { handle: { type: 'string', size: 64, is_unique: true } },
           { display_name: { type: 'string', size: 128 } },
           { bio: { type: 'string', size: 'unlimited', is_nullable: true } },
@@ -22,7 +23,7 @@ const ROUTES_DATA = {
   routes: [],
 };
 
-// A uuid id_type project: the primary key IS the uuid, so the table carries no separate `uuid` column.
+// An authored uuid `id` field: the primary key IS the uuid, so the table carries no separate `uuid` column.
 const TEST_DDL = `CREATE TABLE "member" (
   "id" TEXT NOT NULL PRIMARY KEY,
   "handle" VARCHAR(64) NOT NULL UNIQUE,
@@ -34,16 +35,13 @@ const TEST_DDL = `CREATE TABLE "member" (
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-describe('createBackendApp — id_type: uuid end-to-end via Express', () => {
+describe('createBackendApp — authored uuid id end-to-end via Express', () => {
   const getApp = useCrudApp({
     datasourceData: DATASOURCE_DATA,
     routesData: ROUTES_DATA,
     ddl: TEST_DDL,
     settingsConfig: {
       pluralizeTableNames: false,
-      datetime: 'native',
-      uuid: 'native',
-      idType: 'uuid',
     },
   });
 

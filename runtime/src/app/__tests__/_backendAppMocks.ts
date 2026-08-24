@@ -79,7 +79,7 @@ async function bootDeterministicRootApp(
       statics: [],
     },
     deterministicRoot,
-    settingsConfig: { pluralizeTableNames: opts.pluralizeTableNames ?? false, idType: opts.idType },
+    settingsConfig: { pluralizeTableNames: opts.pluralizeTableNames ?? false },
     routeSpecs: [],
     serviceSpecs: [],
   });

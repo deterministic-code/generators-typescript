@@ -5,7 +5,6 @@ import { createBackendApp } from '../createBackendApp';
 import { connectDatabase } from '../connectDatabase';
 import { parseCrudRouteSpecs } from '../loaders/parseCrudRouteSpecs';
 import { parseGenericRouteSpecs } from '../loaders/parseRouteSpecs';
-import type { StandardIdType } from '../../repositories/standardFieldConverting';
 
 /** The 404-terminal fallback handler every createBackendApp integration test registers as the last route. */
 export class TerminalHandler {
@@ -18,10 +17,7 @@ export class TerminalHandler {
 }
 
 interface BootSettings {
-  idType: StandardIdType;
   pluralizeTableNames?: boolean;
-  datetime?: 'native' | 'string';
-  uuid?: 'native' | 'string';
   useOptimisticConcurrency?: boolean;
 }
 
@@ -57,14 +53,9 @@ export async function bootCrudApp({
 
   const resolvedSettings = {
     pluralizeTableNames: settingsConfig.pluralizeTableNames ?? true,
-    datetime: settingsConfig.datetime ?? 'native',
-    uuid: settingsConfig.uuid ?? 'native',
-    idType: settingsConfig.idType,
     useOptimisticConcurrency: settingsConfig.useOptimisticConcurrency ?? false,
   };
-  const crudSpecs = parseCrudRouteSpecs(datasourceData, routesData, {
-    projectIdType: settingsConfig.idType,
-  });
+  const crudSpecs = parseCrudRouteSpecs(datasourceData, routesData);
   onCrudSpecs?.(crudSpecs);
   const app = await createBackendApp(conn, {
     backendAppConfig: {
@@ -84,7 +75,7 @@ export async function bootCrudApp({
       TerminalHandler: TerminalHandler as unknown as new (...a: unknown[]) => unknown,
     },
     middlewareLookup: { get: () => express.json() } as never,
-    settingsConfig: resolvedSettings as never,
+    settingsConfig: resolvedSettings,
   });
   return { app, cleanup: async () => conn.close() };
 }

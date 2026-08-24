@@ -17,7 +17,6 @@ const SAMPLE_FILES = [
 
 const SETTINGS_YAML = `settings:
   datasource:
-    id_type: integer
     pluralize_datatable_names: true
 `;
 
@@ -74,7 +73,6 @@ export const fullstackSampleSettings = (
   application_tier: "full-stack",
   app_generate_complexity: "deterministic",
   frontend_generate_framework: "vite",
-  "datasource.id_type": "integer",
   "datasource.pluralize_datatable_names": "true",
   "backend.datasources": "sqlite",
 });

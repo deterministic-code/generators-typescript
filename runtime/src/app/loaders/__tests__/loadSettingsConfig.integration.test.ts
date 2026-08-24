@@ -4,33 +4,40 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { parseSettingsConfig, loadSettingsConfig } from '../loadSettingsConfig';
 
-describe('parseSettingsConfig — id_type is required (no default)', () => {
-  it('throws when input is null', () => {
-    expect(() => parseSettingsConfig(null)).toThrow(/id_type' is required/);
+describe('parseSettingsConfig — defaults', () => {
+  it('returns defaults when input is null', () => {
+    expect(parseSettingsConfig(null)).toEqual({
+      pluralizeTableNames: true,
+      useOptimisticConcurrency: false,
+    });
   });
 
-  it('throws when input is undefined', () => {
-    expect(() => parseSettingsConfig(undefined)).toThrow(/id_type' is required/);
+  it('returns defaults when input is undefined', () => {
+    expect(parseSettingsConfig(undefined)).toEqual({
+      pluralizeTableNames: true,
+      useOptimisticConcurrency: false,
+    });
   });
 
-  it('throws when the file has no settings block', () => {
-    expect(() => parseSettingsConfig({})).toThrow(/id_type' is required/);
+  it('returns defaults when the file has no settings block', () => {
+    expect(parseSettingsConfig({})).toEqual({
+      pluralizeTableNames: true,
+      useOptimisticConcurrency: false,
+    });
   });
 
-  it('throws when settings has no datasource block', () => {
-    expect(() => parseSettingsConfig({ settings: {} })).toThrow(/id_type' is required/);
+  it('returns defaults when settings has no datasource block', () => {
+    expect(parseSettingsConfig({ settings: {} })).toEqual({
+      pluralizeTableNames: true,
+      useOptimisticConcurrency: false,
+    });
   });
 
-  it('throws when datasource omits id_type', () => {
-    expect(() => parseSettingsConfig({ settings: { datasource: {} } })).toThrow(
-      /id_type' is required/,
-    );
-  });
-
-  it('throws when only pluralize is set but id_type is absent', () => {
-    expect(() =>
-      parseSettingsConfig({ settings: { datasource: { pluralize_datatable_names: true } } }),
-    ).toThrow(/id_type' is required/);
+  it('returns defaults when datasource is empty', () => {
+    expect(parseSettingsConfig({ settings: { datasource: {} } })).toEqual({
+      pluralizeTableNames: true,
+      useOptimisticConcurrency: false,
+    });
   });
 });
 
@@ -38,13 +45,10 @@ describe('parseSettingsConfig — explicit values', () => {
   it('returns pluralizeTableNames: true when the flag is explicitly true', () => {
     expect(
       parseSettingsConfig({
-        settings: { datasource: { pluralize_datatable_names: true, id_type: 'integer' } },
+        settings: { datasource: { pluralize_datatable_names: true } },
       }),
     ).toEqual({
       pluralizeTableNames: true,
-      datetime: 'native',
-      uuid: 'native',
-      idType: 'integer',
       useOptimisticConcurrency: false,
     });
   });
@@ -52,48 +56,24 @@ describe('parseSettingsConfig — explicit values', () => {
   it('returns pluralizeTableNames: false when the flag is explicitly false', () => {
     expect(
       parseSettingsConfig({
-        settings: { datasource: { pluralize_datatable_names: false, id_type: 'integer' } },
+        settings: { datasource: { pluralize_datatable_names: false } },
       }),
     ).toEqual({
       pluralizeTableNames: false,
-      datetime: 'native',
-      uuid: 'native',
-      idType: 'integer',
       useOptimisticConcurrency: false,
     });
-  });
-
-  it('reads datetime and uuid representation from the datasource block', () => {
-    expect(
-      parseSettingsConfig({
-        settings: { datasource: { datetime: 'string', uuid: 'string', id_type: 'integer' } },
-      }),
-    ).toEqual({
-      pluralizeTableNames: true,
-      datetime: 'string',
-      uuid: 'string',
-      idType: 'integer',
-      useOptimisticConcurrency: false,
-    });
-  });
-
-  it('reads id_type: uuid from the datasource block', () => {
-    expect(parseSettingsConfig({ settings: { datasource: { id_type: 'uuid' } } }).idType).toBe(
-      'uuid',
-    );
   });
 
   it('defaults useOptimisticConcurrency to false when the flag is omitted', () => {
     expect(
-      parseSettingsConfig({ settings: { datasource: { id_type: 'integer' } } })
-        .useOptimisticConcurrency,
+      parseSettingsConfig({ settings: { datasource: {} } }).useOptimisticConcurrency,
     ).toBe(false);
   });
 
   it('reads use_optimistic_concurrency: true from the datasource block', () => {
     expect(
       parseSettingsConfig({
-        settings: { datasource: { id_type: 'integer', use_optimistic_concurrency: true } },
+        settings: { datasource: { use_optimistic_concurrency: true } },
       }).useOptimisticConcurrency,
     ).toBe(true);
   });
@@ -101,7 +81,7 @@ describe('parseSettingsConfig — explicit values', () => {
   it('throws when use_optimistic_concurrency is not a boolean', () => {
     expect(() =>
       parseSettingsConfig({
-        settings: { datasource: { id_type: 'integer', use_optimistic_concurrency: 'true' } },
+        settings: { datasource: { use_optimistic_concurrency: 'true' } },
       }),
     ).toThrow(/'settings.datasource.use_optimistic_concurrency' must be a boolean/);
   });
@@ -139,7 +119,7 @@ describe('parseSettingsConfig — strict validation (GATE 16)', () => {
   it('throws when pluralize_datatable_names is a string (typo)', () => {
     expect(() =>
       parseSettingsConfig({
-        settings: { datasource: { id_type: 'integer', pluralize_datatable_names: 'false' } },
+        settings: { datasource: { pluralize_datatable_names: 'false' } },
       }),
     ).toThrow(/'settings.datasource.pluralize_datatable_names' must be a boolean/);
   });
@@ -147,7 +127,7 @@ describe('parseSettingsConfig — strict validation (GATE 16)', () => {
   it('throws when pluralize_datatable_names is a number', () => {
     expect(() =>
       parseSettingsConfig({
-        settings: { datasource: { id_type: 'integer', pluralize_datatable_names: 0 } },
+        settings: { datasource: { pluralize_datatable_names: 0 } },
       }),
     ).toThrow(/must be a boolean/);
   });
@@ -155,33 +135,9 @@ describe('parseSettingsConfig — strict validation (GATE 16)', () => {
   it('throws when pluralize_datatable_names is null', () => {
     expect(() =>
       parseSettingsConfig({
-        settings: { datasource: { id_type: 'integer', pluralize_datatable_names: null } },
+        settings: { datasource: { pluralize_datatable_names: null } },
       }),
     ).toThrow(/must be a boolean/);
-  });
-
-  it('throws when datetime is neither native nor string', () => {
-    expect(() =>
-      parseSettingsConfig({
-        settings: { datasource: { datetime: 'iso' } },
-      }),
-    ).toThrow(/'settings.datasource.datetime' must be 'native' or 'string'/);
-  });
-
-  it('throws when uuid is neither native nor string', () => {
-    expect(() =>
-      parseSettingsConfig({
-        settings: { datasource: { uuid: true } },
-      }),
-    ).toThrow(/'settings.datasource.uuid' must be 'native' or 'string'/);
-  });
-
-  it('throws when id_type is not a known id type', () => {
-    expect(() =>
-      parseSettingsConfig({
-        settings: { datasource: { id_type: 'guid' } },
-      }),
-    ).toThrow(/'settings.datasource.id_type' must be one of/);
   });
 });
 
@@ -206,14 +162,11 @@ describe('loadSettingsConfig — file I/O', () => {
     const yamlPath = path.join(dir, 'settings-false.yaml');
     await fs.writeFile(
       yamlPath,
-      'settings:\n  datasource:\n    id_type: integer\n    pluralize_datatable_names: false\n',
+      'settings:\n  datasource:\n    pluralize_datatable_names: false\n',
     );
     const cfg = await loadSettingsConfig(yamlPath);
     expect(cfg).toEqual({
       pluralizeTableNames: false,
-      datetime: 'native',
-      uuid: 'native',
-      idType: 'integer',
       useOptimisticConcurrency: false,
     });
   });
@@ -222,21 +175,21 @@ describe('loadSettingsConfig — file I/O', () => {
     const yamlPath = path.join(dir, 'settings-true.yaml');
     await fs.writeFile(
       yamlPath,
-      'settings:\n  datasource:\n    id_type: integer\n    pluralize_datatable_names: true\n',
+      'settings:\n  datasource:\n    pluralize_datatable_names: true\n',
     );
     const cfg = await loadSettingsConfig(yamlPath);
     expect(cfg).toEqual({
       pluralizeTableNames: true,
-      datetime: 'native',
-      uuid: 'native',
-      idType: 'integer',
       useOptimisticConcurrency: false,
     });
   });
 
-  it('throws when the YAML omits settings.datasource.id_type', async () => {
+  it('returns defaults when the YAML has no datasource block', async () => {
     const yamlPath = path.join(dir, 'settings-empty.yaml');
     await fs.writeFile(yamlPath, 'other: stuff\n');
-    await expect(loadSettingsConfig(yamlPath)).rejects.toThrow(/id_type' is required/);
+    expect(await loadSettingsConfig(yamlPath)).toEqual({
+      pluralizeTableNames: true,
+      useOptimisticConcurrency: false,
+    });
   });
 });

@@ -7,7 +7,7 @@ import {
 } from '../loaders/parseCrudRouteSpecs';
 
 const parseSpecs = (datasourceDoc: unknown, routesDoc: unknown, viewTypesDoc?: unknown) =>
-  parseCrudRouteSpecs(datasourceDoc, routesDoc, { projectIdType: 'integer', viewTypesDoc });
+  parseCrudRouteSpecs(datasourceDoc, routesDoc, { viewTypesDoc });
 
 describe('serviceKeyFor', () => {
   it('camel-cases snake-case names and appends Service', () => {

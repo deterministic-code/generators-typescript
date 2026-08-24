@@ -37,10 +37,4 @@ export {
 } from './uuidStringConverter';
 export { makeIdentityFieldConverter } from './identityFieldConverter';
 export { makeDecimalFieldConverter, decimalFieldConverter } from './decimalFieldConverter';
-export {
-  getDefaultConverters,
-  convertersFromSettings,
-  type DatasourceConverterSettings,
-  type DateTimeRepr,
-  type UuidRepr,
-} from './registry';
+export { getDefaultConverters } from './registry';

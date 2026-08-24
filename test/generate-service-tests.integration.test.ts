@@ -118,16 +118,6 @@ describe("generate-service-tests", () => {
     assert.deepEqual(entries, []);
   });
 
-  it("uses the project id_type for the implicit id PK", async () => {
-    const entries = await generate({
-      reader: fixtureReader(yaml),
-      settings: { "datasource.id_type": "uuid" },
-    });
-    const user = textOf(entries, "userService.test.ts");
-    assert.match(user, /new PrimaryKey\("id", "uuid"\)/);
-    assert.match(user, /faker\.string\.uuid\(\)/);
-  });
-
   it("points repository imports at bundled _deterministic when requested", async () => {
     const entries = await generate({
       reader: fixtureReader(yaml),

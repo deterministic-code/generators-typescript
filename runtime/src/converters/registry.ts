@@ -13,7 +13,6 @@ import {
   mysqlDateTimeFieldConverter,
   postgresDateTimeFieldConverter,
 } from './dateTimeFieldConverter';
-import { makeDateTimeStringConverter } from './dateTimeStringConverter';
 import {
   binaryFieldConverter,
   mysqlBinaryFieldConverter,
@@ -24,17 +23,8 @@ import {
   mysqlUuidFieldConverter,
   postgresUuidFieldConverter,
 } from './uuidFieldConverter';
-import { makeUuidStringConverter } from './uuidStringConverter';
 import { makeIdentityFieldConverter } from './identityFieldConverter';
 import { makeDecimalFieldConverter } from './decimalFieldConverter';
-
-export type DateTimeRepr = 'native' | 'string';
-export type UuidRepr = 'native' | 'string';
-
-/** The datetime/uuid representation the converter map should register (`settings.datasource.datetime` / `.uuid`); anything other than `'string'` resolves to the native converter. */
-export interface DatasourceConverterSettings {
-  datasource?: { datetime?: DateTimeRepr; uuid?: UuidRepr };
-}
 
 const IDENTITY_TYPES = [
   'string',
@@ -76,7 +66,6 @@ const DIALECTS: Record<SupportedDatasource, DialectConverters> = {
 
 function buildConverterMap(
   datasource: SupportedDatasource,
-  reprs: { datetime?: DateTimeRepr; uuid?: UuidRepr },
 ): Map<string, ITypeFieldConverter> {
   const dialect = DIALECTS[datasource];
   const map = new Map<string, ITypeFieldConverter>();
@@ -86,26 +75,9 @@ function buildConverterMap(
   map.set('decimal', makeDecimalFieldConverter(datasource));
   map.set('boolean', dialect.boolean);
   map.set('binary', dialect.binary);
-  map.set(
-    'datetime',
-    reprs.datetime === 'string' ? makeDateTimeStringConverter(datasource) : dialect.datetimeNative,
-  );
-  map.set(
-    'uuid',
-    reprs.uuid === 'string' ? makeUuidStringConverter(datasource) : dialect.uuidNative,
-  );
+  map.set('datetime', dialect.datetimeNative);
+  map.set('uuid', dialect.uuidNative);
   return map;
-}
-
-/** Resolve the converter map for a dialect, registering the datetime/uuid converter that matches the representation setting (`settings.datasource.datetime` / `.uuid`). Absent settings resolve to the native converters. */
-export function convertersFromSettings(
-  settings: DatasourceConverterSettings,
-  datasource: SupportedDatasource,
-): Map<string, ITypeFieldConverter> {
-  return buildConverterMap(datasource, {
-    datetime: settings?.datasource?.datetime,
-    uuid: settings?.datasource?.uuid,
-  });
 }
 
 export function getDefaultConverters(
@@ -117,5 +89,5 @@ export function getDefaultConverters(
       `getDefaultConverters: unsupported language '${toLanguage}' (only 'typescript' supported)`,
     );
   }
-  return buildConverterMap(fromDatasource, { datetime: 'native', uuid: 'native' });
+  return buildConverterMap(fromDatasource);
 }

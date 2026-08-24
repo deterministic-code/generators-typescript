@@ -299,7 +299,7 @@ describe('createBackendApp integration — enableMiddleware flips the three tier
   }
 
   const baseOptions = {
-    settingsConfig: { pluralizeTableNames: true, idType: 'integer' as const },
+    settingsConfig: { pluralizeTableNames: true },
     routeSpecs: [],
     crudSpecs: [],
     datasourceData: { types: [] },
