@@ -1,4 +1,3 @@
-import { StandardDataSource } from '../../types/StandardDataSource';
 import { quoteIdentifier } from '../sqlIdentifier';
 import { AbstractStandardRepository, type StandardDialectConfig } from '../standardRepositoryBase';
 import { type StandardRepositoryOptions } from '../standardFieldConverting';
@@ -21,10 +20,9 @@ const POSTGRES_DIALECT: StandardDialectConfig = {
 };
 
 export class PostgresStandardRepository<
-  T extends StandardDataSource<TId, TDate>,
+  T extends { id: TId },
   TId = number,
-  TDate = string,
-> extends AbstractStandardRepository<T, TId, TDate> {
+> extends AbstractStandardRepository<T, TId> {
   constructor(
     datasource: PostgresDatasource,
     tableName: string,

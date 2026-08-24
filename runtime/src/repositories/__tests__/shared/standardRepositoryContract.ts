@@ -1,13 +1,18 @@
 import { IStandardCrudRepository } from '../../IStandardCrudRepository';
-import { StandardDataSource } from '../../../types/StandardDataSource';
-import { StandardDataSourceWithUuid } from '../../../types/StandardDataSourceWithUuid';
 
-export interface SimpleStandardRowWithoutUuid extends StandardDataSource {
+export interface SimpleStandardRowWithoutUuid {
+  id: number;
+  created: string;
+  updated: string;
   name: string;
   value: number;
 }
 
-export interface SimpleStandardRowWithUuid extends StandardDataSourceWithUuid {
+export interface SimpleStandardRowWithUuid {
+  id: number;
+  uuid: string;
+  created: string;
+  updated: string;
   name: string;
   value: number;
 }
@@ -35,7 +40,7 @@ export function describeStandardRepositoryContract(
   const idType = options.idType;
   const withUuidColumn = options.withUuidColumn ?? true;
 
-  describe(`${name} satisfies IStandardCrudRepository<StandardDataSource> (idType=${idType}, withUuidColumn=${withUuidColumn})`, () => {
+  describe(`${name} satisfies IStandardCrudRepository (idType=${idType}, withUuidColumn=${withUuidColumn})`, () => {
     let repo: IStandardCrudRepository<SimpleStandardRow>;
     let teardown: () => Promise<void>;
 

@@ -30,7 +30,6 @@ const entries: Record<string, string> = {
   services: 'src/services/index.ts',
   app: 'src/app/index.ts',
   validators: 'src/validators/index.ts',
-  types: 'src/types/index.ts',
   converters: 'src/converters/index.ts',
   migrate: 'src/migrate/index.ts',
 };
@@ -58,14 +57,6 @@ export default defineConfig({
         'url',
         'util',
       ],
-      onwarn(warning, defaultHandler) {
-        if (
-          warning.code === 'EMPTY_BUNDLE' &&
-          (warning.chunkName === 'types' || warning.names?.includes('types'))
-        )
-          return;
-        defaultHandler(warning);
-      },
     },
   },
   plugins: [

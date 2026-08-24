@@ -3,7 +3,6 @@ import { fileURLToPath } from 'node:url';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { IDatasource } from '../IDatasource';
 import type { IStandardCrudRepository } from '../IStandardCrudRepository';
-import type { StandardDataSource } from '../../types/StandardDataSource';
 import { MysqlDatasource } from '../mysql/MysqlDatasource';
 import { PostgresDatasource } from '../postgres/PostgresDatasource';
 import { MysqlStandardRepository } from '../mysql/MysqlStandardRepository';
@@ -15,7 +14,10 @@ import {
   type SqlEngine,
 } from '../../app/__tests__/functional/sqlContainer';
 
-interface ProbeRow extends StandardDataSource<number, string> {
+interface ProbeRow {
+  id: number;
+  created: string;
+  updated: string;
   uuid?: string;
   name: string;
 }
@@ -42,7 +44,7 @@ const PROBE_DDL: Record<SqlEngine, string> = {
 function makeRepo(
   engine: SqlEngine,
   ds: IDatasource,
-): IStandardCrudRepository<ProbeRow, number, string> {
+): IStandardCrudRepository<ProbeRow, number> {
   return engine === 'mysql'
     ? new MysqlStandardRepository<ProbeRow>(ds as unknown as MysqlDatasource, 'tstamp_probe', {
         withUuidColumn: true,
@@ -64,7 +66,7 @@ describe.each<SqlEngine>(['postgres', 'mysql'])(
   '%s StandardRepository auto-timestamps (real DB)',
   (engine) => {
     let backend: SqlBackend;
-    let repo: IStandardCrudRepository<ProbeRow, number, string>;
+    let repo: IStandardCrudRepository<ProbeRow, number>;
 
     beforeAll(async () => {
       backend = await startSqlBackend(engine, contactsRoot);

@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { PreconditionFailedError } from '../../errors/AppError';
-import { IStandardCrudRepository } from '../IStandardCrudRepository';
+import {
+  IStandardCrudRepository,
+  type StandardSystemKeys,
+} from '../IStandardCrudRepository';
 import type { IPrimaryKeyService } from '../IPrimaryKeyService';
 import type { StandardIdType } from '../standardFieldConverting';
-import { StandardDataSource } from '../../types/StandardDataSource';
 import { assertValidIdentifier, quoteSqlserverIdentifier } from '../sqlIdentifier';
 import type { SqlserverDatasource } from './SqlserverDatasource';
 import { SqlserverStoredProcedureClient } from './SqlserverStoredProcedureClient';
@@ -19,12 +21,11 @@ export interface SqlserverStandardRepositoryOptions {
 }
 
 export class SqlserverStandardRepository<
-  T extends StandardDataSource<TId, TDate>,
+  T extends { id: TId },
   TId = number,
-  TDate = string,
 >
   extends DatasourceBackedRepository<SqlserverDatasource>
-  implements IStandardCrudRepository<T, TId, TDate>
+  implements IStandardCrudRepository<T, TId>
 {
   protected readonly tableName: string;
   protected readonly idType: StandardIdType;
@@ -88,7 +89,7 @@ export class SqlserverStandardRepository<
     );
   }
 
-  async add(data: Omit<T, keyof StandardDataSource<TId, TDate>>): Promise<T> {
+  async add(data: Omit<T, StandardSystemKeys>): Promise<T> {
     const now = new Date().toISOString();
 
     if (this.spClient) {
@@ -146,7 +147,7 @@ export class SqlserverStandardRepository<
 
   async update(
     id: TId,
-    data: Partial<Omit<T, keyof StandardDataSource<TId, TDate>>>,
+    data: Partial<Omit<T, StandardSystemKeys>>,
     opts?: { expectedUpdated?: string },
   ): Promise<T | null> {
     const now = new Date().toISOString();
@@ -269,7 +270,7 @@ export class SqlserverStandardRepository<
   async updateBy(
     column: string,
     value: unknown,
-    data: Partial<Omit<T, keyof StandardDataSource<TId, TDate>>>,
+    data: Partial<Omit<T, StandardSystemKeys>>,
   ): Promise<T[]> {
     const now = new Date().toISOString();
     const entries: Array<[string, unknown]> = [

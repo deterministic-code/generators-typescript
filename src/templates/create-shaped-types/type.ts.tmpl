@@ -1,9 +1,9 @@
 // schema-version: {{schemaVersion}}
 {{#imports}}import type { {{names}} } from "{{fromPath}}";
 {{/imports}}{{#hasImports}}
-{{/hasImports}}{{#simpleDoc}}/** View {{className}}. */
+{{/hasImports}}{{#simpleDoc}}/** {{docNoun}} {{className}}. */
 {{/simpleDoc}}{{#descriptionDoc}}/**
- * View {{className}}.
+ * {{docNoun}} {{className}}.
  * Datasource type: {{datasourceType}}.
  * Target: {{target}}.
  * Fields: {{fieldCount}}.

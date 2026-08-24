@@ -164,20 +164,14 @@ describe("generate", () => {
     }
   });
 
-  it("renders user against StandardDataSource and the npm types library", async () => {
+  it("renders user as a standalone interface with expanded set fields", async () => {
     const user = await userBody({
       application_name: "catalog-api",
-      "languages.typescript.library_reference_mode": "npm",
     });
     assert.match(user, /schema-version: 1\.0/);
-    assert.match(
-      user,
-      /from "@deterministic-code\/deterministic\/types"/,
-    );
-    assert.match(
-      user,
-      /export interface User extends StandardDataSource<number, Date>/,
-    );
+    assert.doesNotMatch(user, /StandardDataSource/);
+    assert.doesNotMatch(user, /@deterministic-code\/deterministic/);
+    assert.match(user, /export interface User \{/);
     assert.match(user, /id: number;/);
     assert.match(user, /uuid: string;/);
     assert.match(user, /created: Date;/);
@@ -194,8 +188,8 @@ describe("generate", () => {
     });
     const map = indexEntries(withIndex);
     const index = entryBody(requireEntry(map, "index.ts"));
-    assert.match(index, /export \{ User \} from "\.\/user";/);
-    assert.match(index, /export \{ Role \} from "\.\/role";/);
+    assert.match(index, /export type \{ User \} from "\.\/user";/);
+    assert.match(index, /export type \{ Role \} from "\.\/role";/);
   });
 
   it("writes codegen.schema_version into the file header", async () => {
@@ -214,7 +208,7 @@ describe("generate", () => {
     assert.match(user, /\/\*\*/);
     assert.match(user, /\* Type User\./);
     assert.match(user, /\* Datasource type: standard\./);
-    assert.match(user, /\* Target: StandardCrud\./);
+    assert.match(user, /\* Target: ShapedType\./);
     assert.match(user, /\* Fields: 8\./);
   });
 
@@ -224,17 +218,7 @@ describe("generate", () => {
     assert.doesNotMatch(user, /Type User/);
   });
 
-  it("library_reference_mode=bundled imports the vendored types module", async () => {
-    const user = await userBody({
-      "languages.typescript.library_reference_mode": "bundled",
-    });
-    assert.match(
-      user,
-      /from "\.\.\/\.\.\/\.\.\/_deterministic\/types\.js"/,
-    );
-  });
-
-  it("readonly-lookup extends StandardDataSource with only the id type", async () => {
+  it("readonly-lookup inlines the injected set id", async () => {
     const entries = await generate({
       reader: memoryReader({
         [TYPES_YAML]: `types:
@@ -251,10 +235,79 @@ describe("generate", () => {
     const source = entryBody(
       requireEntry(indexEntries(entries), "contactSource.ts"),
     );
-    assert.match(source, /export interface ContactSource extends StandardDataSource<number> \{/);
-    assert.doesNotMatch(source, /StandardDataSource<number,\s*>/);
+    assert.match(source, /export interface ContactSource \{/);
+    assert.doesNotMatch(source, /StandardDataSource/);
+    assert.match(source, /id: number;/);
+    assert.match(source, /name: string;/);
     assert.doesNotMatch(source, /^\s*created:/m);
     assert.doesNotMatch(source, /^\s*updated:/m);
+  });
+
+  it("extends an inherited datasource type and lists only local fields", async () => {
+    const entries = await generate({
+      reader: memoryReader({
+        [TYPES_YAML]: `types:
+  - user:
+      tags: [datasource_type]
+      inherits: set
+      fields:
+        - email:
+            type: string
+  - admin:
+      tags: [datasource_type]
+      inherits: user
+      remove_fields: [email]
+      fields:
+        - level:
+            type: integer
+`,
+      }),
+      settings: {},
+    });
+    const byName = indexEntries(entries);
+    const user = entryBody(requireEntry(byName, "user.ts"));
+    assert.match(user, /export interface User \{/);
+    assert.match(user, /id: number;/);
+    assert.match(user, /email: string;/);
+    const admin = entryBody(requireEntry(byName, "admin.ts"));
+    assert.match(admin, /import type \{ User \} from "\.\/user";/);
+    assert.match(
+      admin,
+      /export interface Admin extends Omit<User, "email"> \{/,
+    );
+    assert.match(admin, /level: number;/);
+    assert.doesNotMatch(admin, /^\s*id:/m);
+    assert.doesNotMatch(admin, /^\s*email:/m);
+  });
+
+  it("renders a union datasource type", async () => {
+    const entries = await generate({
+      reader: memoryReader({
+        [TYPES_YAML]: `types:
+  - card:
+      tags: [datasource_type]
+      fields:
+        - amount:
+            type: decimal
+  - cash:
+      tags: [datasource_type]
+      fields:
+        - amount:
+            type: decimal
+  - payment:
+      tags: [datasource_type]
+      union: [card, cash]
+`,
+      }),
+      settings: {},
+    });
+    const payment = entryBody(
+      requireEntry(indexEntries(entries), "payment.ts"),
+    );
+    assert.match(payment, /import type \{ Card \} from "\.\/card";/);
+    assert.match(payment, /import type \{ Cash \} from "\.\/cash";/);
+    assert.match(payment, /export type Payment = Card \| Cash;/);
+    assert.doesNotMatch(payment, /StandardDataSource/);
   });
 
 });
