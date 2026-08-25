@@ -280,7 +280,7 @@ describe("generate", () => {
     assert.doesNotMatch(admin, /^\s*email:/m);
   });
 
-  it("renders a union datasource type", async () => {
+  it("renders a composed union datasource type", async () => {
     const entries = await generate({
       reader: memoryReader({
         [TYPES_YAML]: `types:
@@ -292,7 +292,7 @@ describe("generate", () => {
   - cash:
       tags: [datasource_type]
       fields:
-        - amount:
+        - tendered:
             type: decimal
   - payment:
       tags: [datasource_type]
@@ -304,9 +304,9 @@ describe("generate", () => {
     const payment = entryBody(
       requireEntry(indexEntries(entries), "payment.ts"),
     );
-    assert.match(payment, /import type \{ Card \} from "\.\/card";/);
-    assert.match(payment, /import type \{ Cash \} from "\.\/cash";/);
-    assert.match(payment, /export type Payment = Card \| Cash;/);
+    assert.match(payment, /export interface Payment \{/);
+    assert.match(payment, /amount: string;/);
+    assert.match(payment, /tendered: string;/);
     assert.doesNotMatch(payment, /StandardDataSource/);
   });
 

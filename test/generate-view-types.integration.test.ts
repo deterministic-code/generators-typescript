@@ -45,9 +45,7 @@ const VIEW_YAML = `types:
             type: string
   - payment:
       tags: [view_type]
-      one_of:
-        - card_payment
-        - cash_payment
+      fields: []
   - card_payment:
       tags: [view_type]
       fields:
@@ -204,20 +202,9 @@ describe("generate view types", () => {
     assert.match(card, /note: string \| null;/);
   });
 
-  it("renders a union view", async () => {
+  it("renders an empty shaped view", async () => {
     const payment = await bodyOf("payment.ts");
-    assert.match(
-      payment,
-      /import type \{ CardPayment \} from "\.\/cardPayment";/,
-    );
-    assert.match(
-      payment,
-      /import type \{ CashPayment \} from "\.\/cashPayment";/,
-    );
-    assert.match(
-      payment,
-      /export type Payment = CardPayment \| CashPayment;/,
-    );
+    assert.match(payment, /export interface Payment \{\}/);
   });
 
   it("extends the inherited datasource type and omits enrichment FKs plus explicit omit", async () => {
@@ -274,7 +261,7 @@ describe("generate view types", () => {
     assert.match(card, /\* Target: ShapedView\./);
     assert.match(card, /\* Fields: 5\./);
     const payment = await bodyOf("payment.ts", { comments: "description" });
-    assert.match(payment, /\* Target: UnionView\./);
+    assert.match(payment, /\* Target: ShapedView\./);
   });
 
   it("comments=none omits the view doc", async () => {
