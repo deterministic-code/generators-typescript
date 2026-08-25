@@ -8,7 +8,8 @@
  * Target: {{target}}.
  * Fields: {{fieldCount}}.
  */
-{{/descriptionDoc}}{{#isUnion}}export type {{className}} = {{unionMembers}};
+{{/descriptionDoc}}{{#hasDictionary}}type Dictionary<K extends PropertyKey, V> = Record<K, V>;
+{{/hasDictionary}}{{#isUnion}}export type {{className}} = {{unionMembers}};
 {{/isUnion}}{{#isShaped}}export interface {{className}}{{#hasExtends}} extends {{extendsType}}{{/hasExtends}}{{#hasFields}} {
 {{#fields}}
   {{ident}}: {{tsType}}{{#nullable}} | null{{/nullable}};

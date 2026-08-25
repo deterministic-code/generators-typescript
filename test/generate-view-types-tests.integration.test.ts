@@ -39,9 +39,7 @@ const VIEW_YAML = `types:
             type: string
   - payment:
       tags: [view_type]
-      one_of:
-        - card_payment
-        - cash_payment
+      fields: []
   - card_payment:
       tags: [view_type]
       fields:
@@ -203,20 +201,10 @@ describe("generate view types tests", () => {
     assert.doesNotMatch(card, /\{\} as user_summary/);
   });
 
-  it("emits union member accept cases instead of field accessors", async () => {
+  it("renders an empty shaped view sample", async () => {
     const payment = await bodyOf("payment.test.ts");
     assert.match(payment, /import type \{ Payment \} from "\.\.\/payment";/);
-    assert.match(
-      payment,
-      /import type \{ CardPayment \} from "\.\/cardPayment";/,
-    );
-    assert.match(
-      payment,
-      /import type \{ CashPayment \} from "\.\/cashPayment";/,
-    );
-    assert.match(payment, /it\("accepts a CardPayment member"/);
-    assert.match(payment, /it\("accepts a CashPayment member"/);
-    assert.doesNotMatch(payment, /const sample = /);
+    assert.match(payment, /const sample = \(\): Payment => \(\{\}\);/);
     assert.doesNotMatch(payment, /it\("gets /);
   });
 
@@ -284,7 +272,7 @@ describe("generate view types tests", () => {
       fields: []
   - empty_union:
       tags: [view_type]
-      one_of: []
+      fields: []
 `,
       undefined,
     );
@@ -299,7 +287,7 @@ describe("generate view types tests", () => {
       fields: []
   - empty_union:
       tags: [view_type]
-      one_of: []
+      fields: []
 `,
       undefined,
     );

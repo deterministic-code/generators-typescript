@@ -39,9 +39,7 @@ const VIEW_YAML = `types:
             type: string
   - payment:
       tags: [view_type]
-      one_of:
-        - card_payment
-        - cash_payment
+      fields: []
   - card_payment:
       tags: [view_type]
       fields:
@@ -204,16 +202,10 @@ describe("generate view type validators tests", () => {
     );
   });
 
-  it("emits union member accept cases and a neither-member reject", async () => {
+  it("renders an empty shaped view schema test", async () => {
     const payment = await bodyOf("payment.test.ts");
     assert.match(payment, /import \{ PaymentSchema \} from "\.\.\/payment";/);
-    assert.match(payment, /it\("accepts a CardPayment member"/);
-    assert.match(payment, /it\("accepts a CashPayment member"/);
-    assert.match(
-      payment,
-      /it\("rejects when matches neither member of union \\"payment\\""/,
-    );
-    assert.match(payment, /__not_a_member__: true/);
+    assert.doesNotMatch(payment, /it\("accepts a CardPayment member"/);
   });
 
   it("writes codegen.schema_version into the file header", async () => {

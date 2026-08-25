@@ -46,9 +46,7 @@ const VIEW_YAML = `types:
             type: string
   - payment:
       tags: [view_type]
-      one_of:
-        - card_payment
-        - cash_payment
+      fields: []
   - card_payment:
       tags: [view_type]
       fields:

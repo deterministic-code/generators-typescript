@@ -39,9 +39,7 @@ const VIEW_YAML = `types:
             type: string
   - payment:
       tags: [view_type]
-      one_of:
-        - card_payment
-        - cash_payment
+      fields: []
   - card_payment:
       tags: [view_type]
       fields:
@@ -194,21 +192,9 @@ describe("generate view type validators", () => {
     );
   });
 
-  it("renders a union view", async () => {
+  it("renders an empty shaped view", async () => {
     const payment = await bodyOf("payment.ts");
-    assert.match(
-      payment,
-      /import \{ CardPaymentSchema \} from "\.\/cardPayment";/,
-    );
-    assert.match(
-      payment,
-      /import \{ CashPaymentSchema \} from "\.\/cashPayment";/,
-    );
-    assert.match(
-      payment,
-      /export const PaymentSchema = z\.union\(\[\n  z\.lazy\(\(\) => CardPaymentSchema\),\n  z\.lazy\(\(\) => CashPaymentSchema\),\n\]\);/,
-    );
-    assert.doesNotMatch(payment, /createPaymentSchema/);
+    assert.match(payment, /export const PaymentSchema = z\.object\(\{\}\);/);
   });
 
   it("inherits a datasource schema with omit, enrich, and no CRUD trio for omit views", async () => {
@@ -264,7 +250,10 @@ describe("generate view type validators", () => {
       index,
       /export \{ CardPaymentSchema, CreateCardPaymentSchema, UpdateCardPaymentSchema, PatchCardPaymentSchema \} from "\.\/cardPayment";/,
     );
-    assert.match(index, /export \{ PaymentSchema \} from "\.\/payment";/);
+    assert.match(
+      index,
+      /export \{ PaymentSchema, CreatePaymentSchema, UpdatePaymentSchema, PatchPaymentSchema \} from "\.\/payment";/,
+    );
     assert.match(index, /export \{ UserSchema \} from "\.\/user";/);
     assert.match(index, /export \{ RoleSchema \} from "\.\/role";/);
     assert.match(

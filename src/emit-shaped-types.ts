@@ -18,6 +18,11 @@ import {
   type TypeField,
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
 import { toNative } from "./base-type-converter.ts";
+import {
+  dictionariesForView,
+  ownedDictionariesOf,
+  type OwnedDictionary,
+} from "./common/owned-dictionaries.ts";
 import { fieldRefKind, isAlias } from "./common/view-shape.ts";
 import { Emit } from "./emit.ts";
 import {
@@ -68,6 +73,7 @@ class Generator extends Emit {
   private readonly referenceBackendType: boolean;
   private readonly templates: ShapedTypeTemplates;
   private typesByName = new Map<string, Type>();
+  private dictionaries: OwnedDictionary[] = [];
 
   constructor(raw: Record<string, string>, mode: ShapedEmitMode) {
     super(raw, mode.basePath ?? ".", mode.datasourceBasePath ?? ".");
@@ -84,6 +90,7 @@ class Generator extends Emit {
     this.typesByName = new Map(
       deterministic.expandedTypes.map((t) => [t.name, t]),
     );
+    this.dictionaries = ownedDictionariesOf(deterministic.expandedTypes);
     const authored =
       this.kind === "datasource"
         ? typesWithTag(deterministic.types, "datasource_type")
@@ -252,6 +259,21 @@ class Generator extends Emit {
     return expanded?.fields ?? type.fields;
   }
 
+  private ownedDictionaryFields(type: Type): Array<{
+    ident: string;
+    tsType: string;
+    nullable: boolean;
+  }> {
+    if (this.kind !== "view") return [];
+    return dictionariesForView(type, this.typesByName, this.dictionaries).map(
+      (d) => ({
+        ident: this.casing.fieldIdent(d.name),
+        tsType: `Dictionary<${toNative(d.keyType)}, ${toNative(d.valueType)}>`,
+        nullable: false,
+      }),
+    );
+  }
+
   private type(type: Type, expanded: Type | undefined): GenerateEntry {
     const { schemaVersion, simpleDoc, descriptionDoc } = this.settings;
     const className = this.casing.convertTypes(type.name);
@@ -260,6 +282,15 @@ class Generator extends Emit {
     const isUnion = members !== undefined;
     const parent = isUnion ? undefined : this.extendsType(type, aliasByClass);
     const fields = this.emitFields(type, expanded);
+    const dictionaryFields = isUnion ? [] : this.ownedDictionaryFields(type);
+    const fieldTokens = [
+      ...fields.map((f) => ({
+        ident: this.casing.fieldIdent(f.name),
+        tsType: this.fieldTs(f, aliasByClass),
+        nullable: f.isNullable,
+      })),
+      ...dictionaryFields,
+    ];
     return content(
       this.file(type.name),
       fill(this.templates.typeTmpl, {
@@ -278,17 +309,14 @@ class Generator extends Emit {
           : this.kind === "datasource"
             ? "ShapedType"
             : "ShapedView",
-        fieldCount: String(isUnion ? members.length : fields.length),
+        fieldCount: String(isUnion ? members.length : fieldTokens.length),
         isUnion,
         isShaped: !isUnion,
         hasExtends: parent !== undefined,
         extendsType: parent ?? "",
-        hasFields: fields.length > 0,
-        fields: fields.map((f) => ({
-          ident: this.casing.fieldIdent(f.name),
-          tsType: this.fieldTs(f, aliasByClass),
-          nullable: f.isNullable,
-        })),
+        hasFields: fieldTokens.length > 0,
+        hasDictionary: dictionaryFields.length > 0,
+        fields: fieldTokens,
         unionMembers: isUnion
           ? members.map((m) => this.casing.convertTypes(m)).join(" | ")
           : "",

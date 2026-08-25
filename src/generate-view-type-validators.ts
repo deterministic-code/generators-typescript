@@ -15,6 +15,11 @@ import {
   type Type,
   type TypeField,
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
+import {
+  dictionariesForView,
+  ownedDictionariesOf,
+  type OwnedDictionary,
+} from "./common/owned-dictionaries.ts";
 import { fieldRefKind, fieldSize, isAlias } from "./common/view-shape.ts";
 import { toZod } from "./common/type-converters/native-to-zod.ts";
 import { Emit } from "./emit.ts";
@@ -97,6 +102,7 @@ class Generator extends Emit {
   private readonly templates: ViewValidatorTemplates;
   private parentFieldsByName = new Map<string, Set<string>>();
   private typesByName = new Map<string, Type>();
+  private dictionaries: OwnedDictionary[] = [];
 
   constructor(raw: Record<string, string>, mode: ViewValidatorEmitMode) {
     super(raw, mode.basePath ?? ".", mode.datasourceBasePath ?? ".");
@@ -114,6 +120,7 @@ class Generator extends Emit {
     this.typesByName = new Map(
       deterministic.expandedTypes.map((t) => [t.name, t]),
     );
+    this.dictionaries = ownedDictionariesOf(deterministic.expandedTypes);
     this.parentFieldsByName = new Map(
       datasourceTypesOf(deterministic).map((table) => [
         table.name,
@@ -270,9 +277,17 @@ class Generator extends Emit {
       parentName !== "set" &&
       parentName !== "dictionary";
     const inlineFields = expanded?.fields ?? view.fields;
-    const fields = this.fieldTokens(
-      inheritBackend && !isAlias(view) ? view.fields : inheritBackend ? [] : inlineFields,
-    );
+    const fields = [
+      ...this.fieldTokens(
+        inheritBackend && !isAlias(view) ? view.fields : inheritBackend ? [] : inlineFields,
+      ),
+      ...dictionariesForView(view, this.typesByName, this.dictionaries).map(
+        (d) => ({
+          ident: this.casing.fieldIdent(d.name),
+          zodExpr: `z.record(${toZod(d.keyType)}, ${toZod(d.valueType)})`,
+        }),
+      ),
+    ];
     if (!inheritBackend || parentName === undefined) {
       return fill(this.templates.schemaStandaloneTmpl, {
         schemaName,
