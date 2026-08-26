@@ -2,11 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { pathExists } from "../repositories/pathExists";
-import {
-  normalizeDialect,
-  q,
-} from "@deterministic-code/generator-sdk/lib/generate-sql";
-import type { SqlDialect } from "@deterministic-code/generator-sdk/lib/generate-sql";
+import { normalizeDialect, q, type SqlDialect } from "./sql-dialect";
 import type { Connection as MysqlConnection } from "mysql2/promise";
 import type { Request as MssqlRequest } from "mssql";
 

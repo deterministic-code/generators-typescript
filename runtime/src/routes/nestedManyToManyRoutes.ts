@@ -5,6 +5,7 @@ import { handleZodError } from '../errors/handleZodError';
 import { handleBusinessError } from '../errors/handleBusinessError';
 import { sendItem, sendItems, sendError } from '../responses/sendResponse';
 import { idOr400, parseIdField } from './routeParamUtils';
+import type { IdentityValue } from '../repositories/EntityIdentity';
 import type { PrimaryKey } from '../repositories/PrimaryKey';
 
 export interface NestedManyToManyConfig<_TParent, _TJunction> {
@@ -65,7 +66,7 @@ export interface NestedManyToManyConfig<_TParent, _TJunction> {
 }
 
 type M2mConfig = NestedManyToManyConfig<any, any>;
-type IdValue = number | string;
+type IdValue = IdentityValue;
 type JunctionRow = Record<string, unknown>;
 /** Resolved config passed to every handler/helper: the caller's config plus the POST body schema and the primary keys read off the parent/child/junction services, so no helper re-threads them. */
 type M2mCtx = M2mConfig & {
@@ -74,8 +75,8 @@ type M2mCtx = M2mConfig & {
   childPrimaryKey: PrimaryKey;
   junctionPrimaryKey: PrimaryKey;
 };
-type ParentCtx = { parentId: IdValue };
-type ChildCtx = { parentId: IdValue; childId: IdValue };
+type ParentCtx = { parentId: IdentityValue };
+type ChildCtx = { parentId: IdentityValue; childId: IdentityValue };
 
 /**
  * Builds a Zod schema for the POST body based on the configured body fields.
@@ -107,7 +108,7 @@ function buildBodySchema(
   return z.object(shape);
 }
 
-async function requireParent(cfg: M2mCtx, parentId: IdValue, res: Response): Promise<boolean> {
+async function requireParent(cfg: M2mCtx, parentId: IdentityValue, res: Response): Promise<boolean> {
   if (await cfg.parentService.findById(parentId)) return true;
   sendError(res, 404, 'NOT_FOUND', `${cfg.parentEntityName} with id '${parentId}' not found`);
   return false;
