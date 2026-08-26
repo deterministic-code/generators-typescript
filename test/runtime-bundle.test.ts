@@ -47,9 +47,9 @@ describe("runtime-bundle", () => {
     }
   });
 
-  it("rewrites package.json for bundled mode", () => {
+  it("rewrites package.json for bundled mode", async () => {
     const pkg = JSON.parse(
-      applyBundledPackageJson(
+      await applyBundledPackageJson(
         JSON.stringify({
           scripts: { build: "tsc", test: "vitest run" },
           dependencies: {
@@ -65,6 +65,7 @@ describe("runtime-bundle", () => {
     );
     assert.equal(pkg.dependencies["@deterministic-code/deterministic"], undefined);
     assert.equal(pkg.allowScripts["@deterministic-code/deterministic"], undefined);
+    assert.equal(pkg.dependencies["better-sqlite3"], "^13.0.3");
     assert.equal(pkg.dependencies.express, "^4.21.0");
     assert.equal(pkg.dependencies.zod, "^3.23.8");
     assert.equal(
@@ -73,5 +74,6 @@ describe("runtime-bundle", () => {
     );
     assert.equal(pkg.scripts.test, "vitest run");
     assert.equal(pkg.allowScripts["better-sqlite3"], true);
+    assert.equal(pkg.overrides["better-sqlite3"], undefined);
   });
 });
