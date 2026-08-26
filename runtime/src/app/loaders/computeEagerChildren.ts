@@ -64,6 +64,8 @@ type ViewTypesDoc = {
 
 type RawDatasourceType = {
   datasource_type?: string;
+  inherits?: string;
+  tags?: string[];
   fields?: Array<Record<string, RawField>>;
 };
 
@@ -81,7 +83,8 @@ export function computeEagerChildren(
   if (gate !== '*' && !(gate instanceof Map)) return [];
   if (gate !== '*' && gate.size === 0) return [];
 
-  const viewType = findViewType(entityName, viewTypesDoc);
+  const viewType =
+    findViewType(entityName, viewTypesDoc) ?? findViewType(entityName, datasourceDoc);
   if (!viewType) return [];
 
   const result: EagerChildSpec[] = [];
@@ -116,7 +119,10 @@ export function computeEagerChildren(
       continue;
     }
 
-    if (refMatch.table === typeMatch.elementType) {
+    if (
+      refMatch.table === typeMatch.elementType ||
+      typeHasField(typeMatch.elementType, refMatch.column, datasourceDoc)
+    ) {
       result.push(
         withArrayFlag(
           {
@@ -156,8 +162,25 @@ export function computeEagerChildren(
 
 function parseInheritsTable(inherits: string | undefined): string | null {
   if (!inherits || typeof inherits !== 'string') return null;
-  const m = inherits.match(/^datasource_types\.([a-z_][a-z0-9_]*)$/);
-  return m ? m[1] : null;
+  const prefixed = inherits.match(/^datasource_types\.([a-z_][a-z0-9_]*)$/);
+  if (prefixed) return prefixed[1];
+  if (/^[a-z_][a-z0-9_]*$/.test(inherits)) return inherits;
+  return null;
+}
+
+function typeHasField(
+  typeName: string,
+  fieldName: string,
+  datasourceDoc: DatasourceDoc | null | undefined,
+  walking: Set<string> = new Set(),
+): boolean {
+  if (walking.has(typeName)) return false;
+  const body = findDatasourceType(typeName, datasourceDoc);
+  if (!body) return false;
+  walking.add(typeName);
+  if ((body.fields ?? []).some((entry) => Object.keys(entry)[0] === fieldName)) return true;
+  const parent = parseInheritsTable(body.inherits);
+  return parent !== null && typeHasField(parent, fieldName, datasourceDoc, walking);
 }
 
 function autoDetectM2MJunction(
@@ -170,7 +193,7 @@ function autoDetectM2MJunction(
     [];
   for (const entry of datasourceDoc.types) {
     const [joinTable, def] = Object.entries(entry)[0];
-    if (def.datasource_type !== 'many-to-many') continue;
+    if (def.datasource_type !== 'many-to-many' && !def.tags?.includes('many_to_many')) continue;
     let parentFkColumn: string | null = null;
     let childFkColumn: string | null = null;
     for (const fieldObj of def.fields ?? []) {
@@ -234,16 +257,18 @@ export function parseRelationType(
   typeStr: string | undefined,
 ): { elementType: string; isArray: boolean } | null {
   if (!typeStr || typeof typeStr !== 'string') return null;
-  const match = typeStr.match(/^datasource_types\.([a-z_][a-z0-9_]*)(\[\])?$/);
-  if (!match) return null;
-  return { elementType: match[1], isArray: match[2] === '[]' };
+  const prefixed = typeStr.match(/^datasource_types\.([a-z_][a-z0-9_]*)(\[\])?$/);
+  if (prefixed) return { elementType: prefixed[1], isArray: prefixed[2] === '[]' };
+  const unprefixed = typeStr.match(/^([a-z_][a-z0-9_]*)\[\]$/);
+  if (unprefixed) return { elementType: unprefixed[1], isArray: true };
+  return null;
 }
 
 function parseReference(refStr: string | undefined): { table: string; column: string } | null {
   if (!refStr || typeof refStr !== 'string') return null;
-  const match = refStr.match(/^datasource_types\.([a-z_][a-z0-9_]*)\.([a-z_][a-z0-9_]*)$/);
-  if (!match) return null;
-  return { table: match[1], column: match[2] };
+  const prefixed = refStr.match(/^datasource_types\.([a-z_][a-z0-9_]*)\.([a-z_][a-z0-9_]*)$/);
+  if (prefixed) return { table: prefixed[1], column: prefixed[2] };
+  return parseReferences(refStr);
 }
 
 function parseReferences(refStr: string | undefined): { table: string; column: string } | null {

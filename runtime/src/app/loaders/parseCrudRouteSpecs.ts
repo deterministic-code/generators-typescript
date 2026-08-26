@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { kebabPlural, singularizeToken } from '../../naming/index';
 import { routeViewTypeDirective } from './routeViewTypeDirective';
+import { collectEntityEagerPaths } from './parseEagerPaths';
 import { parseRelationType, relationIsArray } from './computeEagerChildren';
 import type { StandardIdType } from '../../repositories/standardFieldConverting';
 
@@ -513,6 +514,8 @@ function columnTypesFromFields(
 interface EagerWriteMaps {
   viewTypes: Map<string, RawViewType>;
   datasourceTypes: Map<string, RawType>;
+  typesByName: Map<string, RawType>;
+  overlayFields: Map<string, Map<string, RawField>>;
 }
 
 interface ChildRef {
@@ -541,32 +544,42 @@ function buildOneEagerWriteChild(
   const [, fieldDef] = viewField;
   const typeMatch = parseRelationType(fieldDef.type);
   if (!typeMatch) return null;
-  const refMatch = (fieldDef.references ?? '').match(/^datasource_types\.(\w+)\.(\w+)$/);
+  const refMatch = parseQualifiedRef(fieldDef.references);
   if (!refMatch) return null;
 
   const ref: ChildRef = {
     childFieldName,
     elementType: typeMatch.elementType,
-    refTable: refMatch[1],
-    refColumn: refMatch[2],
+    refTable: refMatch.table,
+    refColumn: refMatch.column,
     isArray: typeMatch.isArray,
   };
-  return ref.refTable === ref.elementType
-    ? buildDirectFkChild(ref, maps.datasourceTypes)
-    : buildM2mChild(ref, maps.datasourceTypes);
+  const childHasFk = flattenTypeFields(ref.elementType, maps.typesByName).some(
+    ([name]) => name === ref.refColumn,
+  );
+  return ref.refTable === ref.elementType || childHasFk
+    ? buildDirectFkChild(ref, maps)
+    : buildM2mChild(ref, maps);
 }
 
-function buildDirectFkChild(
-  ref: ChildRef,
-  datasourceTypes: Map<string, RawType>,
-): EagerWriteChildSpec | null {
+function parseQualifiedRef(ref: string | undefined): { table: string; column: string } | null {
+  if (typeof ref !== 'string' || ref.length === 0) return null;
+  const cleaned = ref.startsWith('datasource_types.') ? ref.slice('datasource_types.'.length) : ref;
+  const match = cleaned.match(/^([a-z_][a-z0-9_]*)\.([a-z_][a-z0-9_]*)$/);
+  if (!match) return null;
+  return { table: match[1], column: match[2] };
+}
+
+function buildDirectFkChild(ref: ChildRef, maps: EagerWriteMaps): EagerWriteChildSpec | null {
   const { childFieldName, elementType, refColumn, isArray } = ref;
-  const childDatasource = datasourceTypes.get(elementType);
-  if (!childDatasource) return null;
-  const childFields = extractFields(childDatasource);
+  if (!maps.typesByName.has(elementType)) return null;
+  const childFields = mergeOverlayFields(
+    flattenTypeFields(elementType, maps.typesByName),
+    maps.overlayFields.get(elementType),
+  ).filter(([, field]) => !isCollectionType(field.type));
   const childColumns = childFields.map(([name]) => name).filter((name) => name !== refColumn);
   const childColumnTypes = columnTypesFromFields(childFields, refColumn);
-  const childEnrichmentColumns = enrichmentColumnsFromMap(elementType, datasourceTypes);
+  const childEnrichmentColumns = enrichmentColumnsFromMap(elementType, maps.datasourceTypes);
   return {
     kind: 'direct-fk',
     fieldName: childFieldName,
@@ -579,14 +592,17 @@ function buildDirectFkChild(
   };
 }
 
-function buildM2mChild(
-  ref: ChildRef,
-  datasourceTypes: Map<string, RawType>,
-): EagerWriteChildSpec | null {
+function buildM2mChild(ref: ChildRef, maps: EagerWriteMaps): EagerWriteChildSpec | null {
   const { childFieldName, elementType, refTable, refColumn } = ref;
+  const datasourceTypes = maps.datasourceTypes;
   const junctionDatasource = datasourceTypes.get(refTable);
   if (!junctionDatasource) return null;
-  if (junctionDatasource.datasource_type !== 'many-to-many') return null;
+  if (
+    junctionDatasource.datasource_type !== 'many-to-many' &&
+    !(junctionDatasource.tags ?? []).includes('many_to_many')
+  ) {
+    return null;
+  }
 
   const junctionFields = extractFields(junctionDatasource);
   const targetFkEntry = junctionFields.find(([name, f]) => {
@@ -615,12 +631,6 @@ function buildM2mChild(
     ...(targetEnrichmentColumns.length > 0 && { childEnrichmentColumns: targetEnrichmentColumns }),
     ...(!ref.isArray && { isArray: false }),
   };
-}
-
-interface EagerWriteDocs {
-  datasourceDoc: unknown;
-  routesDoc: unknown;
-  viewTypesDoc?: unknown;
 }
 
 function indexByFirstKey<T>(entries: Array<Record<string, T>> | undefined): Map<string, T> {
@@ -676,19 +686,28 @@ function attachChildrenFor(
 
 function extractEagerWriteChildren(
   entityName: string,
-  docs: EagerWriteDocs,
+  ctx: CrudSpecContext,
 ): EagerWriteChildSpec[] {
-  const rawPaths = routeViewTypeDirective(docs.routesDoc)?.eager_write_path;
-  const eagerWritePaths = Array.isArray(rawPaths) ? (rawPaths as string[]) : [];
+  const rawPaths = routeViewTypeDirective(ctx.routesDoc)?.eager_write_path;
+  const fromDirective = Array.isArray(rawPaths) ? (rawPaths as string[]) : [];
+  const eagerWritePaths = [
+    ...fromDirective,
+    ...collectEntityEagerPaths(ctx.routesDoc, 'eager_update_path'),
+  ];
   const parentPaths = eagerWritePaths.filter((p) => {
     const segs = p.split('.');
     return segs.length >= 2 && segs[0] === entityName;
   });
   if (parentPaths.length === 0) return [];
 
+  const fromViewTypes = indexByFirstKey<RawViewType>(
+    (ctx.viewTypesDoc as ViewTypesDoc | null)?.types,
+  );
   const maps: EagerWriteMaps = {
-    viewTypes: indexByFirstKey<RawViewType>((docs.viewTypesDoc as ViewTypesDoc | null)?.types),
-    datasourceTypes: indexByFirstKey<RawType>((docs.datasourceDoc as DatasourceDoc | null)?.types),
+    viewTypes: fromViewTypes.size > 0 ? fromViewTypes : (ctx.typesByName as Map<string, RawViewType>),
+    datasourceTypes: ctx.typesByName,
+    typesByName: ctx.typesByName,
+    overlayFields: ctx.overlayFields,
   };
   const childrenByParent = buildChildrenByParent(parentPaths, maps);
   return attachChildrenFor(entityName, childrenByParent) ?? [];
@@ -928,7 +947,6 @@ interface CrudSpecContext {
 }
 
 function resolveEagerChildren(entityName: string, ctx: CrudSpecContext): EagerWriteChildSpec[] {
-  if (!ctx.viewTypesDoc) return [];
   return extractEagerWriteChildren(entityName, ctx);
 }
 

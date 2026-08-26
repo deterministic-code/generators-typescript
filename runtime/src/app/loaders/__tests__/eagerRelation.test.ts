@@ -25,7 +25,10 @@ describe('parseRelationType', () => {
   it('rejects missing, primitive, and dotted extras', () => {
     expect(parseRelationType(undefined)).toBeNull();
     expect(parseRelationType('string')).toBeNull();
-    expect(parseRelationType('address[]')).toBeNull();
+    expect(parseRelationType('address[]')).toEqual({
+      elementType: 'address',
+      isArray: true,
+    });
     expect(parseRelationType('datasource_types.address.contact_id')).toBeNull();
     expect(parseRelationType('datasource_types.')).toBeNull();
     expect(parseRelationType('datasource_types.[]')).toBeNull();
