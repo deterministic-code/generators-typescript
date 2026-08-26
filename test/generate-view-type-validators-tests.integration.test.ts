@@ -162,6 +162,26 @@ describe("generate view type validators tests", () => {
     );
   });
 
+  it("declares Rel bag keys for the schema under test", async () => {
+    const entries = await generate({
+      reader: fixtureReader(),
+      settings: {},
+    });
+    const card = entries.find(
+      (entry) =>
+        entry.kind === "content" &&
+        entry.attributes?.module ===
+          "types/generated/views/validators/cardPayment.test.ts",
+    );
+    assert.ok(card);
+    assert.equal(card.kind, "content");
+    assert.equal(
+      card.attributes?.imports,
+      "types/generated/views/validators/cardPayment.ts",
+    );
+    assert.equal(card.attributes?.uses, "CardPaymentSchema");
+  });
+
   it("imports the generated schema and covers parse, nullable, and reject cases", async () => {
     const card = await bodyOf(
       "cardPayment.test.ts",

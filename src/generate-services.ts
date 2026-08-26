@@ -16,7 +16,7 @@ import {
   type Type,
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
 import { libraryImportSpecifier } from "./library-import.ts";
-import { Emit } from "./emit.ts";
+import { bag, customRelKey, Emit } from "./emit.ts";
 import {
   customStubTmpl,
   genericTmpl,
@@ -142,25 +142,22 @@ class Generator extends Emit {
           typeName,
         })),
       }),
-      {
+      bag({
         module,
-        exports: `${className}, ${interfaceName}`,
-        imports: [typeModule, mutateModule]
-          .filter((value): value is string => value !== undefined)
-          .join(", "),
-        uses: [typeName, mutateTypeName === false ? undefined : mutateTypeName]
-          .filter((value): value is string => value !== undefined)
-          .join(", "),
-      },
+        exports: [className, interfaceName],
+        imports: [typeModule, mutateModule].filter(
+          (value): value is string => value !== undefined,
+        ),
+        uses: [typeName, mutateTypeName === false ? undefined : mutateTypeName].filter(
+          (value): value is string => value !== undefined,
+        ),
+      }),
     );
   }
 
   /** Map emit paths like `../custom/foo.ts` to Rel keys `services/custom/foo.ts`. */
   private customModuleKey(emitPath: string): string {
-    if (emitPath.startsWith("../custom/")) {
-      return `services/custom/${emitPath.slice("../custom/".length)}`;
-    }
-    return emitPath;
+    return customRelKey(emitPath, "services");
   }
 
   private custom(entry: CustomServiceEntry): GenerateEntry {
@@ -178,10 +175,10 @@ class Generator extends Emit {
         hasMethods: entry.methods.length > 0,
         methods: entry.methods.map((name) => ({ name })),
       }),
-      {
+      bag({
         module: this.customModuleKey(path),
-        exports: `${className}, ${interfaceName}`,
-      },
+        exports: [className, interfaceName],
+      }),
     );
   }
 
@@ -214,16 +211,14 @@ class Generator extends Emit {
                 fileBase: this.casing.fileBase(`${c.name}_service`),
               })),
             }),
-            {
+            bag({
               module: this.imports
                 .serviceRel(sorted[0]!.name)
                 .replace(/[^/]+$/, "index.ts"),
               exports,
-              imports: sorted
-                .map((c) => this.imports.serviceRel(c.name))
-                .join(", "),
+              imports: sorted.map((c) => this.imports.serviceRel(c.name)),
               uses: exports,
-            },
+            }),
           ),
         );
       }
@@ -256,12 +251,12 @@ class Generator extends Emit {
                 fileBase: this.casing.fileBase(e.name),
               })),
             }),
-            {
+            bag({
               module: this.customModuleKey(index),
               exports,
-              imports: modules.join(", "),
+              imports: modules,
               uses: exports,
-            },
+            }),
           ),
         );
       }

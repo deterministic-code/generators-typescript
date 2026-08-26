@@ -1,5 +1,4 @@
 import { fill } from "@deterministic-code/generators-common/fill";
-import { unionMembers } from "@deterministic-code/generators-common/spec-types";
 import {
   type Type,
   type TypeField,
@@ -203,13 +202,6 @@ export const viewNodes = (
   const view = opts.views.get(name);
   if (view === undefined) return [];
   const next = new Set(visited).add(name);
-  const members = unionMembers(view);
-  if (members !== undefined) {
-    const member = members[0];
-    return member === undefined
-      ? []
-      : viewNodes(member, opts, next, accessPrefix, pathPrefix, isRoot);
-  }
   return shapedNodes(view, opts, next, accessPrefix, pathPrefix, isRoot);
 };
 

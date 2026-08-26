@@ -6,7 +6,6 @@ import {
   datasourceTypesOf,
   TYPES_YAML,
   typeHasTag,
-  unionMembers,
   viewTypesOf,
 } from "@deterministic-code/generators-common/spec-types";
 import {
@@ -22,7 +21,7 @@ import {
 } from "./common/owned-dictionaries.ts";
 import { fieldRefKind, fieldSize, isAlias } from "./common/view-shape.ts";
 import { toZod } from "./common/type-converters/native-to-zod.ts";
-import { Emit } from "./emit.ts";
+import { bag, Emit } from "./emit.ts";
 import {
   indexTmpl as defaultIndexTmpl,
   schemaInheritTmpl as defaultSchemaInheritTmpl,
@@ -52,6 +51,10 @@ const omitObj = (keys: string[]) =>
 const WRITE_PREFIXES = ["update_", "create_"] as const;
 const isWriteVariant = (name: string): boolean =>
   WRITE_PREFIXES.some((prefix) => name.startsWith(prefix));
+
+const BUILTIN_PARENTS = new Set(["set", "dictionary", "file"]);
+const isBuiltinInherit = (view: Type): boolean =>
+  view.inherits !== undefined && BUILTIN_PARENTS.has(view.inherits);
 
 const tighten = (field: TypeField): string => {
   const base = toZod(field.base);
@@ -85,7 +88,6 @@ const indexExports = (
   schemaName: (name: string) => string,
 ): string | undefined => {
   const schema = schemaName(view.name);
-  if (unionMembers(view) !== undefined) return schema;
   if (isWriteVariant(view.name)) return schema;
   if ((view.removeFields?.length ?? 0) > 0) return undefined;
   if (view.inherits !== undefined) return schema;
@@ -131,41 +133,66 @@ class Generator extends Emit {
       viewTypesOf(deterministic).map((v) => [v.name, v]),
     );
     const views = authoredViewTypesOf(deterministic);
-    const entries = views.map((view) =>
-      content(
+    const entries = views.map((view) => {
+      const collected = this.collectImports(view, expandedByName.get(view.name));
+      const schemaName = this.casing.schemaName(view.name);
+      const validatedTypeName = this.casing.validatedTypeName(view.name);
+      return content(
         this.imports.viewValidator(view.name),
         fill(this.templates.typeTmpl, {
           schemaVersion: this.settings.schemaVersion,
-          imports: this.collectImports(view, expandedByName.get(view.name)),
+          imports: collected.imports,
           schemaBody: this.schemaBody(view, expandedByName.get(view.name)),
           withTypeAnnotation: true,
           className: this.casing.convertTypes(view.name),
-          schemaName: this.casing.schemaName(view.name),
-          validatedTypeName: this.casing.validatedTypeName(view.name),
+          schemaName,
+          validatedTypeName,
         }),
-      ),
-    );
+        bag({
+          module: this.imports.viewValidatorRel(view.name),
+          exports: this.fileExports(view, schemaName, validatedTypeName),
+          imports: collected.importRels,
+          uses: collected.useNames,
+        }),
+      );
+    });
     const index = this.imports.index(
       this.imports.viewValidator(views[0]?.name ?? "index"),
     );
     if (index && this.settings.createIndex) {
+      const indexed = views.flatMap((view) => {
+        const exports = indexExports(view, (name) =>
+          this.casing.schemaName(name),
+        );
+        if (exports === undefined) return [];
+        return [{
+          view,
+          exports,
+          className: this.casing.convertTypes(view.name),
+          validatedTypeName: this.casing.validatedTypeName(view.name),
+          fileBase: this.casing.fileBase(view.name),
+        }];
+      });
+      const exportNames = indexed.flatMap((row) => [
+        ...row.exports.split(", ").filter((name) => name.length > 0),
+        row.validatedTypeName,
+      ]);
       entries.push(
         content(
           index,
           fill(this.templates.indexTmpl, {
             withTypeAnnotation: true,
-            types: views.flatMap((view) => {
-              const exports = indexExports(view, (name) =>
-                this.casing.schemaName(name),
-              );
-              if (exports === undefined) return [];
-              return [{
-                exports,
-                className: this.casing.convertTypes(view.name),
-                validatedTypeName: this.casing.validatedTypeName(view.name),
-                fileBase: this.casing.fileBase(view.name),
-              }];
-            }),
+            types: indexed,
+          }),
+          bag({
+            module: this.imports
+              .viewValidatorRel(views[0]?.name ?? "index")
+              .replace(/[^/]+$/, "index.ts"),
+            exports: exportNames,
+            imports: indexed.map((row) =>
+              this.imports.viewValidatorRel(row.view.name),
+            ),
+            uses: exportNames,
           }),
         ),
       );
@@ -191,57 +218,85 @@ class Generator extends Emit {
   private collectImports(view: Type, expanded: Type | undefined) {
     const byPath = new Map<string, Set<string>>();
     const refs: Array<{ entity: string; kind: "view" | "datasource" }> = [];
-    const members = unionMembers(view);
-    if (members !== undefined) {
-      for (const m of members) refs.push({ entity: m, kind: "view" });
-    } else {
-      const parentName = isAlias(view) ? view.name : view.inherits;
-      if (
-        this.referenceBackendType &&
-        parentName !== undefined &&
-        parentName !== "set" &&
-        parentName !== "dictionary"
-      ) {
-        const parent = this.typesByName.get(parentName);
-        if (isAlias(view) || (parent !== undefined && typeHasTag(parent, "datasource_type"))) {
-          refs.push({ entity: parentName, kind: "datasource" });
-        }
-      }
-      const fields = expanded?.fields ?? view.fields;
-      for (const f of fields) {
-        const refKind = fieldRefKind(f, this.typesByName);
-        if (refKind === "primitive") continue;
-        refs.push({
-          entity: f.base,
-          kind:
-            !this.referenceBackendType && refKind === "datasource"
-              ? "view"
-              : refKind,
-        });
+    const parentName = isAlias(view) ? view.name : view.inherits;
+    if (
+      this.referenceBackendType &&
+      parentName !== undefined &&
+      (isAlias(view) || !isBuiltinInherit(view))
+    ) {
+      const parent = this.typesByName.get(parentName);
+      if (isAlias(view) || (parent !== undefined && typeHasTag(parent, "datasource_type"))) {
+        refs.push({ entity: parentName, kind: "datasource" });
       }
     }
+    const fields = expanded?.fields ?? view.fields;
+    for (const f of fields) {
+      const refKind = fieldRefKind(f, this.typesByName);
+      if (refKind === "primitive") continue;
+      refs.push({
+        entity: f.base,
+        kind:
+          !this.referenceBackendType && refKind === "datasource"
+            ? "view"
+            : refKind,
+      });
+    }
+    const importRels: string[] = [];
+    const useNames: string[] = [];
     for (const { entity, kind } of refs) {
       if (kind === "view" && entity === view.name) continue;
-      const fromPath = this.imports.spec(
-        this.imports.viewValidatorRel(view.name),
+      const destRel =
         kind === "datasource"
           ? this.datasourceImports.datasourceValidatorRel(entity)
-          : this.imports.viewValidatorRel(entity),
+          : this.imports.viewValidatorRel(entity);
+      const fromPath = this.imports.spec(
+        this.imports.viewValidatorRel(view.name),
+        destRel,
       );
+      const schemaName = this.casing.schemaName(entity);
       const token =
         kind === "datasource"
-          ? `${this.casing.schemaName(entity)} as ${this.casing.schemaName(`datasource_${entity}`)}`
-          : this.casing.schemaName(entity);
+          ? `${schemaName} as ${this.casing.schemaName(`datasource_${entity}`)}`
+          : schemaName;
       const set = byPath.get(fromPath) ?? new Set();
       set.add(token);
       byPath.set(fromPath, set);
+      if (!importRels.includes(destRel)) importRels.push(destRel);
+      if (!useNames.includes(schemaName)) useNames.push(schemaName);
     }
-    return [...byPath.entries()]
-      .map(([fromPath, tokens]) => ({
-        fromPath,
-        names: [...tokens].sort().join(", "),
-      }))
-      .sort((a, b) => a.fromPath.localeCompare(b.fromPath));
+    return {
+      imports: [...byPath.entries()]
+        .map(([fromPath, tokens]) => ({
+          fromPath,
+          names: [...tokens].sort().join(", "),
+        }))
+        .sort((a, b) => a.fromPath.localeCompare(b.fromPath)),
+      importRels,
+      useNames,
+    };
+  }
+
+  private fileExports(
+    view: Type,
+    schemaName: string,
+    validatedTypeName: string,
+  ): string[] {
+    const names = [schemaName, validatedTypeName];
+    if (isWriteVariant(view.name)) return names;
+    if ((view.removeFields?.length ?? 0) > 0) return names;
+    const parentName = isAlias(view) ? view.name : view.inherits;
+    const inheritBackend =
+      this.referenceBackendType &&
+      parentName !== undefined &&
+      (isAlias(view) || !isBuiltinInherit(view));
+    if (inheritBackend) return names;
+    return [
+      schemaName,
+      this.casing.schemaName(`create_${view.name}`),
+      this.casing.schemaName(`update_${view.name}`),
+      this.casing.schemaName(`patch_${view.name}`),
+      validatedTypeName,
+    ];
   }
 
   private fieldTokens(fields: TypeField[]) {
@@ -256,15 +311,6 @@ class Generator extends Emit {
     expanded: Type | undefined,
   ): string {
     const schemaName = this.casing.schemaName(view.name);
-    const members = unionMembers(view);
-    if (members !== undefined) {
-      return fill(this.templates.schemaUnionTmpl, {
-        schemaName,
-        members: members.map((m) => ({
-          ident: this.casing.schemaName(m),
-        })),
-      }).trimEnd();
-    }
     const t = {
       create: this.casing.schemaName(`create_${view.name}`),
       update: this.casing.schemaName(`update_${view.name}`),
@@ -274,8 +320,7 @@ class Generator extends Emit {
     const inheritBackend =
       this.referenceBackendType &&
       parentName !== undefined &&
-      parentName !== "set" &&
-      parentName !== "dictionary";
+      (isAlias(view) || !isBuiltinInherit(view));
     const inlineFields = expanded?.fields ?? view.fields;
     const fields = [
       ...this.fieldTokens(
@@ -315,6 +360,7 @@ class Generator extends Emit {
   }
 }
 
+/** Returns attributed entries. Cross-lane datasource schema imports need host `finalizeEntries`. */
 export const generate = async (
   ctx: GenerateContext,
   mode: ViewValidatorEmitMode = {},

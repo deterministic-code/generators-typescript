@@ -1,6 +1,7 @@
 import { fill } from "@deterministic-code/generators-common/fill";
 import type { GenerateContext } from "@deterministic-code/generators-common/generate-context";
 import { content, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
+import { verifyEntries } from "@deterministic-code/generators-common/reference-verifier";
 import {
   datasourceTypesOf,
   TYPES_YAML,
@@ -12,7 +13,7 @@ import {
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
 import { idTypeToZod, toZod, toZodDefault } from "./common/type-converters/native-to-zod.ts";
 import { fieldSize } from "./common/view-shape.ts";
-import { Emit } from "./emit.ts";
+import { bag, Emit } from "./emit.ts";
 import { indexTmpl, typeTmpl } from "./resources/datasource-type-validators.ts";
 import type { TypeField } from "@deterministic-code/deterministic-specifications-typescript/parser";
 
@@ -115,15 +116,21 @@ class Generator extends Emit {
       zodExpr: zodForField(field, field.name === "id"),
     }));
     const className = this.casing.convertTypes(table.name);
+    const schemaName = this.casing.schemaName(table.name);
+    const validatedTypeName = this.casing.validatedTypeName(table.name);
     return content(
       this.imports.datasourceValidator(table.name),
       fill(typeTmpl, {
         schemaVersion: this.settings.schemaVersion,
-        schemaName: this.casing.schemaName(table.name),
+        schemaName,
         className,
-        validatedTypeName: this.casing.validatedTypeName(table.name),
+        validatedTypeName,
         withTypeAnnotation: true,
         fields,
+      }),
+      bag({
+        module: this.imports.datasourceValidatorRel(table.name),
+        exports: [schemaName, validatedTypeName],
       }),
     );
   }
@@ -132,6 +139,11 @@ class Generator extends Emit {
     types: Type[],
     index: string,
   ): GenerateEntry {
+    const modules = types.map((t) => this.imports.datasourceValidatorRel(t.name));
+    const exports = types.flatMap((t) => [
+      this.casing.schemaName(t.name),
+      this.casing.validatedTypeName(t.name),
+    ]);
     return content(
       index,
       fill(indexTmpl, {
@@ -146,15 +158,26 @@ class Generator extends Emit {
           };
         }),
       }),
+      bag({
+        module: this.imports
+          .datasourceValidatorRel(types[0]?.name ?? "index")
+          .replace(/[^/]+$/, "index.ts"),
+        exports,
+        imports: modules,
+        uses: exports,
+      }),
     );
   }
 }
 
+/** Self-checks references; keeps attributes for host `finalizeEntries` before write. */
 export const generate = async (
   ctx: GenerateContext,
 ): Promise<GenerateEntry[]> => {
   await ctx.reader.read(TYPES_YAML);
-  return new Generator(ctx.settings).from(
+  const entries = new Generator(ctx.settings).from(
     await DeterministicParser(ctx.reader).parse(ctx.settings),
   );
+  verifyEntries(entries);
+  return entries;
 };

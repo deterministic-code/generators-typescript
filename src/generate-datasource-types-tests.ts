@@ -20,7 +20,7 @@ import {
   preludeSource,
   withFakerPackagePatch,
 } from "./common/fake-test-data.ts";
-import { Emit } from "./emit.ts";
+import { bag, Emit } from "./emit.ts";
 
 const escapeTestName = (name: string): string =>
   name.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
@@ -54,21 +54,28 @@ class Generator extends Emit {
       fieldTokens(f, (name) => this.casing.fieldIdent(name)),
     );
     const src = this.imports.datasource(table.name);
+    const className = this.casing.convertTypes(table.name);
     return content(
       this.imports.test(src, table.name),
       fill(typeTestTmpl, {
         prelude: preludeSource(fakeTestData),
         schemaVersion: this.settings.schemaVersion,
-        className: this.casing.convertTypes(table.name),
+        className,
         tableName: table.name,
         typeImport: this.imports.testSpec(src, table.name),
         fixture: `{ ${fields.map((f) => `${f.ident}: ${f.sampleExpr}`).join(", ")} }`,
         fields,
       }),
+      bag({
+        module: this.imports.datasourceTestRel(table.name),
+        imports: this.imports.datasourceRel(table.name),
+        uses: className,
+      }),
     );
   }
 }
 
+/** Returns attributed entries. Cross-lane type imports need host `finalizeEntries`. */
 export const generate = async (
   ctx: GenerateContext,
 ): Promise<GenerateEntry[]> => {

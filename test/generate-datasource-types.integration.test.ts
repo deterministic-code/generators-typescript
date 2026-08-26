@@ -278,6 +278,18 @@ describe("generate", () => {
     assert.match(admin, /level: number;/);
     assert.doesNotMatch(admin, /^\s*id:/m);
     assert.doesNotMatch(admin, /^\s*email:/m);
+    const adminEntry = requireEntry(byName, "admin.ts");
+    assert.equal(adminEntry.kind, "content");
+    assert.equal(
+      adminEntry.attributes?.module,
+      "types/generated/datasource/admin.ts",
+    );
+    assert.equal(adminEntry.attributes?.exports, "Admin");
+    assert.equal(
+      adminEntry.attributes?.imports,
+      "types/generated/datasource/user.ts",
+    );
+    assert.equal(adminEntry.attributes?.uses, "User");
   });
 
   it("renders a composed union datasource type", async () => {

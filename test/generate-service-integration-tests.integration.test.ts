@@ -121,6 +121,19 @@ describe("generate-service-integration-tests", () => {
       .map((e) => e.filename);
     assert.ok(names.includes("addressService.integration.test.ts"));
     assert.ok(names.includes("contactGroupMemberService.integration.test.ts"));
+    const address = entries.find(
+      (entry) =>
+        entry.kind === "content" &&
+        entry.attributes?.module ===
+          "services/generated/__tests__/addressService.integration.test.ts",
+    );
+    assert.ok(address);
+    assert.equal(address.kind, "content");
+    assert.equal(
+      address.attributes?.imports,
+      "services/generated/addressService.ts",
+    );
+    assert.equal(address.attributes?.uses, "AddressService");
   });
 
   it("creates parents, updates the item and parents, then deletes in reverse", async () => {

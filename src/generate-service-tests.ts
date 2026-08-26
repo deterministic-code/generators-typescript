@@ -23,7 +23,7 @@ import {
 import { libraryImportSpecifier } from "./library-import.ts";
 import { genericTmpl } from "./resources/service-tests.ts";
 import { createCasing } from "./common/default-casing.ts";
-import { Emit } from "./emit.ts";
+import { bag, Emit } from "./emit.ts";
 
 class Generator extends Emit {
   private readonly types: Type[];
@@ -53,6 +53,7 @@ class Generator extends Emit {
     const src = this.imports.service(candidate.name);
     const path = this.imports.serviceTest(candidate.name);
     const fileBase = `${candidate.name}_service`;
+    const className = this.casing.serviceClassName(candidate.name);
     return content(
       path,
       fill(genericTmpl, {
@@ -62,16 +63,22 @@ class Generator extends Emit {
           this.settings.libraryReferenceMode,
           this.imports.serviceTestRel(candidate.name),
         ),
-        className: this.casing.serviceClassName(candidate.name),
+        className,
         importPath: this.imports.testSpec(src, fileBase),
         entityNameJson: JSON.stringify(candidate.name),
         pkExpr: `new PrimaryKey(${JSON.stringify(column)}, ${JSON.stringify(pkType)})`,
         idExpr: fakeTestData.id(asIdType(pkType)),
       }),
+      bag({
+        module: this.imports.serviceTestRel(candidate.name),
+        imports: this.imports.serviceRel(candidate.name),
+        uses: className,
+      }),
     );
   }
 }
 
+/** Returns attributed entries. Cross-lane service imports need host `finalizeEntries`. */
 export const generate = async (
   ctx: GenerateContext,
 ): Promise<GenerateEntry[]> => {

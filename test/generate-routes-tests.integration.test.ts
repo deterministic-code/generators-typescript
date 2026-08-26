@@ -94,6 +94,17 @@ describe("generate-routes-tests", () => {
     const orders = textOf(entries, "order.integration.test.ts");
     assert.match(orders, /If-Match/);
     assert.match(orders, /expectedUpdated: occToken/);
+
+    const userBag = entries.find(
+      (entry) =>
+        entry.kind === "content" &&
+        entry.attributes?.module ===
+          "routes/generated/__tests__/user.integration.test.ts",
+    );
+    assert.ok(userBag);
+    assert.equal(userBag.kind, "content");
+    assert.equal(userBag.attributes?.imports, "routes/generated/user.ts");
+    assert.equal(userBag.attributes?.uses, "UserRouter");
   });
 
   it("emits nothing without view_type_routes", async () => {

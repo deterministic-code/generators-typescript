@@ -4,13 +4,23 @@ import { memoryReader } from "@deterministic-code/generators-common/deterministi
 import { content } from "@deterministic-code/generators-common/generate-entry";
 import {
   finalizeEntries,
+  isRelativeModulePath,
   referenceAttributesFromEntries,
   ReferenceVerifier,
+  verifyEntries,
 } from "@deterministic-code/generators-common/reference-verifier";
+import { generate as generateDatasourceTypeValidators } from "../src/generate-datasource-type-validators.ts";
+import { generate as generateDatasourceTypeValidatorsTests } from "../src/generate-datasource-type-validators-tests.ts";
 import { generate as generateDatasourceTypes } from "../src/generate-datasource-types.ts";
+import { generate as generateDatasourceTypesTests } from "../src/generate-datasource-types-tests.ts";
 import { generate as generateRoutes } from "../src/generate-routes.ts";
+import { generate as generateRoutesTests } from "../src/generate-routes-tests.ts";
+import { generate as generateServiceTests } from "../src/generate-service-tests.ts";
 import { generate as generateServices } from "../src/generate-services.ts";
+import { generate as generateViewTypeValidators } from "../src/generate-view-type-validators.ts";
+import { generate as generateViewTypeValidatorsTests } from "../src/generate-view-type-validators-tests.ts";
 import { generate as generateViewTypes } from "../src/generate-view-types.ts";
+import { generate as generateViewTypesTests } from "../src/generate-view-types-tests.ts";
 
 const DS_YAML = `types:
   - user:
@@ -33,6 +43,8 @@ const SERVICES_YAML = `includes:
       filter: 'tag == "view_type"'
 services:
   - name: ReportService
+  - name: ContactImportService
+    module: ./services/contact-import-service
 `;
 
 const ROUTES_YAML = `includes:
@@ -44,6 +56,33 @@ routes:
       path: /api/report
       service: ReportService
       function: run
+`;
+
+const CONTACTS_TYPES = `types:
+  - base:
+      fields:
+        - id:
+            type: integer
+  - contact_source:
+      tags: [datasource_type]
+      inherits: base
+      fields:
+        - name:
+            type: string
+`;
+
+const VIEW_INHERITS_BASE = `types:
+  - base:
+      tags: [datasource_type]
+      fields:
+        - id:
+            type: integer
+  - child:
+      tags: [view_type]
+      inherits: base
+      fields:
+        - name:
+            type: string
 `;
 
 const fixture = {
@@ -58,14 +97,78 @@ const generateLanes = async (settings: Record<string, string>) => {
   return [
     ...(await generateDatasourceTypes(ctx)),
     ...(await generateViewTypes(ctx)),
+    ...(await generateDatasourceTypeValidators(ctx)),
+    ...(await generateViewTypeValidators(ctx)),
+    ...(await generateDatasourceTypesTests(ctx)),
+    ...(await generateViewTypesTests(ctx)),
+    ...(await generateDatasourceTypeValidatorsTests(ctx)),
+    ...(await generateViewTypeValidatorsTests(ctx)),
     ...(await generateServices(ctx)),
+    ...(await generateServiceTests(ctx)),
     ...(await generateRoutes(ctx)),
+    ...(await generateRoutesTests(ctx)),
   ];
 };
 
+const contentEntries = (entries: Awaited<ReturnType<typeof generateLanes>>) =>
+  entries.filter((entry) => entry.kind === "content");
+
 describe("reference verifier aggregate", () => {
-  it("finalizes datasource + view + service + route entries together", async () => {
+  it("throws when contact_source inherits an untagged base", async () => {
+    await assert.rejects(
+      () =>
+        generateDatasourceTypes({
+          reader: memoryReader({ "types.yaml": CONTACTS_TYPES }),
+          settings: {},
+        }),
+      /types\/generated\/datasource\/base\.ts/,
+    );
+  });
+
+  it("fails view types when a view inherits a parent this lane does not emit", async () => {
+    const entries = await generateViewTypes({
+      reader: memoryReader({ "types.yaml": VIEW_INHERITS_BASE }),
+      settings: {},
+    });
+    const child = entries.find(
+      (entry) =>
+        entry.kind === "content" &&
+        entry.attributes?.module === "types/generated/views/child.ts",
+    );
+    assert.ok(child);
+    assert.equal(child.kind, "content");
+    assert.match(
+      child.attributes?.imports ?? "",
+      /types\/generated\/datasource\/base\.ts/,
+    );
+    assert.throws(
+      () => verifyEntries(entries),
+      /types\/generated\/datasource\/base\.ts/,
+    );
+  });
+
+  it("finalizes datasource + view + validator + test + service + route entries together", async () => {
     const entries = await generateLanes({});
+    const attributed = contentEntries(entries).filter(
+      (entry) => entry.attributes !== undefined,
+    );
+    assert.ok(attributed.length > 0);
+    for (const entry of attributed) {
+      const module = entry.attributes?.module;
+      assert.ok(module, entry.filename);
+      assert.equal(isRelativeModulePath(module), false, module);
+      for (const imp of (entry.attributes?.imports ?? "").split(",")) {
+        const trimmed = imp.trim();
+        if (trimmed.length === 0) continue;
+        assert.equal(isRelativeModulePath(trimmed), false, trimmed);
+      }
+    }
+    const custom = attributed.find(
+      (entry) =>
+        entry.attributes?.module ===
+        "services/contact-import-service.ts",
+    );
+    assert.ok(custom, "custom service Rel should remap ../contact-import-service.ts");
     const finalized = finalizeEntries(entries);
     assert.ok(finalized.length > 0);
     for (const entry of finalized) {

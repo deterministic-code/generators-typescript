@@ -197,6 +197,24 @@ describe("generate view type validators", () => {
     assert.match(payment, /export const PaymentSchema = z\.object\(\{\}\);/);
   });
 
+  it("declares Rel bag keys and the inherited parent schema", async () => {
+    const entries = await generateWith({});
+    const summary = entries.find(
+      (entry) =>
+        entry.kind === "content" &&
+        entry.attributes?.module ===
+          "types/generated/views/validators/userSummary.ts",
+    );
+    assert.ok(summary);
+    assert.equal(summary.kind, "content");
+    assert.match(summary.attributes?.exports ?? "", /UserSummarySchema/);
+    assert.match(
+      summary.attributes?.imports ?? "",
+      /types\/generated\/datasource\/validators\/user\.ts/,
+    );
+    assert.match(summary.attributes?.uses ?? "", /UserSchema/);
+  });
+
   it("inherits a datasource schema with omit, enrich, and no CRUD trio for omit views", async () => {
     const summary = await bodyOf("userSummary.ts");
     assert.match(

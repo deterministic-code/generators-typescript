@@ -116,6 +116,15 @@ describe("generate-services", () => {
     const report = textOf(entries, "../custom/reportService.ts");
     assert.match(report, /async run\(\.\.\._args: unknown\[\]\)/);
     assert.match(report, /return \{\};/);
+    const reportEntry = entries.find(
+      (e) => e.kind === "content" && e.filename === "../custom/reportService.ts",
+    );
+    assert.ok(reportEntry);
+    assert.equal(reportEntry.kind, "content");
+    assert.equal(
+      reportEntry.attributes?.module,
+      "services/custom/reportService.ts",
+    );
 
     const index = textOf(entries, "index.ts");
     assert.match(index, /export \{ RoleService \} from "\.\/roleService"/);
