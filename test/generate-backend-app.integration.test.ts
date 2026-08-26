@@ -121,7 +121,7 @@ describe("generate", () => {
     assert.equal(pkg.type, "module");
     assert.equal(
       pkg.dependencies["@deterministic-code/deterministic"],
-      "^0.0.6",
+      "^0.0.7",
     );
     assert.equal(pkg.dependencies.express, undefined);
     assert.equal(pkg.allowScripts.esbuild, true);
@@ -275,5 +275,54 @@ describe("generate by-feature", () => {
       "features/**/*.ts",
       "perf-server.ts",
     ]);
+  });
+});
+
+describe("generate bundled", () => {
+  let entries: GenerateEntry[] = [];
+  let byName = new Map<string, GenerateEntry>();
+
+  before(async () => {
+    entries = await generate({
+      reader: memoryReader({}),
+      settings: {
+        application_name: "catalog-api",
+        "languages.typescript.library_reference_mode": "bundled",
+      },
+    });
+    byName = lastByName(entries);
+  });
+
+  it("vendors the compiled runtime under _deterministic", () => {
+    const names = uniqueNames(entries);
+    assert.ok(names.includes("_deterministic/app.js"), names.join("\n"));
+    assert.ok(names.includes("_deterministic/app.d.ts"), names.join("\n"));
+    assert.ok(names.includes("_deterministic/routes.js"), names.join("\n"));
+    assert.ok(names.includes("_deterministic/routes.d.ts"), names.join("\n"));
+    assert.ok(
+      names.includes("_deterministic/services.js"),
+      names.join("\n"),
+    );
+    const appJs = requireEntry(byName, "_deterministic/app.js");
+    assert.equal(appJs.kind, "content");
+    assert.match(entryBody(appJs), /createBackendApp/);
+  });
+
+  it("points app.ts at the vendored runtime", () => {
+    const app = entryBody(requireEntry(byName, "app.ts"));
+    assert.match(app, /from "\.\/_deterministic\/app\.js"/);
+    assert.doesNotMatch(app, /@deterministic-code\/deterministic\/app/);
+  });
+
+  it("renders package.json with runtime deps instead of the npm library", () => {
+    const pkg = JSON.parse(entryBody(requireEntry(byName, "package.json")));
+    assert.equal(pkg.dependencies["@deterministic-code/deterministic"], undefined);
+    assert.equal(pkg.allowScripts["@deterministic-code/deterministic"], undefined);
+    assert.equal(pkg.dependencies.express, "^4.21.0");
+    assert.equal(pkg.dependencies.zod, "^3.23.8");
+    assert.equal(
+      pkg.scripts.build,
+      "tsc && cp -R _deterministic dist/_deterministic",
+    );
   });
 });
