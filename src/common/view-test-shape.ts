@@ -3,6 +3,7 @@ import {
   type Type,
   type TypeField,
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
+import { columnFields } from "@deterministic-code/generators-common/spec-types";
 import { toNative } from "../base-type-converter.ts";
 import { valueTmpl } from "../resources/view-types-tests.ts";
 import { fakeTestData, fieldExpr } from "./fake-test-data.ts";
@@ -118,7 +119,7 @@ const dsNodes = (
 ): ShapeNode[] => {
   const table = opts.tables.get(name);
   if (table === undefined) return [];
-  return table.fields.map((f) =>
+  return columnFields(table.fields).map((f) =>
     scalarNode(f, accessPrefix, pathPrefix, false, opts.casing),
   );
 };

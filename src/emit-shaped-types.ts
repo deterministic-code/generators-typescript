@@ -3,7 +3,9 @@ import type { GenerateContext } from "@deterministic-code/generators-common/gene
 import { content, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import {
   authoredViewTypesOf,
+  columnFields,
   datasourceTypesOf,
+  isCollectionField,
   tableKind,
   TYPES_YAML,
   typeHasTag,
@@ -258,10 +260,13 @@ class Generator extends Emit {
 
   private emitFields(type: Type, expanded: Type | undefined): TypeField[] {
     if (this.kind === "view" && this.referenceBackendType && isAlias(type)) {
-      return [];
+      return (expanded?.fields ?? type.fields).filter(isCollectionField);
     }
-    if (this.extendsType(type, new Map()) !== undefined) return type.fields;
-    return expanded?.fields ?? type.fields;
+    const fields =
+      this.extendsType(type, new Map()) !== undefined
+        ? type.fields
+        : (expanded?.fields ?? type.fields);
+    return this.kind === "datasource" ? columnFields(fields) : fields;
   }
 
   private ownedDictionaryFields(type: Type): Array<{

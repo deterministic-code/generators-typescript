@@ -310,4 +310,31 @@ describe("generate view types", () => {
     assert.doesNotMatch(contact, /address: Tag\[\];/);
   });
 
+  it("keeps view collection fields on the view type", async () => {
+    const contact = await bodyOf(
+      "contact.ts",
+      {},
+      `types:
+  - address:
+      tags: [datasource_type, view_type]
+      inherits: set
+      fields:
+        - city:
+            type: string
+  - contact:
+      tags: [datasource_type, view_type]
+      inherits: set
+      fields:
+        - email:
+            type: string
+        - addresses:
+            type: address[]
+            references: address.contact_id
+`,
+    );
+    assert.match(contact, /import type \{ Address \} from "\.\.\/datasource\/address";/);
+    assert.match(contact, /export interface Contact extends ContactBase \{/);
+    assert.match(contact, /addresses: Address\[\];/);
+  });
+
 });

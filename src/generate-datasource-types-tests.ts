@@ -3,6 +3,7 @@ import { fill } from "@deterministic-code/generators-common/fill";
 import type { GenerateContext } from "@deterministic-code/generators-common/generate-context";
 import { content, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import {
+  columnFields,
   datasourceTypesOf,
   TYPES_YAML,
 } from "@deterministic-code/generators-common/spec-types";
@@ -50,7 +51,7 @@ class Generator extends Emit {
   }
 
   private tests(table: Type): GenerateEntry {
-    const fields = table.fields.map((f) =>
+    const fields = columnFields(table.fields).map((f) =>
       fieldTokens(f, (name) => this.casing.fieldIdent(name)),
     );
     const src = this.imports.datasource(table.name);

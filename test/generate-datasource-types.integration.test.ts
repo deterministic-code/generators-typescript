@@ -322,4 +322,38 @@ describe("generate", () => {
     assert.doesNotMatch(payment, /StandardDataSource/);
   });
 
+  it("omits view collection fields from the datasource row", async () => {
+    const entries = await generate({
+      reader: memoryReader({
+        [TYPES_YAML]: `types:
+  - contact:
+      tags: [datasource_type, view_type]
+      inherits: set
+      fields:
+        - email:
+            type: string
+        - addresses:
+            type: address[]
+            references: address.contact_id
+  - address:
+      tags: [datasource_type, view_type]
+      inherits: set
+      fields:
+        - contact_id:
+            type: number
+            references: contact.id
+        - city:
+            type: string
+`,
+      }),
+      settings: {},
+    });
+    const contact = entryBody(requireEntry(indexEntries(entries), "contact.ts"));
+    assert.match(contact, /email: string;/);
+    assert.doesNotMatch(contact, /addresses/);
+    const address = entryBody(requireEntry(indexEntries(entries), "address.ts"));
+    assert.match(address, /contact_id: number;/);
+    assert.match(address, /city: string;/);
+  });
+
 });

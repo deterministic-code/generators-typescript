@@ -3,6 +3,7 @@ import type { GenerateContext } from "@deterministic-code/generators-common/gene
 import { content, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import { verifyEntries } from "@deterministic-code/generators-common/reference-verifier";
 import {
+  columnFields,
   datasourceTypesOf,
   TYPES_YAML,
 } from "@deterministic-code/generators-common/spec-types";
@@ -111,7 +112,7 @@ class Generator extends Emit {
   }
 
   private validator(table: Type): GenerateEntry {
-    const fields = table.fields.map((field) => ({
+    const fields = columnFields(table.fields).map((field) => ({
       ident: this.casing.fieldIdent(field.name),
       zodExpr: zodForField(field, field.name === "id"),
     }));
