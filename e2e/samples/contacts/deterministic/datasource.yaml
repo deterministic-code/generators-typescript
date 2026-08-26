@@ -9,15 +9,30 @@ types:
             is_unique: true
   - contacts_base:
       mapping: contacts
+      fields:
+        - version:
+            is_optimistic_concurrency: true
+            use_native_row_version: true
   - addresses_base:
       mapping: addresses
+      fields:
+        - version:
+            is_optimistic_concurrency: true
+            use_native_row_version: true
   - phones_base:
       mapping: phones
+      fields:
+        - version:
+            is_optimistic_concurrency: true
+            use_native_row_version: true
   - contact_groups_base:
       mapping: contact_groups
       fields:
         - name:
             is_unique: true
+        - version:
+            is_optimistic_concurrency: true
+            use_native_row_version: true
   - legacy_contact:
       mapping: OldContactsTbl
       fields:
