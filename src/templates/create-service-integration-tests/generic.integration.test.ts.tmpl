@@ -42,9 +42,9 @@ describe("{{className}} (sqlite integration)", () => {
     const repository = new SqliteStandardRepository<{{rowTypeName}}>(
       datasource,
       TABLE_NAME,
-      { entityName: {{&entityNameJson}}, primaryKeys },
+      { entityName: {{&entityNameJson}}, primaryKeys, withUuidColumn: {{withUuid}} },
     );
-    service = new {{className}}(repository{{&serviceOptions}});
+    service = new {{className}}(repository{{#isUuidPk}}, { idType: "uuid" }{{/isUuidPk}});
   });
 
   afterEach(async () => {
@@ -68,12 +68,12 @@ describe("{{className}} (sqlite integration)", () => {
   it("findById returns null for a missing id", async () => {
     expect(await service.findById({{&missingId}})).toBeNull();
   });
-
+{{#canUpdate}}
   it("update returns null for a missing id", async () => {
     const result = await service.update({{&missingId}}, {});
     expect(result).toBeNull();
   });
-
+{{/canUpdate}}
   it("delete returns false when the row does not exist", async () => {
     expect(await service.delete({{&missingId}})).toBe(false);
   });
@@ -84,7 +84,8 @@ describe("{{className}} (sqlite integration)", () => {
       new SqliteStandardRepository<{{rowTypeName}}>(datasource, {{&tableNameJson}}, {
         entityName: {{&entityNameJson}},
         primaryKeys,
-      }){{&serviceOptions}},
+        withUuidColumn: {{withUuid}},
+      }){{#isUuidPk}}, { idType: "uuid" }{{/isUuidPk}},
     );
 {{/chainServices}}
 {{#creates}}{{#isLookup}}    const {{varName}} = await {{serviceVar}}.findById({{&seedId}});

@@ -90,7 +90,9 @@ const indexExports = (
   const schema = schemaName(view.name);
   if (isWriteVariant(view.name)) return schema;
   if ((view.removeFields?.length ?? 0) > 0) return undefined;
-  if (view.inherits !== undefined) return schema;
+  // Alias views (datasource_type + view_type) inherit the datasource schema and
+  // do not emit create/update/patch companions — keep the index in sync.
+  if (isAlias(view) || view.inherits !== undefined) return schema;
   return [
     schema,
     schemaName(`create_${view.name}`),

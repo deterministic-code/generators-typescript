@@ -92,7 +92,7 @@ const ENGINES: Record<SqlEngine, EngineDescriptor> = {
 
 async function emitSchemaDdl(engine: SqlEngine, deterministicRoot: string): Promise<string> {
   const doc = yaml.load(
-    await readFile(resolve(deterministicRoot, 'datasource_types.yaml'), 'utf8'),
+    await readFile(resolve(deterministicRoot, 'types.yaml'), 'utf8'),
   );
   const { up } = emitInitialMigration(engine, doc, {
     idType: 'integer',

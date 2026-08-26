@@ -16,7 +16,7 @@ async function loadYaml(file: string): Promise<unknown> {
 }
 
 async function loadKitchenSinkSpecs() {
-  const datasourceDoc = await loadYaml('datasource_types.yaml');
+  const datasourceDoc = await loadYaml('types.yaml');
   const routesDoc = await loadYaml('routes.yaml');
   const viewTypesDoc = await loadYaml('view_types.yaml');
   return parseCrudRouteSpecs(datasourceDoc, routesDoc, { viewTypesDoc });

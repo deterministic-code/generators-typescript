@@ -42,8 +42,12 @@ const ZOD_DEFAULT: Record<string, (arg?: DefaultArg) => string> = {
   DateTime: (a) => (a === undefined ? "new Date()" : `new Date(${dq(a)})`),
   Now: () => "new Date()",
   UtcNow: () => "new Date()",
-  Hex: (a) =>
-    `new Uint8Array([${hexToBytes(a as string).join(", ")}]).buffer`,
+  Hex: (a) => {
+    const bytes = hexToBytes(a as string);
+    return bytes.length === 0
+      ? '""'
+      : `Buffer.from([${bytes.join(", ")}]).toString("base64")`;
+  },
   Boolean: (a) => (a ? "true" : "false"),
   Numeric: (a) => a as string,
   String: (a) => dq(a),

@@ -56,7 +56,7 @@ describe('createBackendApp dynamic module loading', () => {
       path.join(deterministicRoot, 'routes.yaml'),
       `routes:\n  - getPing:\n      path: /api/ping\n      method: GET\n      service: PingerService\n      serviceMethod: ping\n`,
     );
-    await writeFile(path.join(deterministicRoot, 'datasource_types.yaml'), `types: []\n`);
+    await writeFile(path.join(deterministicRoot, 'types.yaml'), `types: []\n`);
 
     const app = await bootApp();
 
@@ -94,7 +94,7 @@ describe('createBackendApp dynamic module loading', () => {
       path.join(deterministicRoot, 'routes.yaml'),
       `routes:\n  - echo:\n      path: /api/echo\n      method: GET\n      routeClass: EchoRoute\n      module: ./routes/echo-route.mjs\n      args:\n        - kind: service\n          name: EchoService\n`,
     );
-    await writeFile(path.join(deterministicRoot, 'datasource_types.yaml'), `types: []\n`);
+    await writeFile(path.join(deterministicRoot, 'types.yaml'), `types: []\n`);
 
     const app = await bootApp();
 
@@ -113,7 +113,7 @@ describe('createBackendApp dynamic module loading', () => {
       `services:\n  - name: PingerService\n    module: nonexistent-bare-pkg-${Date.now()}\n`,
     );
     await writeFile(path.join(deterministicRoot, 'routes.yaml'), `routes: []\n`);
-    await writeFile(path.join(deterministicRoot, 'datasource_types.yaml'), `types: []\n`);
+    await writeFile(path.join(deterministicRoot, 'types.yaml'), `types: []\n`);
 
     const err = await bootApp().then(
       () => null,
@@ -137,7 +137,7 @@ describe('createBackendApp dynamic module loading', () => {
       `services:\n  - name: GhostService\n`,
     );
     await writeFile(path.join(deterministicRoot, 'routes.yaml'), `routes: []\n`);
-    await writeFile(path.join(deterministicRoot, 'datasource_types.yaml'), `types: []\n`);
+    await writeFile(path.join(deterministicRoot, 'types.yaml'), `types: []\n`);
 
     await expect(bootApp()).rejects.toThrow(/GhostService/);
   });

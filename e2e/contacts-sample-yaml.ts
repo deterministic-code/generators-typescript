@@ -145,7 +145,6 @@ const flattenSettings = (
     frontend_generate_framework: "vite",
     "backend.datasources": "sqlite",
     "backend.languages": "typescript",
-    "paths.deterministic": CONTACTS_FIXTURE_DIR,
     ...BUNDLED_LIBRARY_MODE,
   };
 };

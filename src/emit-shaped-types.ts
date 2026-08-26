@@ -251,6 +251,15 @@ class Generator extends Emit {
         return undefined;
       }
     }
+    if (this.kind === "datasource") {
+      const parentType = this.typesByName.get(parentName);
+      if (
+        parentType === undefined ||
+        !typeHasTag(parentType, "datasource_type")
+      ) {
+        return undefined;
+      }
+    }
     const parent =
       aliasByClass.get(parentName) ?? this.casing.convertTypes(parentName);
     const omitKeys = type.removeFields ?? [];

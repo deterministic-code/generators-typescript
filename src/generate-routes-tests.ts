@@ -141,8 +141,11 @@ class Generator extends Emit {
       .map((k) => `${k.column}: ${fakeTestData.id(asIdType(k.pkType))}`)
       .join(", ");
     const path = this.imports.routeTest(candidate.name);
-    const fileBase = candidate.name;
-    const mountPath = `/api/${candidate.name}`;
+    const routeImport = this.imports.spec(
+      this.imports.routeTestRel(candidate.name),
+      this.imports.routeRel(candidate.name),
+    );
+    const mountPath = `/api/${this.imports.apiPath(candidate.name)}`;
     const occ = this.settings.usesOptimisticConcurrency({
       tags: table?.tags ?? candidate.tags,
       useOptimisticConcurrency: overlay?.useOptimisticConcurrency,
@@ -156,7 +159,7 @@ class Generator extends Emit {
         path,
       )}";`,
       fnName: this.casing.routerFnName(candidate.name),
-      fileBase,
+      routeImport,
       mockFactory: mockFactoryTmpl,
       pkExpr,
       mountPath,

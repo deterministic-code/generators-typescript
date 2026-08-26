@@ -138,24 +138,64 @@ export function parseAllMappings(datasourceData: unknown): DatasourceMappings {
   if (typeof datasourceData !== 'object') {
     throw new Error(`parseFieldMappings: expected an object, got ${typeof datasourceData}`);
   }
+  const renames = new Map<string, Map<string, string>>();
+  const converters = new Map<string, Map<string, string>>();
+  parseLegacyDatasourceMappings(datasourceData, renames, converters);
+  parseTypesFieldMappings(datasourceData, renames);
+  return { renames: renames as FieldMappings, converters: converters as FieldMappings };
+}
+
+function parseLegacyDatasourceMappings(
+  datasourceData: unknown,
+  renames: Map<string, Map<string, string>>,
+  converters: Map<string, Map<string, string>>,
+): void {
   const rawMappings = (datasourceData as Record<string, unknown>).datasource_mappings;
-  if (rawMappings === undefined || rawMappings === null) {
-    return EMPTY_MAPPINGS;
-  }
+  if (rawMappings === undefined || rawMappings === null) return;
   if (!Array.isArray(rawMappings)) {
     throw new Error(
       `parseFieldMappings: datasource_mappings must be an array, got ${typeof rawMappings}`,
     );
   }
-  const renames = new Map<string, Map<string, string>>();
-  const converters = new Map<string, Map<string, string>>();
   for (let i = 0; i < rawMappings.length; i++) {
     const parsed = parseEntity(rawMappings[i], i);
     if (!parsed) continue;
     mergeInto(renames, parsed.entityName, parsed.renameMap);
     mergeInto(converters, parsed.entityName, parsed.converterMap);
   }
-  return { renames: renames as FieldMappings, converters: converters as FieldMappings };
+}
+
+/** New `types: [{ entity: { fields: [{ col: { mapping: "…" } }] } }]` overlays. */
+function parseTypesFieldMappings(
+  datasourceData: unknown,
+  renames: Map<string, Map<string, string>>,
+): void {
+  const types = (datasourceData as Record<string, unknown>).types;
+  if (!Array.isArray(types)) return;
+  for (const entry of types) {
+    if (!entry || typeof entry !== 'object') continue;
+    const entityKeys = Object.keys(entry as Record<string, unknown>);
+    if (entityKeys.length !== 1) continue;
+    const entityName = entityKeys[0]!;
+    const body = (entry as Record<string, unknown>)[entityName];
+    if (!body || typeof body !== 'object') continue;
+    const fields = (body as Record<string, unknown>).fields;
+    if (!Array.isArray(fields)) continue;
+    const renameMap = new Map<string, string>();
+    for (const fieldEntry of fields) {
+      if (!fieldEntry || typeof fieldEntry !== 'object') continue;
+      const fieldKeys = Object.keys(fieldEntry as Record<string, unknown>);
+      if (fieldKeys.length !== 1) continue;
+      const logicalCol = fieldKeys[0]!;
+      const fieldBody = (fieldEntry as Record<string, unknown>)[logicalCol];
+      if (!fieldBody || typeof fieldBody !== 'object') continue;
+      const mapping = (fieldBody as Record<string, unknown>).mapping;
+      if (typeof mapping === 'string' && mapping.length > 0) {
+        renameMap.set(logicalCol, mapping);
+      }
+    }
+    mergeInto(renames, entityName, renameMap);
+  }
 }
 
 export function parseFieldMappings(datasourceData: unknown): FieldMappings {

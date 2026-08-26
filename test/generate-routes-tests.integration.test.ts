@@ -85,7 +85,9 @@ describe("generate-routes-tests", () => {
     assert.match(users, /import \{ UserRouter \} from "\.\.\/user"/);
     assert.match(users, /POST \/api\/user delegates to service.create/);
     assert.match(users, /GET \/api\/user\/email\/:value returns the row/);
+    assert.match(users, /"\/api\/user\/" \+ String\(id\)/);
     assert.match(users, /new PrimaryKey\("id", "integer"\)/);
+    assert.doesNotMatch(users, /\/api\/user\/\$/);
 
     const roles = textOf(entries, "role.integration.test.ts");
     assert.match(roles, /GET \/api\/role returns items from service.findAll/);
@@ -148,5 +150,69 @@ routes: []
     assert.match(links, /:left_id\/:right_id/);
     assert.match(links, /new PrimaryKey\("left_id", "integer"\)/);
     assert.match(links, /new PrimaryKey\("right_id", "integer"\)/);
+  });
+
+  it("kebabs route file imports and API path segments", async () => {
+    const entries = await generate({
+      reader: memoryReader({
+        "types.yaml": `types:
+  - contact_group:
+      tags: [datasource_type, view_type]
+      inherits: set
+      fields:
+        - name:
+            type: string
+`,
+        "datasource.yaml": `includes:
+  - types:
+      filter: tag == "datasource_type"
+`,
+        "routes.yaml": `includes:
+  - types:
+      filter: 'type == "contact_group"'
+routes: []
+`,
+      }),
+      settings: { "languages.typescript.casing.file_names": "Kebab" },
+    });
+    const body = textOf(entries, "contact-group.integration.test.ts");
+    assert.match(body, /from "\.\.\/contact-group"/);
+    assert.doesNotMatch(body, /from "\.\.\/contact_group"/);
+    assert.match(body, /app\.use\("\/api\/contact-group"/);
+    assert.match(body, /"\/api\/contact-group\/" \+ String\(id\)/);
+  });
+
+  it("imports the route module via ImportGenerator under by-feature", async () => {
+    const entries = await generate({
+      reader: memoryReader({
+        "types.yaml": `types:
+  - contact_group:
+      tags: [datasource_type, view_type]
+      inherits: set
+      fields:
+        - name:
+            type: string
+`,
+        "datasource.yaml": `includes:
+  - types:
+      filter: tag == "datasource_type"
+`,
+        "routes.yaml": `includes:
+  - types:
+      filter: 'type == "contact_group"'
+routes: []
+`,
+      }),
+      settings: {
+        "other.organize_by_feature": "true",
+        "languages.typescript.casing.file_names": "Pascal",
+      },
+    });
+    const body = textOf(
+      entries,
+      "features/contactGroup/__tests__/ContactGroup.integration.test.ts",
+    );
+    assert.match(body, /from "\.\.\/ContactGroup\.route"/);
+    assert.doesNotMatch(body, /from "\.\.\/ContactGroup"/);
   });
 });

@@ -1,16 +1,11 @@
 version: 1.0.0
 includes:
   - types:
-      filter: tag == "datasource_type"
-
+      filter: tag == "datasource_type" || (tag == "view_type")
 services:
   - name: ContactImportService
     module: ./services/contact-import-service
-    description: Parses a CSV or vCard payload into contact rows, deduplicating
-      against existing email addresses, and returns an import_contacts_result.
-
+    description: Parses a CSV or vCard payload into contact rows, deduplicating against existing email addresses, and returns an import_contacts_result.
   - name: LegacyMigrationService
     module: ./services/legacy-migration-service
-    description: Copies rows from the legacy OldContactsTbl into the canonical
-      contacts table using the declared datasource mappings, returning a
-      legacy_migration_result.
+    description: Copies rows from the legacy OldContactsTbl into the canonical contacts table using the declared datasource_mappings, returning a legacy_migration_result.

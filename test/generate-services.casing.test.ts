@@ -63,6 +63,45 @@ describe("generate services casing", () => {
       /export class NotificationTypeService extends EntityService<NotificationType, number, Omit<NotificationType, "id">>/,
     );
     assert.match(body, /async find_by_channel_name\(channel_name: string\)/);
+    assert.match(body, /export type INotificationTypeService =/);
+    assert.doesNotMatch(body, /INotification_typeService/);
+    assert.doesNotMatch(body, /InotificationTypeService/);
+  });
+
+  it("Pascal types wrap I plus every token: INotificationTypeService", async () => {
+    const settings = { "languages.typescript.casing.types": "Pascal" };
+    const files = await byFilename(settings);
+    const body = files.get("notificationTypeService.ts")!;
+    const index = files.get("index.ts")!;
+    assert.match(body, /export type INotificationTypeService =/);
+    assert.match(body, /export class NotificationTypeService /);
+    assert.match(index, /export type \{ INotificationTypeService \} from/);
+    assert.doesNotMatch(body, /INotification_typeService/);
+    assert.doesNotMatch(body, /InotificationTypeService/);
+  });
+
+  it("Snake types wrap I plus every token: i_notification_type_service", async () => {
+    const settings = { "languages.typescript.casing.types": "Snake" };
+    const files = await byFilename(settings);
+    const body = files.get("notificationTypeService.ts")!;
+    const index = files.get("index.ts")!;
+    assert.match(body, /export type i_notification_type_service =/);
+    assert.match(body, /export class notification_type_service /);
+    assert.match(index, /export type \{ i_notification_type_service \} from/);
+    assert.doesNotMatch(body, /Inotification_type_service/);
+    assert.doesNotMatch(body, /INotificationTypeService/);
+  });
+
+  it("Camel types wrap I plus every token: iNotificationTypeService", async () => {
+    const settings = { "languages.typescript.casing.types": "Camel" };
+    const files = await byFilename(settings);
+    const body = files.get("notificationTypeService.ts")!;
+    const index = files.get("index.ts")!;
+    assert.match(body, /export type iNotificationTypeService =/);
+    assert.match(body, /export class notificationTypeService /);
+    assert.match(index, /export type \{ iNotificationTypeService \} from/);
+    assert.doesNotMatch(body, /InotificationTypeService/);
+    assert.doesNotMatch(body, /INotificationTypeService/);
   });
 
   it("Pascal file names", async () => {

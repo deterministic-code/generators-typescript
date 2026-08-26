@@ -17,7 +17,6 @@ combined_routes:
             via: contact_group_member
             target: contact
             route: /members
-
 routes:
   - contact:
       eager_read_path:
@@ -36,16 +35,13 @@ routes:
       request: import_contacts_request
       response: import_contacts_result
       service: ContactImportService
-      function: import
       x-implementation: stub
-
+      function: import
   - migrate_legacy_contacts:
       path: /api/legacy-contacts/migrate
       method: POST
-      description:
-        Migrate rows from the legacy OldContactsTbl into the canonical
-        contacts table.
+      description: Migrate rows from the legacy OldContactsTbl into the canonical contacts table.
       response: legacy_migration_result
       service: LegacyMigrationService
-      function: migrate
       x-implementation: stub
+      function: migrate

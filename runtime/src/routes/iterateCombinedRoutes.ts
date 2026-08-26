@@ -180,7 +180,7 @@ export function* iterateCombinedRoutes({
         }
         if (!datasourceByName.has(junctionName)) {
           throw new Error(
-            `combined_routes: junction "${junctionName}" not found in datasource_types.yaml`,
+            `combined_routes: junction "${junctionName}" not found in types.yaml`,
           );
         }
 
@@ -208,7 +208,7 @@ export function* iterateCombinedRoutes({
       const childDef = datasourceByName.get(child.name);
       if (!childDef) {
         throw new Error(
-          `combined_routes: child "${child.name}" not found in datasource_types.yaml`,
+          `combined_routes: child "${child.name}" not found in types.yaml`,
         );
       }
 
@@ -258,7 +258,7 @@ export function* iterateCombinedRoutes({
       }
 
       throw new Error(
-        `combined_routes: child "${child.name}" has no FK to parent "${parentName}" and no detectable junction table in datasource_types.yaml`,
+        `combined_routes: child "${child.name}" has no FK to parent "${parentName}" and no detectable junction table in types.yaml`,
       );
     }
   }

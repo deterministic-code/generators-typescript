@@ -6,6 +6,9 @@ import { join } from "node:path";
 import { createBackendApp, connectDatabase, type DatabaseConnection } from "{{detRoot}}";
 
 const ENTITIES = {{&entitiesJson}} as const;
+{{#hasCustomModulePaths}}
+const CUSTOM_MODULE_PATHS = {{&customModulePathsJson}} as Record<string, string>;
+{{/hasCustomModulePaths}}
 
 let app: Awaited<ReturnType<typeof createBackendApp>>;
 let conn: DatabaseConnection;
@@ -22,7 +25,12 @@ beforeAll(async () => {
   const dbPath = join(tmpDir, "test.db");
   await copyFile(prebuilt, dbPath);
   conn = await connectDatabase({ backend: "sqlite", sqliteFile: dbPath });
-  app = await createBackendApp(conn);
+  // Custom service `module:` paths are project-root relative (e.g. ./services/…),
+  // not under deterministic/../src — match generated app.ts (SRC_ROOT ?? cwd).
+  app = await createBackendApp(conn, {
+    srcRoot: process.cwd(),
+{{#hasCustomModulePaths}}    customModulePaths: CUSTOM_MODULE_PATHS,
+{{/hasCustomModulePaths}}  });
 });
 
 afterAll(async () => {
@@ -38,7 +46,8 @@ describe("app routes e2e", () => {
 
   for (const entity of ENTITIES) {
     it(`lists ${entity}`, async () => {
-      const res = await request(app).get(`/api/${entity.replace(/_/g, "-")}s`);
+      const segment = entity.replace(/_/g, "-");
+      const res = await request(app).get(`/api/${segment}`);
       expect([200, 404]).toContain(res.status);
     });
   }

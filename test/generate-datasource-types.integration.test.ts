@@ -292,6 +292,38 @@ describe("generate", () => {
     assert.equal(adminEntry.attributes?.uses, "User");
   });
 
+  it("flattens an untagged inherit source instead of extending it", async () => {
+    const entries = await generate({
+      reader: memoryReader({
+        [TYPES_YAML]: `types:
+  - base:
+      fields:
+        - id:
+            type: integer
+            is_id: true
+        - created:
+            type: datetime
+  - contact_source:
+      tags: [datasource_type]
+      inherits: base
+      fields:
+        - name:
+            type: string
+`,
+      }),
+      settings: {},
+    });
+    const byName = indexEntries(entries);
+    assert.equal(byName.has("base.ts"), false);
+    const source = entryBody(requireEntry(byName, "contactSource.ts"));
+    assert.match(source, /export interface ContactSource \{/);
+    assert.doesNotMatch(source, /extends /);
+    assert.doesNotMatch(source, /from "\.\/base"/);
+    assert.match(source, /id: number;/);
+    assert.match(source, /created: Date;/);
+    assert.match(source, /name: string;/);
+  });
+
   it("renders a composed union datasource type", async () => {
     const entries = await generate({
       reader: memoryReader({

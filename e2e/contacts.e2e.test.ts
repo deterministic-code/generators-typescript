@@ -93,14 +93,12 @@ const assertSqliteTables = async (
     join(appDir, "sql/sqlite/migrations/0001_initial_up.sql"),
     "utf8",
   );
+  assert.match(sql, /CREATE TABLE "contacts"/);
   if (pluralize) {
-    assert.match(sql, /CREATE TABLE "contacts"/);
     assert.match(sql, /CREATE TABLE "contact_sources"/);
     return;
   }
-  assert.match(sql, /CREATE TABLE "contact"/);
   assert.match(sql, /CREATE TABLE "contact_source"/);
-  assert.doesNotMatch(sql, /CREATE TABLE "contacts"/);
   assert.doesNotMatch(sql, /CREATE TABLE "contact_sources"/);
 };
 
@@ -119,10 +117,10 @@ const assertContactsLayout = async (
       appDir,
       `frontend/src/client/fetch/${clientFileBase("contact_group", settings)}.ts`,
     ),
-    requireAppFile(appDir, datasourceTypePath("contact", variant, settings)),
+    requireAppFile(appDir, datasourceTypePath("contacts_base", variant, settings)),
     requireAppFile(
       appDir,
-      datasourceTypePath("contact_group", variant, settings),
+      datasourceTypePath("contact_groups_base", variant, settings),
     ),
     requireAppFile(appDir, viewValidatorPath("contact", variant, settings)),
     requireAppFile(
