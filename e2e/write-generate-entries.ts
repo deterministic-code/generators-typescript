@@ -27,18 +27,23 @@ export const writeGenerateEntries = async (
     }
     patches.push(entry);
   }
-  const seeded = new Set<string>();
+  const byFile = new Map<string, Extract<GenerateEntry, { kind: "patch" }>[]>();
   for (const entry of patches) {
-    if (!seeded.has(entry.filename)) {
-      seeded.add(entry.filename);
-      const existing = await readFile(join(rootDir, entry.filename), "utf8").catch(
+    const list = byFile.get(entry.filename);
+    if (list === undefined) byFile.set(entry.filename, [entry]);
+    else list.push(entry);
+  }
+  for (const [filename, filePatches] of byFile) {
+    const hasSeed = filePatches.some((entry) => entry.section === undefined);
+    if (!hasSeed) {
+      const existing = await readFile(join(rootDir, filename), "utf8").catch(
         () => null,
       );
       if (existing !== null && existing.length > 0) {
-        merger.add(new Patch({ target: entry.filename, content: existing }));
+        merger.add(new Patch({ target: filename, content: existing }));
       }
     }
-    merger.add(asPatch(entry));
+    for (const entry of filePatches) merger.add(asPatch(entry));
   }
   const written = await merger.apply(rootDir);
   await Promise.all(

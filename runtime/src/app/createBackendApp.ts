@@ -137,7 +137,7 @@ export type RouteComposer = (ctx: RouteComposeContext) => import('express').Rout
 export interface CreateAppOptions {
   /**
    * Directory containing backend-app.yaml, services.yaml, routes.yaml,
-   * datasource_types.yaml, and view_types.yaml. Defaults to
+   * types.yaml, and view_types.yaml. Defaults to
    * `<cwd>/deterministic`.
    */
   deterministicRoot?: string;
@@ -356,7 +356,7 @@ async function readYaml(yamlPath: string): Promise<unknown> {
   return yaml.load(await readFile(yamlPath, 'utf8'));
 }
 
-/** Merge any `includes: - file: <path>` entries into a datasource_types doc at runtime by prepending each included file's `types` (the build-time resolver in scripts/lib does the same). Without this the router builder never sees included entities and their CRUD endpoints 404. */
+/** Merge any `includes: - file: <path>` entries into a types.yaml doc at runtime by prepending each included file's `types` (the build-time resolver in scripts/lib does the same). Without this the router builder never sees included entities and their CRUD endpoints 404. */
 async function resolveDatasourceFileIncludes(doc: unknown, baseDir: string): Promise<unknown> {
   const includes = (doc as { includes?: unknown } | null)?.includes;
   if (!Array.isArray(includes)) return doc;
@@ -520,6 +520,7 @@ class BackendAppBuilder {
   private settingsConfig!: SettingsConfig;
   private routesDoc: unknown;
   private datasourceDoc: unknown;
+  private datasourceOverlaysDoc: unknown = null;
   private viewTypesDoc: unknown;
   private autoEnrich = false;
   private eagerPathTrees!: ReturnType<typeof parseEagerPaths>;
@@ -572,8 +573,15 @@ class BackendAppBuilder {
       options.routesData ?? (needsRoutesDoc ? await readYaml(this.at('routes.yaml')) : null);
     const needsDatasourceDoc = !options.datasourceData || !options.crudSpecs;
     this.datasourceDoc = needsDatasourceDoc
-      ? await resolveDatasourceFileIncludes(await readYaml(this.at('datasource_types.yaml')), root)
+      ? await resolveDatasourceFileIncludes(await readYaml(this.at('types.yaml')), root)
       : null;
+    const datasourceOverlaysPath = this.at('datasource.yaml');
+    this.datasourceOverlaysDoc =
+      options.datasourceData !== undefined
+        ? null
+        : (await pathExists(datasourceOverlaysPath))
+          ? await readYaml(datasourceOverlaysPath)
+          : null;
     const viewTypesPath = this.at('view_types.yaml');
     this.viewTypesDoc =
       options.viewTypesDoc !== undefined
@@ -634,7 +642,7 @@ class BackendAppBuilder {
 
   private buildRepos(): void {
     const nameMapper = createNameMapper(
-      this.datasourceData,
+      this.datasourceOverlaysDoc ?? this.datasourceData,
       this.settingsConfig.pluralizeTableNames,
     );
     const converters = this.convertersForConnection();
@@ -645,7 +653,9 @@ class BackendAppBuilder {
         hasStandardColumns: !spec.readonly,
         entityName: spec.entityName,
         primaryKeys,
-        withUuidColumn: spec.primaryKeyIdType !== 'uuid',
+        withUuidColumn:
+          spec.primaryKeyIdType !== 'uuid' &&
+          Boolean(spec.columnTypes && 'uuid' in spec.columnTypes),
         columnTypes: spec.columnTypes ?? {},
         fieldMappings: nameMapper.fieldsFor(spec.entityName),
         ...(converters && { converters }),

@@ -1,9 +1,9 @@
 settings:
   application_tier: full-stack
+  application_name: contacts-backend
   backend:
     languages:
       - typescript
-      - rust
     datasources:
       - sqlite
       - mysql
@@ -12,6 +12,13 @@ settings:
     pluralize_datatable_names: true
     use_stored_procedures: false
     use_optimistic_concurrency: false
+    casing:
+      file_names: auto
+      types: auto
+      fields: auto
+      directories: auto
+      objects: auto
+      keywords: auto
   comments: simple
   other:
     organize_by_feature: false
@@ -24,6 +31,7 @@ settings:
         file_names: kebab
         types: pascal
       library_reference_mode: bundled
+      migrate_mode: bundled
       package_manager: auto
   frontend:
     framework: React

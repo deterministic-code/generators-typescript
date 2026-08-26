@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 {{&prelude}}import express, { type Application } from "express";
 import request from "supertest";
 {{&pkImport}}
-import { {{fnName}} } from "../{{fileBase}}";
+import { {{fnName}} } from "{{routeImport}}";
 
 {{&mockFactory}}
 // The router validates each body through the schemas the composer passes in; a passthrough stands in for them so these tests exercise routing/delegation, not schema shape.
@@ -27,7 +27,7 @@ describe("{{fnName}}", () => {
   it("GET {{mountPath}}/{{memberLabel}} delegates to service.findById", async () => {
     const id = {{&idExpr}};
     service.findById.mockResolvedValueOnce({ {{&rowLiteral}}{{&fkSuffix}} });
-    const res = await request(app).get(`{{mountPath}}/${{{&idPathExpr}}}`);
+    const res = await request(app).get("{{mountPath}}/" + String({{&idPathExpr}}));
     expect(res.status).toBe(200);
     expect(service.findById).toHaveBeenCalledWith(id);
   });
@@ -44,7 +44,7 @@ describe("{{fnName}}", () => {
     const id = {{&idExpr}};
     const payload = { name: "{{entity}}-updated"{{&nameSuffix}} };
     service.update.mockResolvedValueOnce({ {{&rowLiteral}}{{&fkSuffix}} });
-    await request(app).put(`{{mountPath}}/${{{&idPathExpr}}}`){{&ifMatch}}.send(payload);
+    await request(app).put("{{mountPath}}/" + String({{&idPathExpr}})){{&ifMatch}}.send(payload);
     expect(service.update).toHaveBeenCalledWith(id, { name: "{{entity}}-updated"{{&nameSuffix}} }{{&occCallArg}});
   });
 
@@ -52,14 +52,14 @@ describe("{{fnName}}", () => {
     const id = {{&idExpr}};
     const payload = { name: "{{entity}}-patched"{{&nameSuffix}} };
     service.patch.mockResolvedValueOnce({ {{&rowLiteral}}{{&fkSuffix}} });
-    await request(app).patch(`{{mountPath}}/${{{&idPathExpr}}}`){{&ifMatch}}.send(payload);
+    await request(app).patch("{{mountPath}}/" + String({{&idPathExpr}})){{&ifMatch}}.send(payload);
     expect(service.patch).toHaveBeenCalledWith(id, { name: "{{entity}}-patched"{{&nameSuffix}} }{{&occCallArg}});
   });
 
   it("DELETE {{mountPath}}/{{memberLabel}} delegates to service.delete", async () => {
     const id = {{&idExpr}};
     service.delete.mockResolvedValueOnce(true);
-    const res = await request(app).delete(`{{mountPath}}/${{{&idPathExpr}}}`){{&ifMatch}};
+    const res = await request(app).delete("{{mountPath}}/" + String({{&idPathExpr}})){{&ifMatch}};
     expect(res.status).toBe(200);
     expect(service.delete).toHaveBeenCalledWith(id{{&occCallArg}});
   });

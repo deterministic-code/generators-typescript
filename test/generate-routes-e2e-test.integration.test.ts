@@ -42,5 +42,35 @@ describe("generate-routes-e2e-test", () => {
     assert.match(body, /backend: "sqlite"/);
     assert.doesNotMatch(body, /backend: "memory"/);
     assert.match(body, /from "supertest"/);
+    assert.match(body, /srcRoot: process\.cwd\(\)/);
+    assert.match(body, /entity\.replace\(\/_\/g, "-"\)/);
+    assert.doesNotMatch(body, /replace\(\/_\/g, "-"\)\}s/);
+    assert.doesNotMatch(body, /customModulePaths:/);
+  });
+
+  it("remaps custom service modules under by-feature", async () => {
+    const entries = await generate({
+      reader: memoryReader({
+        "types.yaml": DS_YAML,
+        "routes.yaml": ROUTES_YAML,
+        "services.yaml": `includes:
+  - types:
+      filter: tag == "view_type"
+services:
+  - name: ContactImportService
+    module: ./services/contact-import-service
+`,
+      }),
+      settings: {
+        "other.organize_by_feature": "true",
+        "languages.typescript.casing.file_names": "Pascal",
+      },
+    });
+    const body = textOf(entries, "__tests__/app.integration.test.ts");
+    assert.match(body, /customModulePaths: CUSTOM_MODULE_PATHS/);
+    assert.match(
+      body,
+      /\.\/services\/contact-import-service": "\.\/features\/contactImportService\/custom\/ContactImportService"/,
+    );
   });
 });

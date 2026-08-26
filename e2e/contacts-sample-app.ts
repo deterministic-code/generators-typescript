@@ -1,7 +1,7 @@
 import { access, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, posix } from "node:path";
-import { memoryReader } from "@deterministic-code/generators-common/deterministic-reader";
+import { fileReader } from "@deterministic-code/generators-common/deterministic-reader";
 import type { GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import { generate as generateSql } from "../../generators-sql/src/generate-sql.ts";
 import { createImportGenerator } from "../src/import-generator.ts";
@@ -30,6 +30,7 @@ import { generate as generateViewTypesTests } from "../src/generate-view-types-t
 import { generate as generateViewTypes } from "../src/generate-view-types.ts";
 import { removeE2eTempDirs } from "./cleanup-temp.ts";
 import {
+  CONTACTS_FIXTURE_DIR,
   loadContactsSample,
   type ContactsSample,
   type ContactsVariant,
@@ -69,8 +70,12 @@ const nestUnder = (dir: string, entries: GenerateEntry[]): GenerateEntry[] =>
 const filenames = (entries: GenerateEntry[]): string[] =>
   entries.map((entry) => entry.filename);
 
+const stem = (value: string): string =>
+  value.replace(/[-_./]/g, "").toLowerCase();
+
 const requireNamed = (entries: GenerateEntry[], needle: string): void => {
-  const hit = filenames(entries).some((name) => name.includes(needle));
+  const want = stem(needle);
+  const hit = filenames(entries).some((name) => stem(name).includes(want));
   if (!hit) {
     throw new Error(
       `codegen missing ${needle}; got ${filenames(entries).join(", ")}`,
@@ -125,7 +130,7 @@ const generateLanes = async (
   sample: ContactsSample,
 ): Promise<ContactsLaneEntries> => {
   const ctx = {
-    reader: memoryReader(sample.yaml),
+    reader: fileReader(CONTACTS_FIXTURE_DIR),
     settings: sample.settings,
   };
   const [
@@ -167,8 +172,8 @@ const generateLanes = async (
     generateClientBindingsLiveTests(ctx),
     generateClientBindingsMockTests(ctx),
   ]);
-  requireNamed(datasource, "contact");
-  requireNamed(datasourceValidators, "contact");
+  requireNamed(datasource, "contacts_base");
+  requireNamed(datasourceValidators, "contacts_base");
   requireNamed(views, "contact");
   requireNamed(viewValidators, "contact");
   requireNamedAny(services, ["contact-import-service", "ContactImportService"]);
@@ -205,7 +210,7 @@ export const bootContactsSample = async (
 ): Promise<BootedContactsApp> => {
   const sample = await loadContactsSample(variant);
   const ctx = {
-    reader: memoryReader(sample.yaml),
+    reader: fileReader(CONTACTS_FIXTURE_DIR),
     settings: sample.settings,
   };
   const [
@@ -223,7 +228,10 @@ export const bootContactsSample = async (
     generateFrontendTypes(ctx),
     generateClientBindings(ctx),
     generateSql(ctx),
-    generateBundledMigrate(sample.settings),
+    generateBundledMigrate(
+      sample.settings,
+      fileReader(CONTACTS_FIXTURE_DIR),
+    ),
     generateLanes(sample),
     generateRoutesE2eTest(ctx),
   ]);

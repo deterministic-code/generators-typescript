@@ -7,7 +7,14 @@ types:
       fields:
         - name:
             is_unique: true
-  - contact_group:
+  - contacts_base:
+      mapping: contacts
+  - addresses_base:
+      mapping: addresses
+  - phones_base:
+      mapping: phones
+  - contact_groups_base:
+      mapping: contact_groups
       fields:
         - name:
             is_unique: true
@@ -15,8 +22,10 @@ types:
       mapping: OldContactsTbl
       fields:
         - key:
-            mapping: CntID
             is_fixed_id: true
+            is_readonly: true
+            is_unique: true
+            mapping: CntID
         - first_name:
             mapping: FirstNm
         - last_name:

@@ -7,7 +7,10 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { memoryReader } from "@deterministic-code/generators-common/deterministic-reader";
+import {
+  memoryReader,
+  type IDeterministicReader,
+} from "@deterministic-code/generators-common/deterministic-reader";
 import type { GenerateContext } from "@deterministic-code/generators-common/generate-context";
 import type { GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import { generate as generateMigrate } from "../../generators-migraters/typescript/generate.ts";
@@ -178,9 +181,10 @@ export const withSqlRoot = (entries: GenerateEntry[]): GenerateEntry[] =>
 
 export const generateBundledMigrate = (
   settings: GenerateContext["settings"],
+  reader: IDeterministicReader = memoryReader({}),
 ): Promise<GenerateEntry[]> =>
   generateMigrate({
-    reader: memoryReader({}),
+    reader,
     settings: {
       ...settings,
       "languages.typescript.migrate_mode": "bundled",

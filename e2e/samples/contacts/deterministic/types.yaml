@@ -1,185 +1,197 @@
 version: 1.0.0
 types:
-  # Origin classifier for a contact.
+  - base:
+      tags: [datasource_type]
+      fields:
+      - id:
+          type: integer
+          is_id: true
+      - uuid:
+          type: uuid
+      - created:
+          type: datetime
+      - updated:
+          type: datetime
+      - version:
+          type: binary
+          default_value: Hex('')
   - contact_source:
-      tags: [datasource_type, view_type]
-      inherits: set
+      tags: [datasource_type, view_type, readonly_lookup]
+      inherits: base
       fields:
-        - name:
-            type: string
-            size: 64
-        - description:
-            type: string
-            size: unlimited
-            is_nullable: true
-
-  # Primary contact record, plus nested addresses and phones.
+      - name:
+          type: string
+          size: 64
+      - description:
+          type: string
+          size: unlimited
+          is_nullable: true
+  - contacts_base:
+      tags: [datasource_type]
+      inherits: base
+      fields:
+      - contact_source_id:
+          references: contact_source.id
+      - first_name:
+          type: string
+          size: 128
+      - last_name:
+          type: string
+          size: 128
+      - email:
+          type: string
+          size: 256
+          is_nullable: true
+      - notes:
+          type: string
+          size: unlimited
+          is_nullable: true
+  - addresses_base:
+      tags: [datasource_type]
+      inherits: base
+      fields:
+      - contact_id:
+          references: contacts_base.id
+      - line1:
+          type: string
+          size: 256
+      - line2:
+          type: string
+          size: 256
+          is_nullable: true
+      - city:
+          type: string
+          size: 128
+      - region:
+          type: string
+          size: 128
+          is_nullable: true
+      - postal_code:
+          type: string
+          size: 32
+          is_nullable: true
+      - country:
+          type: string
+          size: 64
+          is_nullable: true
+  - phones_base:
+      tags: [datasource_type]
+      inherits: base
+      fields:
+      - contact_id:
+          references: contacts_base.id
+      - number:
+          type: string
+          size: 32
+      - label:
+          type: string
+          size: 32
+          is_nullable: true
+  - contact_groups_base:
+      tags: [datasource_type]
+      inherits: base
+      fields:
+      - name:
+          type: string
+          size: 128
+      - description:
+          type: string
+          size: unlimited
+          is_nullable: true
   - contact:
-      tags: [datasource_type, view_type]
-      inherits: set
+      tags: [view_type]
+      inherits: contacts_base
+      union: [contact_source]
+      mapping:
+        name: contact_source_name
+      remove_fields: [contact_source.id, contact_source.uuid, contact_source.created, contact_source.updated, contact_source.version]
       fields:
-        - contact_source_id:
-            type: number
-            references: contact_source.id
-        - first_name:
-            type: string
-            size: 128
-        - last_name:
-            type: string
-            size: 128
-        - email:
-            type: string
-            size: 256
-            is_nullable: true
-        - notes:
-            type: string
-            size: unlimited
-            is_nullable: true
-        - addresses:
-            type: address[]
-            references: address.contact_id
-        - phones:
-            type: phone[]
-            references: phone.contact_id
-
-  # Postal address attached to a contact.
+      - addresses:
+          type: address[]
+          references: addresses_base.contact_id
+      - phones:
+          type: phone[]
+          references: phones_base.contact_id
   - address:
-      tags: [datasource_type, view_type]
-      inherits: set
+      tags: [view_type]
+      inherits: addresses_base
       fields:
-        - contact_id:
-            type: number
-            references: contact.id
-        - line1:
-            type: string
-            size: 256
-        - line2:
-            type: string
-            size: 256
-            is_nullable: true
-        - city:
-            type: string
-            size: 128
-        - region:
-            type: string
-            size: 128
-            is_nullable: true
-        - postal_code:
-            type: string
-            size: 32
-            is_nullable: true
-        - country:
-            type: string
-            size: 64
-            is_nullable: true
-
-  # Phone number attached to a contact.
+        []
   - phone:
-      tags: [datasource_type, view_type]
-      inherits: set
+      tags: [view_type]
+      inherits: phones_base
       fields:
-        - contact_id:
-            type: number
-            references: contact.id
-        - number:
-            type: string
-            size: 32
-        - label:
-            type: string
-            size: 32
-            is_nullable: true
-
-  # User-defined group of contacts, plus M2M members.
+        []
   - contact_group:
-      tags: [datasource_type, view_type]
-      inherits: set
+      tags: [view_type]
+      inherits: contact_groups_base
       fields:
-        - name:
-            type: string
-            size: 128
-        - description:
-            type: string
-            size: unlimited
-            is_nullable: true
-        - members:
-            type: contact[]
-            references: contact_group_member.contact_group_id
-
-  # Membership in a contact_group.
+      - members:
+          type: contact[]
+          references: contact_group_member.contact_group_id
   - contact_group_member:
       tags: [datasource_type, many_to_many]
+      inherits: base
       fields:
-        - contact_id:
-            type: number
-            references: contact.id
-        - contact_group_id:
-            type: number
-            references: contact_group.id
-
-  # Legacy contact table imported from an older application.
-  # Physical table `OldContactsTbl` keeps PascalCase + truncated names;
-  # datasource.yaml mappings bridge those to canonical snake_case.
+      - contact_id:
+          references: contacts_base.id
+      - contact_group_id:
+          references: contact_groups_base.id
   - legacy_contact:
-      tags: [datasource_type]
+      tags: [datasource_type, view_type]
       fields:
-        - key:
-            type: string
-            size: 64
-        - first_name:
-            type: string
-            size: 128
-        - last_name:
-            type: string
-            size: 128
-        - email:
-            type: string
-            size: 256
-            is_nullable: true
-        - imported_at:
-            type: datetime
-            is_nullable: true
-
-  # No-PK append-only audit fixture.
+      - key:
+          type: string
+          size: 64
+      - first_name:
+          type: string
+          size: 128
+      - last_name:
+          type: string
+          size: 128
+      - email:
+          type: string
+          size: 256
+          is_nullable: true
+      - imported_at:
+          type: datetime
+          is_nullable: true
   - contact_change_log:
-      tags: [datasource_type]
+      tags: [datasource_type, view_type]
+      inherits: set
       fields:
-        - occurred_at:
-            type: datetime
-        - contact_id:
-            type: number
-        - changed_by:
-            type: string
-            size: 128
-        - change_summary:
-            type: string
-            size: unlimited
-
-  # Request shape for ContactImportService.
+      - occurred_at:
+          type: datetime
+      - contact_id:
+          type: number
+      - changed_by:
+          type: string
+          size: 128
+      - change_summary:
+          type: string
+          size: unlimited
   - import_contacts_request:
       fields:
-        - source:
-            type: string
-            size: 64
-        - payload:
-            type: string
-            size: unlimited
-
+      - source:
+          type: string
+          size: 64
+      - payload:
+          type: string
+          size: unlimited
   - import_contacts_result:
       fields:
-        - imported_count:
-            type: number
-        - skipped_count:
-            type: number
-        - failed_count:
-            type: number
-
-  # Response shape for LegacyMigrationService.
+      - imported_count:
+          type: number
+      - skipped_count:
+          type: number
+      - failed_count:
+          type: number
   - legacy_migration_result:
       fields:
-        - migrated_count:
-            type: number
-        - skipped_count:
-            type: number
-        - completed_at:
-            type: datetime
-            is_nullable: true
+      - migrated_count:
+          type: number
+      - skipped_count:
+          type: number
+      - completed_at:
+          type: datetime
+          is_nullable: true

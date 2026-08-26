@@ -143,7 +143,7 @@ describe("generate-frontend-types", () => {
     );
   });
 
-  it("inlines nothing when datasource_types.yaml is absent", async () => {
+  it("inlines nothing when types.yaml has no datasource types", async () => {
     const frontend = await generateFrontendTypes({
       reader: memoryReader({
         [TYPES_YAML]: `types:

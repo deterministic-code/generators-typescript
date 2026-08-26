@@ -1,10 +1,10 @@
 import { fill } from "@deterministic-code/generators-common/fill";
 import type { GenerateContext } from "@deterministic-code/generators-common/generate-context";
 import { content, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
+import { datasourceTypeAncestry } from "@deterministic-code/generators-common/datasource-type-tree";
 import pluralize from "pluralize";
 import { toNative } from "./base-type-converter.ts";
 import {
-  columnFields,
   datasourceTypesOf,
   isPkField,
   isReadonlyLookup,
@@ -22,7 +22,7 @@ import {
   type TypeField,
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
 import { fieldSize, refParent } from "./common/view-shape.ts";
-import { joinImport, libraryImportSpecifier } from "./library-import.ts";
+import { libraryImportSpecifier } from "./library-import.ts";
 import { genericTmpl } from "./resources/service-integration-tests.ts";
 import { createCasing } from "./common/default-casing.ts";
 import {
@@ -34,95 +34,31 @@ import {
 import { bag, Emit } from "./emit.ts";
 
 const SYSTEM_COLUMNS = new Set(["id", "uuid", "created", "updated"]);
+const SNAKE_STEM = /^[a-z_][a-z0-9_]*$/;
 
-/** Same last-token rule as SQL `effectiveTableName` — tests must hit the physical table. */
-const physicalTableName = (name: string, pluralizeFlag: boolean): string =>
-  pluralizeFlag && name
-    ? name.replace(/[^_]+$/, (token) => pluralize(token))
-    : name;
-
-const findType = (
+/** Same physical-name rule as SQL `SqlMapping.tableName` — tests must hit the migrated table. */
+const physicalTableName = (
   name: string,
-  types: Type[],
-): Type | undefined => types.find((d) => d.name === name);
-
-const isEligible = (table: Type | undefined): table is Type =>
-  table !== undefined;
-
-/** All in-set `references` parents, recursively, parent before child. Matches generators-common `datasourceTypeAncestry`. */
-const referencedAncestry = (
-  types: readonly Type[],
-  name: string,
-): string[] => {
-  const typeNames = new Set(types.map((type) => type.name));
-  const byName = new Map(types.map((type) => [type.name, type]));
-  if (!byName.has(name)) return [];
-  const parentsOf = (type: Type): string[] => {
-    const parents: string[] = [];
-    const seen = new Set<string>();
-    for (const field of type.fields) {
-      const parent = refParent(field);
-      if (
-        parent === undefined ||
-        parent.length === 0 ||
-        parent === type.name ||
-        !typeNames.has(parent) ||
-        seen.has(parent)
-      ) {
-        continue;
-      }
-      seen.add(parent);
-      parents.push(parent);
-    }
-    return parents;
-  };
-  const out: string[] = [];
-  const seen = new Set<string>();
-  const walk = (current: string, path: ReadonlySet<string>): void => {
-    const type = byName.get(current);
-    if (type === undefined) return;
-    for (const parent of parentsOf(type)) {
-      if (path.has(parent) || seen.has(parent)) continue;
-      walk(parent, new Set([...path, current]));
-      if (seen.has(parent)) continue;
-      seen.add(parent);
-      out.push(parent);
-    }
-  };
-  walk(name, new Set([name]));
-  return out;
+  mapping: string | undefined,
+  pluralizeFlag: boolean,
+): string => {
+  if (mapping !== undefined && !SNAKE_STEM.test(mapping)) return mapping;
+  const stem = mapping ?? name;
+  return pluralizeFlag
+    ? stem.replace(/[^_]+$/, (token) => pluralize(token))
+    : stem;
 };
 
-const serviceVarName = (className: string): string =>
-  `${className.slice(0, 1).toLowerCase()}${className.slice(1)}`;
-
-const pkColumn = (table: Type, overlay?: DatasourceTable): string =>
-  pkName(table, overlay);
-
-const writableScalars = (
-  table: Type,
-  overlay?: DatasourceTable,
-): TypeField[] => {
-  const pk = pkColumn(table, overlay);
-  return columnFields(table.fields).filter(
-    (field) =>
-      !SYSTEM_COLUMNS.has(field.name) &&
-      field.name !== pk &&
-      !isPkField(field, table, overlay) &&
-      field.references === undefined &&
-      !field.isNullable &&
-      field.hasDefault !== true,
-  );
+const hasStampColumns = (table: Type): boolean => {
+  const names = new Set(table.fields.map((f) => f.name));
+  return names.has("created") && names.has("updated");
 };
 
-const fkFields = (
-  table: Type,
-  typeNames: ReadonlySet<string>,
-): TypeField[] =>
-  columnFields(table.fields).filter((field) => {
-    const parent = refParent(field);
-    return parent !== undefined && typeNames.has(parent);
-  });
+const hasUuidColumn = (table: Type): boolean =>
+  table.fields.some((f) => f.name === "uuid");
+
+const hasFieldMappings = (overlay?: DatasourceTable): boolean =>
+  (overlay?.fields ?? []).some((f) => f.mapping !== undefined);
 
 const mutateViewName = (
   name: string,
@@ -131,6 +67,22 @@ const mutateViewName = (
   if (viewNames.has(`create_${name}`)) return `create_${name}`;
   if (viewNames.has(`update_${name}`)) return `update_${name}`;
   return undefined;
+};
+
+const writableScalars = (
+  table: Type,
+  overlay?: DatasourceTable,
+): TypeField[] => {
+  const pk = pkName(table, overlay);
+  return table.fields.filter(
+    (field) =>
+      !SYSTEM_COLUMNS.has(field.name) &&
+      field.name !== pk &&
+      !isPkField(field, table, overlay) &&
+      field.references === undefined &&
+      !field.isNullable &&
+      field.hasDefault !== true,
+  );
 };
 
 class Generator extends Emit {
@@ -143,20 +95,21 @@ class Generator extends Emit {
   }
 
   from(deterministic: IDeterministic): GenerateEntry[] {
-    const { generics } = deterministic.services;
     const datasources = datasourceTypesOf(deterministic);
+    const byName = new Map(datasources.map((t) => [t.name, t]));
     const overlays = tableByName(deterministic);
+    const typeNames = new Set(byName.keys());
+    const viewNames = new Set(viewTypesOf(deterministic).map((v) => v.name));
     const mode = this.settings.libraryReferenceMode;
-    const typeNames = new Set(datasources.map((table) => table.name));
-    const viewNames = new Set(viewTypesOf(deterministic).map((view) => view.name));
-    const entries = generics.flatMap((c) => {
-      const table = findType(c.name, datasources);
-      if (!isEligible(table)) return [];
+    const entries = deterministic.services.generics.flatMap((c) => {
+      const table = byName.get(c.name);
+      if (table === undefined) return [];
+      if (hasFieldMappings(overlays.get(c.name))) return [];
       return [
         this.test(
           c.name,
           table,
-          datasources,
+          byName,
           overlays,
           typeNames,
           viewNames,
@@ -181,7 +134,10 @@ class Generator extends Emit {
   ): { names: string; fromPath: string }[] {
     const byPath = new Map<string, string[]>();
     const add = (entity: string) => {
-      const fromPath = this.imports.spec(fromRel, this.typeRel(entity, viewNames));
+      const fromPath = this.imports.spec(
+        fromRel,
+        this.typeRel(entity, viewNames),
+      );
       const typeName = this.casing.convertTypes(entity);
       const names = byPath.get(fromPath) ?? [];
       if (!names.includes(typeName)) names.push(typeName);
@@ -200,10 +156,21 @@ class Generator extends Emit {
       .sort((a, b) => a.fromPath.localeCompare(b.fromPath));
   }
 
+  private pkEntry(node: Type, overlay?: DatasourceTable) {
+    const column = pkName(node, overlay);
+    const col = node.fields.find((f) => f.name === column);
+    return {
+      entityNameJson: JSON.stringify(node.name),
+      columnJson: JSON.stringify(column),
+      pkIdTypeJson: JSON.stringify(col?.type === "uuid" ? "uuid" : "integer"),
+      isUuidPk: col?.type === "uuid",
+    };
+  }
+
   private test(
     entity: string,
     table: Type,
-    datasources: Type[],
+    byName: Map<string, Type>,
     overlays: Map<string, DatasourceTable>,
     typeNames: ReadonlySet<string>,
     viewNames: ReadonlySet<string>,
@@ -211,27 +178,38 @@ class Generator extends Emit {
     mode: string | undefined,
   ): GenerateEntry {
     const overlay = overlays.get(table.name);
-    const pk =
+    const pkField =
       table.fields.find((f) => isPkField(f, table, overlay)) ??
       table.fields.find((f) => f.name === "id");
-    const pkField = pk;
     const path = this.imports.serviceIntegrationTest(entity);
-    const isUuid = pkField?.type === "uuid";
-    const withUuid = table.fields.some((f) => f.name === "uuid");
+    const isUuidPk = pkField?.type === "uuid";
+    const withUuid = hasUuidColumn(table);
+    const stamps = hasStampColumns(table);
     const className = this.casing.serviceClassName(entity);
-    const chainNames = [...referencedAncestry(datasources, entity), entity];
+    const datasources = [...byName.values()];
+    const chainNames = [
+      ...datasourceTypeAncestry(datasources, entity),
+      entity,
+    ];
+    const chainSupportsStamps = chainNames.every((name) => {
+      const node = byName.get(name);
+      return node !== undefined && (isReadonlyLookup(node) || hasStampColumns(node));
+    });
     const missingLookup = chainNames.find((name) => {
-      const node = findType(name, datasources);
+      const node = byName.get(name);
       if (node === undefined || !isReadonlyLookup(node)) return false;
       return (seeds.get(name) ?? []).length === 0;
     });
     const isLookup = isReadonlyLookup(table);
     const hierarchy =
-      missingLookup === undefined && !isLookup
+      missingLookup === undefined &&
+      !isLookup &&
+      stamps &&
+      chainSupportsStamps
         ? this.hierarchyTokens(
             entity,
             chainNames,
-            datasources,
+            byName,
             overlays,
             typeNames,
             viewNames,
@@ -255,39 +233,37 @@ class Generator extends Emit {
           chainNames,
           viewNames,
         ),
-        serviceImport: joinImport("..", this.casing.fileBase(`${entity}_service`)),
+        serviceImport: this.imports.spec(
+          this.imports.serviceIntegrationTestRel(entity),
+          this.imports.serviceRel(entity),
+        ),
         rowTypeName: this.casing.convertTypes(entity),
         createTypeName:
           mutate === undefined ? false : this.casing.convertTypes(mutate),
         tableNameJson: JSON.stringify(
-          physicalTableName(entity, this.pluralizeTableNames),
+          physicalTableName(entity, overlay?.mapping, this.pluralizeTableNames),
         ),
         pkEntries: chainNames.flatMap((name) => {
-          const node = findType(name, datasources);
-          if (node === undefined) return [];
-          const column = pkColumn(node, overlays.get(name));
-          const col = node.fields.find((f) => f.name === column);
-          return [
-            {
-              entityNameJson: JSON.stringify(name),
-              columnJson: JSON.stringify(column),
-              pkIdTypeJson: JSON.stringify(col?.type === "uuid" ? "uuid" : "integer"),
-            },
-          ];
+          const node = byName.get(name);
+          return node === undefined
+            ? []
+            : [this.pkEntry(node, overlays.get(name))];
         }),
         entityNameJson: JSON.stringify(entity),
         entityName: entity,
-        pkIdTypeJson: JSON.stringify(isUuid ? "uuid" : "integer"),
         idTsType: toNative(pkField?.type ?? "integer"),
         withUuid,
-        stampCols: withUuid
-          ? "id/uuid/created/updated"
-          : "id/created/updated",
-        serviceOptions: isUuid ? `, { idType: "uuid" }` : "",
-        missingId: isUuid
+        isUuidPk,
+        stampCols: withUuid ? "id/uuid/created/updated" : "id/created/updated",
+        missingId: isUuidPk
           ? JSON.stringify("00000000-0000-0000-0000-000000000000")
           : "99999",
-        canCreate: hierarchy === false && !isLookup && missingLookup === undefined,
+        canCreate:
+          hierarchy === false &&
+          !isLookup &&
+          missingLookup === undefined &&
+          stamps,
+        canUpdate: stamps,
         hierarchy,
         missingLookupSeed:
           missingLookup === undefined
@@ -305,7 +281,7 @@ class Generator extends Emit {
   private hierarchyTokens(
     entity: string,
     chainNames: string[],
-    datasources: Type[],
+    byName: Map<string, Type>,
     overlays: Map<string, DatasourceTable>,
     typeNames: ReadonlySet<string>,
     viewNames: ReadonlySet<string>,
@@ -314,29 +290,33 @@ class Generator extends Emit {
     const parents = chainNames.filter((name) => name !== entity);
     const parentImports = parents.map((name) => ({
       className: this.casing.serviceClassName(name),
-      importPath: this.imports.testSpec(
-        this.imports.service(name),
-        `${name}_service`,
+      importPath: this.imports.spec(
+        this.imports.serviceIntegrationTestRel(entity),
+        this.imports.serviceRel(name),
       ),
     }));
     const chainServices = parents.map((name) => {
-      const node = findType(name, datasources)!;
-      const column = pkColumn(node, overlays.get(name));
-      const col = node.fields.find((f) => f.name === column);
+      const node = byName.get(name)!;
+      const pk = this.pkEntry(node, overlays.get(name));
       const className = this.casing.serviceClassName(name);
       return {
         varName: serviceVarName(className),
         className,
         rowTypeName: this.casing.convertTypes(name),
         tableNameJson: JSON.stringify(
-          physicalTableName(name, this.pluralizeTableNames),
+          physicalTableName(
+            name,
+            overlays.get(name)?.mapping,
+            this.pluralizeTableNames,
+          ),
         ),
         entityNameJson: JSON.stringify(name),
-        serviceOptions: col?.type === "uuid" ? `, { idType: "uuid" }` : "",
+        withUuid: hasUuidColumn(node),
+        isUuidPk: pk.isUuidPk,
       };
     });
     const creates = chainNames.map((name) => {
-      const node = findType(name, datasources)!;
+      const node = byName.get(name)!;
       const isSubject = name === entity;
       const className = this.casing.serviceClassName(name);
       const lookup = isReadonlyLookup(node);
@@ -350,34 +330,34 @@ class Generator extends Emit {
         missingSeedErrorJson: JSON.stringify(`expected seeded ${name}`),
         createTypeName:
           mutate === undefined ? false : this.casing.convertTypes(mutate),
-        fields: this.payloadFields(node, typeNames, datasources, overlays),
+        fields: this.payloadFields(node, typeNames, byName, overlays),
       };
     });
     const writable = chainNames.filter((name) => {
-      const node = findType(name, datasources);
+      const node = byName.get(name);
       return node !== undefined && !isReadonlyLookup(node);
     });
     const updates = [...writable].reverse().map((name) => {
-      const node = findType(name, datasources)!;
+      const node = byName.get(name)!;
       const isSubject = name === entity;
       const className = this.casing.serviceClassName(name);
+      const fieldVar = isSubject ? "row" : this.casing.convertFields(name);
       return {
         serviceVar: isSubject ? "service" : serviceVarName(className),
-        varName: isSubject ? "row" : this.casing.convertFields(name),
-        updatedVarName: `${isSubject ? "row" : this.casing.convertFields(name)}Updated`,
-        pkIdent: this.casing.fieldIdent(pkColumn(node, overlays.get(name))),
+        varName: fieldVar,
+        updatedVarName: `${fieldVar}Updated`,
+        pkIdent: this.casing.fieldIdent(pkName(node, overlays.get(name))),
         fields: this.scalarFields(node, overlays.get(name)),
       };
     });
     const deletes = [...writable].reverse().map((name) => {
-      const node = findType(name, datasources)!;
+      const node = byName.get(name)!;
       const isSubject = name === entity;
       const className = this.casing.serviceClassName(name);
-      const column = pkColumn(node, overlays.get(name));
       return {
         serviceVar: isSubject ? "service" : serviceVarName(className),
         varName: isSubject ? "row" : this.casing.convertFields(name),
-        pkIdent: this.casing.fieldIdent(column),
+        pkIdent: this.casing.fieldIdent(pkName(node, overlays.get(name))),
       };
     });
     return { parentImports, chainServices, creates, updates, deletes };
@@ -399,23 +379,31 @@ class Generator extends Emit {
   private payloadFields(
     table: Type,
     typeNames: ReadonlySet<string>,
-    datasources: Type[],
+    byName: Map<string, Type>,
     overlays: Map<string, DatasourceTable>,
   ): { ident: string; expr: string }[] {
-    const fks = fkFields(table, typeNames).map((field) => {
-      const parentName = refParent(field)!;
-      const parent = findType(parentName, datasources)!;
-      const column = pkColumn(parent, overlays.get(parentName));
-      const pkIdent = this.casing.fieldIdent(column);
-      const parentVar = this.casing.convertFields(parentName);
-      return {
-        ident: this.casing.fieldIdent(field.name),
-        expr: `${parentVar}.${pkIdent}`,
-      };
+    const fks = table.fields.flatMap((field) => {
+      const parentName = refParent(field);
+      if (parentName === undefined || !typeNames.has(parentName)) return [];
+      const parent = byName.get(parentName)!;
+      const pkIdent = this.casing.fieldIdent(
+        pkName(parent, overlays.get(parentName)),
+      );
+      return [
+        {
+          ident: this.casing.fieldIdent(field.name),
+          expr: `${this.casing.convertFields(parentName)}.${pkIdent}`,
+        },
+      ];
     });
     return [...fks, ...this.scalarFields(table)];
   }
 }
+
+const serviceVarName = (className: string): string => {
+  const lowered = `${className.slice(0, 1).toLowerCase()}${className.slice(1)}`;
+  return lowered === className ? `${className}_instance` : lowered;
+};
 
 /** Returns attributed entries. Cross-lane service imports need host `finalizeEntries`. */
 export const generate = async (

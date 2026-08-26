@@ -92,6 +92,10 @@ describe("createCasing overrides", () => {
       casing.serviceInterfaceName("contact_group"),
       "i_contact_group_service",
     );
+    assert.notEqual(
+      casing.serviceInterfaceName("contact_group"),
+      `I${casing.serviceClassName("contact_group")}`,
+    );
     assert.equal(casing.schemaName("contact_group"), "contact_group_schema");
     assert.equal(
       casing.schemaName("create_contact_group"),
@@ -127,6 +131,31 @@ describe("createCasing overrides", () => {
     assert.equal(casing.homeComponentName(), "home");
     assert.equal(casing.rootLayoutName(), "root_layout");
     assert.equal(casing.appConfigName(), "app_config");
+  });
+
+  it("camels type names and wraps I with every token", () => {
+    const casing = createCasing({
+      "languages.typescript.casing.types": "Camel",
+    });
+    assert.equal(casing.convertTypes(NAME), "notificationType");
+    assert.equal(casing.serviceClassName("contact"), "contactService");
+    assert.equal(casing.serviceInterfaceName("contact"), "iContactService");
+    assert.equal(
+      casing.serviceInterfaceName("contact_group"),
+      "iContactGroupService",
+    );
+    assert.equal(
+      casing.serviceInterfaceName("notification_type"),
+      "iNotificationTypeService",
+    );
+    assert.equal(
+      casing.authoredInterfaceName("ContactImportService"),
+      "iContactImportService",
+    );
+    assert.notEqual(
+      casing.serviceInterfaceName("contact_group"),
+      `I${casing.serviceClassName("contact_group")}`,
+    );
   });
 
   it("camels fields", () => {

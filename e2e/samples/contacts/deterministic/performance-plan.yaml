@@ -3,18 +3,6 @@ iteration_template_vars:
   - randSuffix
   - i
 steps:
-  - id: lookup-contact-sources
-    phase: lookup
-    op: GET
-    path: /api/contact-sources
-    capture:
-      lookups.contact_source.ids: $.items[*].id
-      lookups.contact_source.first_id: $.items[0].id
-      lookups.contact_source.first_name: $.items[0].name
-  - id: lookup-contact-source-by-id
-    phase: lookup
-    op: GET
-    path: /api/contact-sources/${lookups.contact_source.first_id}
   - id: post-contact-group
     phase: iter
     op: POST
@@ -90,7 +78,7 @@ steps:
     op: POST
     path: /api/contacts
     body:
-      contact_source_name: ${lookups.contact_source.first_name}
+      contact_source_name: Manual
       first_name: perf-contact-first_name-${randSuffix()}
       last_name: perf-contact-last_name-${randSuffix()}
     capture:
@@ -108,7 +96,7 @@ steps:
     op: PATCH
     path: /api/contacts/${ids.contact[i]}
     body:
-      contact_source_name: ${lookups.contact_source.first_name}
+      contact_source_name: Manual
       first_name: perf-patch-contact-first_name-${randSuffix()}
       last_name: perf-patch-contact-last_name-${randSuffix()}
   - id: put-contact
@@ -116,7 +104,7 @@ steps:
     op: PUT
     path: /api/contacts/${ids.contact[i]}
     body:
-      contact_source_name: ${lookups.contact_source.first_name}
+      contact_source_name: Manual
       first_name: perf-upd-contact-first_name-${randSuffix()}
       last_name: perf-upd-contact-last_name-${randSuffix()}
   - id: eager-get-contacts
@@ -132,7 +120,7 @@ steps:
     op: POST
     path: /api/contacts
     body:
-      contact_source_name: ${lookups.contact_source.first_name}
+      contact_source_name: Manual
       first_name: perf-contact-first_name-${randSuffix()}
       last_name: perf-contact-last_name-${randSuffix()}
       addresses:
@@ -147,7 +135,7 @@ steps:
     op: PATCH
     path: /api/contacts/${ids.contact_eager[i]}
     body:
-      contact_source_name: ${lookups.contact_source.first_name}
+      contact_source_name: Manual
       first_name: perf-patch-contact-first_name-${randSuffix()}
       last_name: perf-patch-contact-last_name-${randSuffix()}
       addresses:
@@ -160,7 +148,7 @@ steps:
     op: PUT
     path: /api/contacts/${ids.contact_eager[i]}
     body:
-      contact_source_name: ${lookups.contact_source.first_name}
+      contact_source_name: Manual
       first_name: perf-upd-contact-first_name-${randSuffix()}
       last_name: perf-upd-contact-last_name-${randSuffix()}
       addresses:
