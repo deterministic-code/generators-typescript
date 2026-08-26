@@ -18,6 +18,16 @@ export const wrapsInheritedDatasource = (
   (view.removeFields?.length ?? 0) === 0 &&
   view.fields.length === 0;
 
+/** Fields on the expanded view that are not columns of the inherited parent (union mapping, collections). */
+export const fieldsBeyondParent = (
+  fields: TypeField[],
+  parent: Type | undefined,
+): TypeField[] => {
+  if (parent === undefined) return fields;
+  const parentNames = new Set(parent.fields.map((f) => f.name));
+  return fields.filter((f) => !parentNames.has(f.name));
+};
+
 export const fieldRefKind = (
   field: TypeField,
   typesByName: Map<string, Type>,

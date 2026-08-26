@@ -24,7 +24,7 @@ import {
   ownedDictionariesOf,
   type OwnedDictionary,
 } from "./common/owned-dictionaries.ts";
-import { fieldRefKind, isAlias } from "./common/view-shape.ts";
+import { fieldRefKind, fieldsBeyondParent, isAlias } from "./common/view-shape.ts";
 import { bag, Emit } from "./emit.ts";
 import {
   indexTmpl as defaultIndexTmpl,
@@ -271,10 +271,14 @@ class Generator extends Emit {
     if (this.kind === "view" && this.referenceBackendType && isAlias(type)) {
       return (expanded?.fields ?? type.fields).filter(isCollectionField);
     }
-    const fields =
-      this.extendsType(type, new Map()) !== undefined
-        ? type.fields
-        : (expanded?.fields ?? type.fields);
+    if (this.extendsType(type, new Map()) !== undefined) {
+      if (this.kind === "datasource") return columnFields(type.fields);
+      const parentName = isAlias(type) ? type.name : type.inherits;
+      const parent =
+        parentName === undefined ? undefined : this.typesByName.get(parentName);
+      return fieldsBeyondParent(expanded?.fields ?? type.fields, parent);
+    }
+    const fields = expanded?.fields ?? type.fields;
     return this.kind === "datasource" ? columnFields(fields) : fields;
   }
 

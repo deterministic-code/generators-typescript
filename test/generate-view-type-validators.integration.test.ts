@@ -61,6 +61,48 @@ const VIEW_YAML = `types:
             type: decimal
 `;
 
+const CONTACT_ENRICH_YAML = `types:
+  - contacts_base:
+      tags: [datasource_type]
+      inherits: set
+      fields:
+        - contact_source_id:
+            type: integer
+            references: contact_source.id
+        - first_name:
+            type: string
+  - contact_source:
+      tags: [datasource_type, view_type, readonly_lookup]
+      inherits: set
+      fields:
+        - name:
+            type: string
+            is_unique: true
+  - contact:
+      tags: [view_type]
+      inherits: contacts_base
+      union: [contact_source]
+      mapping:
+        name: contact_source_name
+      remove_fields: [contact_source.id]
+      fields:
+        - phones:
+            type: phone[]
+  - phone:
+      tags: [view_type]
+      fields:
+        - number:
+            type: string
+  - contact_group:
+      tags: [view_type]
+      inherits: set
+      fields:
+        - name:
+            type: string
+        - members:
+            type: contact[]
+`;
+
 const SIMPLE_VIEW_YAML = `types:
   - card_payment:
       tags: [view_type]
@@ -213,6 +255,16 @@ describe("generate view type validators", () => {
       /types\/generated\/datasource\/validators\/user\.ts/,
     );
     assert.match(summary.attributes?.uses ?? "", /UserSchema/);
+  });
+
+  it("extends a datasource schema with union-mapped enrichment columns", async () => {
+    const contact = await bodyOf("contact.ts", {}, CONTACT_ENRICH_YAML);
+    assert.match(
+      contact,
+      /export const ContactSchema = DatasourceContactsBaseSchema\.extend\(\{\n  contact_source_name: z\.string\(\)\.trim\(\),\n  phones: z\.array\(z\.lazy\(\(\) => PhoneSchema\)\),\n\}\);/,
+    );
+    const group = await bodyOf("contactGroup.ts", {}, CONTACT_ENRICH_YAML);
+    assert.match(group, /members: z\.array\(z\.lazy\(\(\) => ContactSchema\)\)/);
   });
 
   it("inherits a datasource schema with omit, enrich, and no CRUD trio for omit views", async () => {

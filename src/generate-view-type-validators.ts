@@ -19,7 +19,12 @@ import {
   ownedDictionariesOf,
   type OwnedDictionary,
 } from "./common/owned-dictionaries.ts";
-import { fieldRefKind, fieldSize, isAlias } from "./common/view-shape.ts";
+import {
+  fieldRefKind,
+  fieldsBeyondParent,
+  fieldSize,
+  isAlias,
+} from "./common/view-shape.ts";
 import { toZod } from "./common/type-converters/native-to-zod.ts";
 import { bag, Emit } from "./emit.ts";
 import {
@@ -324,9 +329,15 @@ class Generator extends Emit {
       parentName !== undefined &&
       (isAlias(view) || !isBuiltinInherit(view));
     const inlineFields = expanded?.fields ?? view.fields;
+    const parentType =
+      parentName === undefined ? undefined : this.typesByName.get(parentName);
     const fields = [
       ...this.fieldTokens(
-        inheritBackend && !isAlias(view) ? view.fields : inheritBackend ? [] : inlineFields,
+        inheritBackend && !isAlias(view)
+          ? fieldsBeyondParent(inlineFields, parentType)
+          : inheritBackend
+            ? []
+            : inlineFields,
       ),
       ...dictionariesForView(view, this.typesByName, this.dictionaries).map(
         (d) => ({
