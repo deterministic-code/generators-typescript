@@ -110,8 +110,8 @@ function mountM2m(
       `mountCombinedRoutes: junction "${descriptor.junction}" missing from datasource_types`,
     );
   }
-  const parentFkField = findForeignKeyTo(junctionDef, descriptor.parent);
-  const childFkField = findForeignKeyTo(junctionDef, descriptor.target);
+  const parentFkField = findForeignKeyTo(junctionDef, descriptor.parent, datasourceByName);
+  const childFkField = findForeignKeyTo(junctionDef, descriptor.target, datasourceByName);
   if (!parentFkField || !childFkField) {
     throw new Error(
       `mountCombinedRoutes: junction "${descriptor.junction}" missing FK to ${descriptor.parent}/${descriptor.target}`,

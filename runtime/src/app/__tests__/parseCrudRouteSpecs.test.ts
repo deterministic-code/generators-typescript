@@ -328,11 +328,72 @@ describe('parseCrudRouteSpecs', () => {
         ],
       },
       {
-        combined_routes: [{ projects: { combined_types: ['project_settings'] } }],
+        combined_routes: [{ projects: { combines: ['project_settings'] } }],
       },
     );
     const setting = specs.find((s) => s.entityName === 'project_setting');
     expect(setting?.nestedOnly).toBe(true);
+  });
+
+  it('marks a view child nestedOnly when its inherited base FK points at the parent base', () => {
+    const specs = parseSpecs(
+      {
+        types: [
+          { contacts_base: { fields: [] } },
+          { contact: { inherits: 'contacts_base', tags: ['view_type'], fields: [] } },
+          {
+            addresses_base: {
+              fields: [{ contact_id: { type: 'number', references: 'contacts_base.id' } }],
+            },
+          },
+          { address: { inherits: 'addresses_base', tags: ['view_type'], fields: [] } },
+        ],
+      },
+      {
+        combined_routes: [
+          { contact: { combines: [{ address: { route: '/addresses' } }] } },
+        ],
+      },
+    );
+    expect(specs.find((s) => s.entityName === 'address')?.nestedOnly).toBe(true);
+  });
+
+  it('create schema drops stamp columns so nested address POST can send line1/city', () => {
+    const specs = parseSpecs(
+      {
+        types: [
+          {
+            base: {
+              fields: [
+                { id: { type: 'integer', is_id: true } },
+                { uuid: { type: 'uuid' } },
+                { created: { type: 'datetime' } },
+                { updated: { type: 'datetime' } },
+                { version: { type: 'binary', default_value: '' } },
+              ],
+            },
+          },
+          { contacts_base: { inherits: 'base', fields: [] } },
+          {
+            addresses_base: {
+              inherits: 'base',
+              fields: [
+                { contact_id: { type: 'number', references: 'contacts_base.id' } },
+                { line1: { type: 'string' } },
+                { city: { type: 'string' } },
+              ],
+            },
+          },
+          { address: { inherits: 'addresses_base', tags: ['view_type'], fields: [] } },
+        ],
+      },
+      { combined_routes: [] },
+    );
+    const address = specs.find((s) => s.entityName === 'address');
+    expect(address).toBeDefined();
+    const body = { line1: 'Nested CRUD', city: 'York', contact_id: 2 };
+    expect(buildBodySchema(address!, 'create').parse(body)).toMatchObject(body);
+    expect(() => buildBodySchema(address!, 'update').parse(body)).toThrow();
   });
 
   it('does not mark an entity nestedOnly when it is also a combined-route parent', () => {
@@ -359,9 +420,9 @@ describe('parseCrudRouteSpecs', () => {
       },
       {
         combined_routes: [
-          { email_account: { combined_types: ['folder'] } },
-          { folder: { combined_types: ['message'] } },
-          { message: { combined_types: ['attachment'] } },
+          { email_account: { combines: ['folder'] } },
+          { folder: { combines: ['message'] } },
+          { message: { combines: ['attachment'] } },
         ],
       },
     );
@@ -389,7 +450,7 @@ describe('parseCrudRouteSpecs', () => {
         combined_routes: [
           {
             projects: {
-              combined_types: [{ project_settings: { via: 'project_id', target: 'setting' } }],
+              combines: [{ project_settings: { via: 'project_id', target: 'setting' } }],
             },
           },
         ],

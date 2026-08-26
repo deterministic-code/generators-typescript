@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { kebabPlural, singularizeToken } from '../../naming/index';
+import { findForeignKeyTo, type DatasourceTypeDef } from '../../routes/iterateCombinedRoutes';
 import { routeViewTypeDirective } from './routeViewTypeDirective';
 import { collectEntityEagerPaths } from './parseEagerPaths';
 import { parseRelationType, relationIsArray } from './computeEagerChildren';
@@ -119,7 +120,11 @@ type RawType = {
 };
 type DatasourceDoc = { types?: Array<Record<string, RawType>> };
 type CombinedChildOpts = { via?: string; target?: string; route?: string };
-type CombinedParent = { combined_types?: Array<string | Record<string, CombinedChildOpts>> };
+type CombinedParent = {
+  combines?: Array<string | Record<string, CombinedChildOpts>>;
+  /** @deprecated authored YAML uses `combines`. */
+  combined_types?: Array<string | Record<string, CombinedChildOpts>>;
+};
 type CombinedRoutesDoc = { combined_routes?: Array<Record<string, CombinedParent>> };
 type ViewTypeField = { type?: string; references?: string };
 type RawViewType = { inherits?: string; fields?: Array<Record<string, ViewTypeField>> };
@@ -208,7 +213,9 @@ function wrapEagerChildSchema(
 
 function depluraliseSnake(name: string): string {
   const snake = name.replace(/-/g, '_');
-  return snake.endsWith('s') ? snake.slice(0, -1) : snake;
+  const parts = snake.split('_');
+  parts[parts.length - 1] = singularizeToken(parts[parts.length - 1]);
+  return parts.join('_');
 }
 
 function buildColumnShape(
@@ -452,7 +459,7 @@ function collectNestedOnlyEntities(
   types: Array<[string, RawType]>,
 ): Set<string> {
   const doc = (routesDoc as CombinedRoutesDoc | null) ?? {};
-  const fieldsByType = new Map(types.map(([name, body]) => [name, extractFields(body)]));
+  const typesByName = new Map(types) as Map<string, DatasourceTypeDef>;
   const nested = new Set<string>();
 
   // Entities that appear as combined-route parents get their own top-level CRUD via emitParentCrudRoutes — must stay mountable at top-level even when also FK child of another parent.
@@ -464,15 +471,17 @@ function collectNestedOnlyEntities(
   }
 
   const hasDirectFkTo = (childEntity: string, parentEntity: string): boolean => {
-    const fields = fieldsByType.get(childEntity) ?? [];
-    const expectedRef = `${parentEntity}.id`;
-    return fields.some(([, f]) => f.references === expectedRef);
+    const childDef = typesByName.get(childEntity);
+    return (
+      childDef !== undefined &&
+      findForeignKeyTo(childDef, parentEntity, typesByName) !== null
+    );
   };
 
   for (const parentEntry of doc.combined_routes ?? []) {
     for (const [parentKey, parent] of Object.entries(parentEntry)) {
       const parentEntity = depluraliseSnake(parentKey);
-      for (const child of parent.combined_types ?? []) {
+      for (const child of parent.combines ?? parent.combined_types ?? []) {
         if (typeof child === 'string') {
           const childEntity = depluraliseSnake(child);
           if (parentEntities.has(childEntity)) continue;
