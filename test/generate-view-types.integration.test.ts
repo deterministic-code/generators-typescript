@@ -67,6 +67,40 @@ const VIEW_YAML = `types:
             type: decimal
 `;
 
+const CONTACT_ENRICH_YAML = `types:
+  - contacts_base:
+      tags: [datasource_type]
+      inherits: set
+      fields:
+        - contact_source_id:
+            type: integer
+            references: contact_source.id
+        - first_name:
+            type: string
+  - contact_source:
+      tags: [datasource_type, view_type, readonly_lookup]
+      inherits: set
+      fields:
+        - name:
+            type: string
+            is_unique: true
+  - contact:
+      tags: [view_type]
+      inherits: contacts_base
+      union: [contact_source]
+      mapping:
+        name: contact_source_name
+      remove_fields: [contact_source.id]
+      fields:
+        - phones:
+            type: phone[]
+  - phone:
+      tags: [view_type]
+      fields:
+        - number:
+            type: string
+`;
+
 const SIMPLE_VIEW_YAML = `types:
   - card_payment:
       tags: [view_type]
@@ -235,6 +269,17 @@ describe("generate view types", () => {
       /export interface UserSummary extends Omit<User, "nick_name" \| "role_id"> \{/,
     );
     assert.match(summary, /display_name: string;/);
+  });
+
+  it("extends a datasource parent with union-mapped enrichment columns", async () => {
+    const contact = await bodyOf("contact.ts", {}, CONTACT_ENRICH_YAML);
+    assert.match(
+      contact,
+      /export interface Contact extends Omit<ContactsBase, "contact_source_id"> \{/,
+    );
+    assert.match(contact, /contact_source_name: string;/);
+    assert.match(contact, /phones: Phone\[\];/);
+    assert.doesNotMatch(contact, /first_name:/);
   });
 
   it("aliases a colliding inherited datasource class name", async () => {
