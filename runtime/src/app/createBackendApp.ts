@@ -780,20 +780,22 @@ class BackendAppBuilder {
     wrapCrudServiceMap(fullWriteServices, this.serviceMiddlewares);
     this.mountEntityCrudRoutes(fullReadServices, fullWriteServices);
     const crudSpecsByEntity = new Map(this.crudSpecs.map((s) => [s.entityName, s]));
-    const buildSchemaFor = (typeName: string) => {
+    const specFor = (typeName: string) => {
       const spec = crudSpecsByEntity.get(typeName);
       if (!spec) {
         throw new Error(`mountCombinedRoutes: no crud spec for "${typeName}"`);
       }
-      return buildBodySchema(spec, 'update');
+      return spec;
     };
     mountCombinedRoutes(app, {
       repos: ctx.repos as unknown as Record<string, IEntityService<any, any>>,
       fullReadServices,
       datasourceData: this.datasourceData,
       routesData: this.routesData,
-      buildCreateSchema: buildSchemaFor,
-      buildUpdateSchema: (typeName) => buildSchemaFor(typeName).partial(),
+      // Nested POST injects the parent FK; create must drop stamp columns (uuid/created/updated)
+      // the way top-level CRUD does. The old update schema required those and 400'd `{ line1, city }`.
+      buildCreateSchema: (typeName) => buildBodySchema(specFor(typeName), 'create'),
+      buildUpdateSchema: (typeName) => buildBodySchema(specFor(typeName), 'update').partial(),
     });
   }
 

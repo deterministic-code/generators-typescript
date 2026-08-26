@@ -5,6 +5,7 @@ import {
   type DatasourceData,
   type RoutesData,
   type CombinedRouteDescriptor,
+  type DatasourceTypeDef,
   type DirectFkDescriptor,
   type M2mDescriptor,
 } from '../iterateCombinedRoutes';
@@ -81,6 +82,19 @@ describe('findForeignKeyTo', () => {
     const projectDef = datasourceData.types![1].project;
     expect(findForeignKeyTo(projectDef, 'nonexistent')).toBeNull();
   });
+
+  it('walks view inherits so a base-table FK matches the view parent', () => {
+    const byName = new Map<string, DatasourceTypeDef>([
+      ['contacts_base', { fields: [] }],
+      ['contact', { inherits: 'contacts_base', fields: [] }],
+      [
+        'addresses_base',
+        { fields: [field('contact_id', { references: 'contacts_base.id' })] },
+      ],
+      ['address', { inherits: 'addresses_base', fields: [] }],
+    ]);
+    expect(findForeignKeyTo(byName.get('address')!, 'contact', byName)).toBe('contact_id');
+  });
 });
 
 describe('iterateCombinedRoutes descriptors', () => {
@@ -101,6 +115,56 @@ describe('iterateCombinedRoutes descriptors', () => {
     expect(desc.segmentTail).toBe('projects');
     expect(desc.collectionPath).toBe('/organizations/:organizationId/projects');
     expect(desc.memberPath).toBe('/organizations/:organizationId/projects/:id');
+  });
+
+  it('reads authored `combines` the same as legacy `combined_types`', () => {
+    const routesData: RoutesData = {
+      combined_routes: [
+        {
+          organization: {
+            route: '/organizations/{id}',
+            combines: [{ project: { route: '/deliverables' } }],
+          },
+        },
+      ],
+    };
+    const [desc] = collect(routesData) as DirectFkDescriptor[];
+    expect(desc.kind).toBe('direct-fk');
+    expect(desc.collectionPath).toBe('/organizations/:organizationId/deliverables');
+    expect(desc.segment).toBe('/deliverables');
+  });
+
+  it('yields contact/address when the FK is on the inherited base table', () => {
+    const contactsData: DatasourceData = {
+      types: [
+        { contacts_base: { fields: [] } },
+        { contact: { inherits: 'contacts_base', fields: [] } },
+        {
+          addresses_base: {
+            fields: [field('contact_id', { references: 'contacts_base.id' })],
+          },
+        },
+        { address: { inherits: 'addresses_base', fields: [] } },
+      ],
+    };
+    const [desc] = [
+      ...iterateCombinedRoutes({
+        routesData: {
+          combined_routes: [
+            {
+              contact: {
+                route: '/api/contacts/{id}',
+                combines: [{ address: { route: '/addresses' } }],
+              },
+            },
+          ],
+        },
+        datasourceData: contactsData,
+      }),
+    ] as DirectFkDescriptor[];
+    expect(desc.kind).toBe('direct-fk');
+    expect(desc.fkColumn).toBe('contact_id');
+    expect(desc.collectionPath).toBe('/api/contacts/:contactId/addresses');
   });
 
   it('honors an explicit route on a direct-fk child and a null child def', () => {

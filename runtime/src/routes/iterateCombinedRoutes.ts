@@ -6,6 +6,7 @@ interface DatasourceFieldDef {
 
 export interface DatasourceTypeDef {
   datasource_type?: string;
+  inherits?: string;
   fields?: Array<Record<string, DatasourceFieldDef>>;
   [key: string]: unknown;
 }
@@ -23,6 +24,8 @@ interface CombinedChildRaw {
 
 interface CombinedRoutesEntryDef {
   route?: string;
+  combines?: Array<string | Record<string, CombinedChildRaw>>;
+  /** @deprecated authored YAML uses `combines`; kept so older fixtures still mount. */
   combined_types?: Array<string | Record<string, CombinedChildRaw>>;
 }
 
@@ -82,17 +85,88 @@ function rewriteParentPath(rawPath: string, parentName: string): string {
   });
 }
 
-export function findForeignKeyTo(childDef: DatasourceTypeDef, parentName: string): string | null {
-  const fields = Array.isArray(childDef?.fields) ? childDef.fields : [];
-  for (const f of fields) {
-    const [fname, fdef] = Object.entries(f)[0];
-    if (fdef && typeof fdef.references === 'string') {
-      const [refTable] = fdef.references.split('.');
-      if (refTable === parentName) return fname;
+const inheritName = (raw: unknown): string | null => {
+  if (typeof raw !== 'string' || raw.length === 0) return null;
+  const prefixed = raw.match(/^datasource_types\.([a-z_][a-z0-9_]*)$/);
+  if (prefixed) return prefixed[1];
+  if (/^[a-z_][a-z0-9_]*$/.test(raw)) return raw;
+  return null;
+};
+
+const refTable = (references: unknown): string | null => {
+  if (typeof references !== 'string' || references.length === 0) return null;
+  const cleaned = references.startsWith('datasource_types.')
+    ? references.slice('datasource_types.'.length)
+    : references;
+  const table = cleaned.split('.')[0];
+  return table !== undefined && table.length > 0 ? table : null;
+};
+
+const ancestorNames = (
+  def: DatasourceTypeDef,
+  byName: Map<string, DatasourceTypeDef>,
+): string[] => {
+  const out: string[] = [];
+  let current = inheritName(def.inherits);
+  const walking = new Set<string>();
+  while (current !== null && !walking.has(current)) {
+    walking.add(current);
+    out.push(current);
+    current = inheritName(byName.get(current)?.inherits);
+  }
+  return out;
+};
+
+const ownFields = (def: DatasourceTypeDef): Array<[string, DatasourceFieldDef]> =>
+  (Array.isArray(def.fields) ? def.fields : []).flatMap((entry) => {
+    const pair = Object.entries(entry)[0];
+    return pair === undefined ? [] : [[pair[0], pair[1]]];
+  });
+
+const fieldsWithInherits = (
+  def: DatasourceTypeDef,
+  byName: Map<string, DatasourceTypeDef> | undefined,
+): Array<[string, DatasourceFieldDef]> => {
+  const fields = ownFields(def);
+  if (byName === undefined) return fields;
+  const seen = new Set(fields.map(([name]) => name));
+  for (const ancestor of ancestorNames(def, byName)) {
+    const ancestorDef = byName.get(ancestor);
+    if (ancestorDef === undefined) continue;
+    for (const [name, field] of ownFields(ancestorDef)) {
+      if (seen.has(name)) continue;
+      seen.add(name);
+      fields.push([name, field]);
+    }
+  }
+  return fields;
+};
+
+const refMatchesParent = (
+  target: string,
+  parentName: string,
+  byName: Map<string, DatasourceTypeDef> | undefined,
+): boolean => {
+  if (target === parentName) return true;
+  if (byName === undefined) return false;
+  const parentDef = byName.get(parentName);
+  return parentDef !== undefined && ancestorNames(parentDef, byName).includes(target);
+};
+
+/** Own fields, then inherited. A view FK to `contacts_base.id` matches parent `contact` when contact inherits that table. */
+export const findForeignKeyTo = (
+  childDef: DatasourceTypeDef,
+  parentName: string,
+  datasourceByName?: Map<string, DatasourceTypeDef>,
+): string | null => {
+  for (const [fname, fdef] of fieldsWithInherits(childDef, datasourceByName)) {
+    const target = refTable(fdef.references);
+    if (target !== null && refMatchesParent(target, parentName, datasourceByName)) {
+      return fname;
     }
   }
   return null;
-}
+};
 
 function kebabToSnake(s: string): string {
   return s.replace(/-/g, '_');
@@ -132,8 +206,8 @@ function detectJunction(
   const matches: JunctionMatch[] = [];
   for (const [name, def] of datasourceByName) {
     if (name === parentName || name === childName) continue;
-    const parentFk = findForeignKeyTo(def, parentName);
-    const childFk = findForeignKeyTo(def, childName);
+    const parentFk = findForeignKeyTo(def, parentName, datasourceByName);
+    const childFk = findForeignKeyTo(def, childName, datasourceByName);
     if (parentFk && childFk) {
       matches.push({ name, parentFk, childFk });
     }
@@ -167,7 +241,7 @@ export function* iterateCombinedRoutes({
     const parentBasePath = rewriteParentPath(def.route ?? '', parentName);
     const parentParam = parentParamName(parentName);
 
-    for (const rawChild of def.combined_types ?? []) {
+    for (const rawChild of def.combines ?? def.combined_types ?? []) {
       const child = normalizeCombinedChild(rawChild);
 
       if (child.via || child.target) {
@@ -212,7 +286,7 @@ export function* iterateCombinedRoutes({
         );
       }
 
-      const fkColumn = findForeignKeyTo(childDef, parentName);
+      const fkColumn = findForeignKeyTo(childDef, parentName, datasourceByName);
       if (fkColumn) {
         const segment = child.route ?? defaultChildSegment(child.name);
         const tail = segment.split('/').filter(Boolean).pop() ?? '';
