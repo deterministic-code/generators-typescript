@@ -4,6 +4,7 @@ import { content, type GenerateEntry } from "@deterministic-code/generators-comm
 import pluralize from "pluralize";
 import { toNative } from "./base-type-converter.ts";
 import {
+  columnFields,
   datasourceTypesOf,
   isPkField,
   isReadonlyLookup,
@@ -103,7 +104,7 @@ const writableScalars = (
   overlay?: DatasourceTable,
 ): TypeField[] => {
   const pk = pkColumn(table, overlay);
-  return table.fields.filter(
+  return columnFields(table.fields).filter(
     (field) =>
       !SYSTEM_COLUMNS.has(field.name) &&
       field.name !== pk &&
@@ -118,7 +119,7 @@ const fkFields = (
   table: Type,
   typeNames: ReadonlySet<string>,
 ): TypeField[] =>
-  table.fields.filter((field) => {
+  columnFields(table.fields).filter((field) => {
     const parent = refParent(field);
     return parent !== undefined && typeNames.has(parent);
   });
