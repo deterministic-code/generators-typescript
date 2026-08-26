@@ -2,6 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse, stringify } from "yaml";
+import { BUNDLED_LIBRARY_MODE } from "./generated-app.ts";
 
 export const CONTACTS_FIXTURE_DIR = fileURLToPath(
   new URL("./samples/contacts/deterministic/", import.meta.url),
@@ -124,6 +125,7 @@ const overlaySettingsDoc = (
   backend.datasources = ["sqlite"];
   const languages = mappingAt(settings, "languages");
   const typescript = mappingAt(languages, "typescript");
+  typescript.library_reference_mode = "bundled";
   const casing = mappingAt(typescript, "casing");
   casing.file_names = variant.fileNames;
   casing.types = variant.types;
@@ -144,6 +146,7 @@ const flattenSettings = (
     "backend.datasources": "sqlite",
     "backend.languages": "typescript",
     "paths.deterministic": CONTACTS_FIXTURE_DIR,
+    ...BUNDLED_LIBRARY_MODE,
   };
 };
 

@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { BUNDLED_LIBRARY_MODE } from "./generated-app.ts";
 
 export const FULLSTACK_SAMPLE_NAMES = [
   "01-simple",
@@ -18,6 +19,9 @@ const SAMPLE_FILES = [
 const SETTINGS_YAML = `settings:
   datasource:
     pluralize_datatable_names: true
+  languages:
+    typescript:
+      library_reference_mode: bundled
 `;
 
 const BACKEND_APP_YAML = `middleware:
@@ -75,6 +79,7 @@ export const fullstackSampleSettings = (
   frontend_generate_framework: "vite",
   "datasource.pluralize_datatable_names": "true",
   "backend.datasources": "sqlite",
+  ...BUNDLED_LIBRARY_MODE,
 });
 
 export const loadFullstackSampleYaml = async (

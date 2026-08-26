@@ -24,10 +24,25 @@ const execFileAsync = promisify(execFile);
 
 export const SQLITE_DB_FILE = "dev.sqlite";
 
+/** e2e vendors the runtime until the published npm pin is current. */
+export const BUNDLED_LIBRARY_MODE = {
+  "languages.typescript.library_reference_mode": "bundled",
+} as const;
+
+export const withBundledLibrary = (
+  settings: GenerateContext["settings"],
+): GenerateContext["settings"] => ({
+  ...settings,
+  ...BUNDLED_LIBRARY_MODE,
+});
+
 export const MINIMAL_DETERMINISTIC_YAML: Record<string, string> = {
   "settings.yaml": `settings:
   datasource:
     pluralize_datatable_names: true
+  languages:
+    typescript:
+      library_reference_mode: bundled
 `,
   "backend-app.yaml": `middleware: []
 handlers: []
@@ -251,7 +266,7 @@ export const bootGeneratedApp = async (args: {
   const appDir = await mkdtemp(join(tmpdir(), args.tempPrefix));
   const entries = await generate({
     reader: memoryReader({}),
-    settings: args.settings,
+    settings: withBundledLibrary(args.settings),
   });
   if (verboseOutputEnabled()) dumpCodegenEntries(entries);
   await writeGenerateEntries(appDir, entries);
