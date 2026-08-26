@@ -107,7 +107,7 @@ class Generator extends Emit {
     ]);
     const bundled = this.settings.libraryReferenceMode === "bundled";
     const pkgBody = bundled
-      ? applyBundledPackageJson(fill(packageJson, named))
+      ? await applyBundledPackageJson(fill(packageJson, named))
       : fill(packageJson, named);
     const entries: GenerateEntry[] = [
       ...this.minimal(appName, runtimeVersion).filter((e) => !owned.has(e.filename)),

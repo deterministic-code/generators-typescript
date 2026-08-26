@@ -320,6 +320,8 @@ describe("generate bundled", () => {
     assert.equal(pkg.allowScripts["@deterministic-code/deterministic"], undefined);
     assert.equal(pkg.dependencies.express, "^4.21.0");
     assert.equal(pkg.dependencies.zod, "^3.23.8");
+    assert.equal(pkg.dependencies["better-sqlite3"], "^13.0.3");
+    assert.equal(pkg.overrides["better-sqlite3"], undefined);
     assert.equal(
       pkg.scripts.build,
       "tsc && cp -R _deterministic dist/_deterministic",

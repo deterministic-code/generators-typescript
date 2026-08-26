@@ -109,21 +109,6 @@ export const resolveRuntimeBundleDir = async (): Promise<string> => {
   );
 };
 
-export const runtimePackageVersion = async (): Promise<string> => {
-  const root = packRoot();
-  const here = packDir();
-  const candidates = [
-    join(root, "runtime", "package.json"),
-    join(here, "runtime-package.json"),
-  ];
-  for (const path of candidates) {
-    if (!(await readable(path))) continue;
-    const pkg = JSON.parse(await readFile(path, "utf8")) as { version?: string };
-    if (pkg.version !== undefined && pkg.version !== "") return pkg.version;
-  }
-  return FALLBACK_RUNTIME_VERSION;
-};
-
 /** Emit the compiled runtime under `_deterministic/` for `library_reference_mode: bundled`. */
 export const bundledRuntimeEntries = async (
   bundleDir: string,
@@ -144,28 +129,48 @@ export const bundledRuntimeEntries = async (
   );
 };
 
-/** Runtime packages the generated app must install when the library is vendored. */
-export const BUNDLED_RUNTIME_DEPS: Record<string, string> = {
-  "better-sqlite3": "^12.10.0",
-  cors: "^2.8.5",
-  express: "^4.21.0",
-  helmet: "^8.0.0",
-  "js-yaml": "^4.1.1",
-  jsonwebtoken: "^9.0.2",
-  pluralize: "^8.0.0",
-  zod: "^3.23.8",
+const runtimePackagePath = async (): Promise<string | undefined> => {
+  const root = packRoot();
+  const here = packDir();
+  for (const path of [
+    join(root, "runtime", "package.json"),
+    join(here, "runtime-package.json"),
+  ]) {
+    if (await readable(path)) return path;
+  }
+  return undefined;
 };
 
-export const applyBundledPackageJson = (raw: string): string => {
+export const runtimePackageVersion = async (): Promise<string> => {
+  const path = await runtimePackagePath();
+  if (path === undefined) return FALLBACK_RUNTIME_VERSION;
+  const pkg = JSON.parse(await readFile(path, "utf8")) as { version?: string };
+  if (pkg.version !== undefined && pkg.version !== "") return pkg.version;
+  return FALLBACK_RUNTIME_VERSION;
+};
+
+const bundledRuntimeDeps = async (): Promise<Record<string, string>> => {
+  const path = await runtimePackagePath();
+  if (path === undefined) return {};
+  const pkg = JSON.parse(await readFile(path, "utf8")) as {
+    dependencies?: Record<string, string>;
+  };
+  return { ...pkg.dependencies };
+};
+
+export const applyBundledPackageJson = async (raw: string): Promise<string> => {
   const pkg = JSON.parse(raw) as {
     scripts?: Record<string, string>;
     dependencies?: Record<string, string>;
     allowScripts?: Record<string, boolean>;
+    overrides?: Record<string, string>;
   };
-  const dependencies = { ...pkg.dependencies, ...BUNDLED_RUNTIME_DEPS };
+  const dependencies = { ...pkg.dependencies, ...(await bundledRuntimeDeps()) };
   delete dependencies["@deterministic-code/deterministic"];
   const allowScripts = { ...pkg.allowScripts };
   delete allowScripts["@deterministic-code/deterministic"];
+  const overrides = { ...pkg.overrides };
+  delete overrides["better-sqlite3"];
   return `${JSON.stringify(
     {
       ...pkg,
@@ -175,6 +180,7 @@ export const applyBundledPackageJson = (raw: string): string => {
       },
       dependencies,
       allowScripts,
+      overrides,
     },
     null,
     2,
