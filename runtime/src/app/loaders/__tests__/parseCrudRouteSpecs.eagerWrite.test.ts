@@ -151,6 +151,72 @@ describe('parseCrudRouteSpecs with eager-write', () => {
     expect(contactSpec?.eagerWriteChildren).toBeUndefined();
   });
 
+  it('attaches eager write children from types.yaml + eager_update_path (contacts sample)', () => {
+    const specs = parseCrudRouteSpecs(
+      {
+        types: [
+          {
+            contacts_base: {
+              fields: [
+                { first_name: { type: 'string' } },
+                { last_name: { type: 'string' } },
+                { contact_source_id: { type: 'integer', references: 'contact_source.id' } },
+              ],
+            },
+          },
+          {
+            addresses_base: {
+              fields: [
+                { contact_id: { type: 'integer', references: 'contacts_base.id' } },
+                { line1: { type: 'string' } },
+                { city: { type: 'string' } },
+              ],
+            },
+          },
+          {
+            phones_base: {
+              fields: [
+                { contact_id: { type: 'integer', references: 'contacts_base.id' } },
+                { number: { type: 'string' } },
+                { label: { type: 'string', is_nullable: true } },
+              ],
+            },
+          },
+          {
+            contact: {
+              tags: ['view_type'],
+              inherits: 'contacts_base',
+              fields: [
+                { addresses: { type: 'address[]', references: 'addresses_base.contact_id' } },
+                { phones: { type: 'phone[]', references: 'phones_base.contact_id' } },
+              ],
+            },
+          },
+          { address: { tags: ['view_type'], inherits: 'addresses_base', fields: [] } },
+          { phone: { tags: ['view_type'], inherits: 'phones_base', fields: [] } },
+        ],
+      },
+      {
+        routes: [{ contact: { eager_update_path: ['addresses', 'phones'] } }],
+      },
+    );
+    const contact = specs.find((s) => s.entityName === 'contact');
+    expect(contact?.eagerWriteChildren?.map((c) => c.fieldName)).toEqual(['addresses', 'phones']);
+    expect(contact?.eagerWriteChildren?.[0]).toMatchObject({
+      kind: 'direct-fk',
+      childTable: 'address',
+      fkColumn: 'contact_id',
+    });
+    const parsed = buildBodySchema(contact!, 'create').safeParse({
+      first_name: 'Nested',
+      last_name: 'Contact',
+      contact_source_id: 1,
+      addresses: [{ line1: '1 Main St', city: 'London' }],
+      phones: [{ number: '111-1111', label: 'work' }],
+    });
+    expect(parsed.success).toBe(true);
+  });
+
   it('attaches eagerWriteChildren to contact with both addresses and phones', () => {
     const specs = parseSpecs(DATASOURCE_DOC, ROUTES_DOC, VIEW_TYPES_DOC);
     const contactSpec = specs.find((s) => s.entityName === 'contact');

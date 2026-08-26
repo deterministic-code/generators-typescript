@@ -31,14 +31,40 @@ function insertEagerPath(entry: unknown, out: Map<string, EagerLoadTree>): void 
   }
 }
 
+export function collectEntityEagerPaths(
+  routesDoc: unknown,
+  field: 'eager_read_path' | 'eager_update_path',
+): string[] {
+  const routes =
+    routesDoc && typeof routesDoc === 'object' && Array.isArray((routesDoc as { routes?: unknown }).routes)
+      ? ((routesDoc as { routes: unknown[] }).routes ?? [])
+      : [];
+  const out: string[] = [];
+  for (const entry of routes) {
+    if (!entry || typeof entry !== 'object') continue;
+    const [entity, body] = Object.entries(entry)[0] ?? [];
+    if (typeof entity !== 'string' || !body || typeof body !== 'object') continue;
+    const list = (body as Record<string, unknown>)[field];
+    if (!Array.isArray(list)) continue;
+    for (const seg of list) {
+      if (typeof seg === 'string' && seg.length > 0) out.push(`${entity}.${seg}`);
+    }
+  }
+  return out;
+}
+
 export function parseEagerPaths(routesDoc: unknown): Map<string, EagerLoadTree> {
   const out = new Map<string, EagerLoadTree>();
   const raw = routeViewTypeDirective(routesDoc)?.eager_path;
-  if (raw === undefined || raw === null) return out;
-  if (!Array.isArray(raw)) {
-    throw new Error(`eager_path must be an array of dotted paths, got ${typeof raw}`);
+  if (raw !== undefined && raw !== null) {
+    if (!Array.isArray(raw)) {
+      throw new Error(`eager_path must be an array of dotted paths, got ${typeof raw}`);
+    }
+    for (const entry of raw) insertEagerPath(entry, out);
   }
-  for (const entry of raw) insertEagerPath(entry, out);
+  for (const entry of collectEntityEagerPaths(routesDoc, 'eager_read_path')) {
+    insertEagerPath(entry, out);
+  }
   return out;
 }
 

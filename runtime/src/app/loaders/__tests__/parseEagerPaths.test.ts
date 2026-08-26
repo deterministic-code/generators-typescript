@@ -43,6 +43,17 @@ describe('parseEagerPaths', () => {
     expect(Array.from(result.keys()).sort()).toEqual(['post', 'todo', 'user']);
   });
 
+  it('reads per-entity eager_read_path as dotted trees (contacts sample)', () => {
+    const result = parseEagerPaths({
+      routes: [
+        { contact: { eager_read_path: ['addresses', 'phones'] } },
+        { contact_group: { eager_read_path: ['members'] } },
+      ],
+    });
+    expect(Array.from(result.get('contact')!.keys()).sort()).toEqual(['addresses', 'phones']);
+    expect(Array.from(result.get('contact_group')!.keys())).toEqual(['members']);
+  });
+
   it('throws on a path that does not contain a dot (root-only)', () => {
     expect(() => parseEagerPaths(routesDoc({ eager_path: ['user'] }))).toThrow(/eager_path/i);
   });
