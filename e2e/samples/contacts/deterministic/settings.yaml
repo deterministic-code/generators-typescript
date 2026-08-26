@@ -23,7 +23,7 @@ settings:
       casing:
         file_names: kebab
         types: pascal
-      library_reference_mode: npm
+      library_reference_mode: bundled
       package_manager: auto
   frontend:
     framework: React

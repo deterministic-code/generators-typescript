@@ -1,7 +1,12 @@
+import { BUNDLED_LIBRARY_MODE } from "./generated-app.ts";
+
 export const PARENT_CHILD_EAGER_YAML: Record<string, string> = {
   "settings.yaml": `settings:
   datasource:
     pluralize_datatable_names: true
+  languages:
+    typescript:
+      library_reference_mode: bundled
 `,
   "backend-app.yaml": `middleware: []
 handlers: []
@@ -83,4 +88,5 @@ export const PARENT_CHILD_SETTINGS: Record<string, string> = {
   app_generate_complexity: "deterministic",
   "datasource.pluralize_datatable_names": "true",
   "backend.datasources": "sqlite",
+  ...BUNDLED_LIBRARY_MODE,
 };
