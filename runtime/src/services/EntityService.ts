@@ -76,8 +76,8 @@ export class EntityService<T, TId = number | string, TMutate = Partial<T>> imple
     const numericId = await this.resolveId(id);
     if (numericId === null) return null;
     return opts === undefined
-      ? this.repository.update(numericId, payload)
-      : this.repository.update(numericId, payload, opts);
+      ? this.repository.update(numericId as TId, payload)
+      : this.repository.update(numericId as TId, payload, opts);
   }
 
   async patch(
@@ -97,8 +97,8 @@ export class EntityService<T, TId = number | string, TMutate = Partial<T>> imple
     const numericId = await this.resolveId(id);
     if (numericId === null) return false;
     return opts === undefined
-      ? this.repository.delete(numericId)
-      : this.repository.delete(numericId, opts);
+      ? this.repository.delete(numericId as TId)
+      : this.repository.delete(numericId as TId, opts);
   }
 
   async updateBy(whereArgs: NameValue[], data: Partial<TMutate>): Promise<number> {
