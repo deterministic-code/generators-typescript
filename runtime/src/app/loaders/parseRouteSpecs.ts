@@ -60,9 +60,15 @@ export function parseGenericRouteSpecs(doc: unknown): GenericRouteSpec[] {
     const fields = fieldsRaw;
     if (typeof fields.routeClass === 'string') continue;
     if (typeof fields.service !== 'string') continue;
-    // Soft-skip routes that declare service: but no serviceMethod: — they're hand-wired by the consumer (yaml entry kept only as OpenAPI metadata).
-    if (typeof fields.serviceMethod !== 'string') continue;
-    specs.push(genericRouteSchema.parse({ routeName, ...fields }));
+    const serviceMethod =
+      typeof fields.serviceMethod === 'string'
+        ? fields.serviceMethod
+        : typeof fields.function === 'string'
+          ? fields.function
+          : undefined;
+    // Soft-skip routes that declare service: but no method (`serviceMethod` or spec `function`) — they're hand-wired by the consumer (yaml entry kept only as OpenAPI metadata).
+    if (serviceMethod === undefined) continue;
+    specs.push(genericRouteSchema.parse({ routeName, ...fields, serviceMethod }));
   }
   return specs;
 }

@@ -31,6 +31,7 @@ types:
       inherits: base
       fields:
       - contact_source_id:
+          type: integer
           references: contact_source.id
       - first_name:
           type: string
@@ -51,6 +52,7 @@ types:
       inherits: base
       fields:
       - contact_id:
+          type: integer
           references: contacts_base.id
       - line1:
           type: string
@@ -79,6 +81,7 @@ types:
       inherits: base
       fields:
       - contact_id:
+          type: integer
           references: contacts_base.id
       - number:
           type: string
@@ -134,8 +137,10 @@ types:
       inherits: base
       fields:
       - contact_id:
+          type: integer
           references: contacts_base.id
       - contact_group_id:
+          type: integer
           references: contact_groups_base.id
   - legacy_contact:
       tags: [datasource_type, view_type]

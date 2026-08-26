@@ -35,6 +35,7 @@ export const loadFetchClient = async (
   fileBase: string,
   baseUrl: string,
   settings: Record<string, string> = {},
+  entityName: string = fileBase,
 ): Promise<{ http: FetchHttp; client: BindingClient }> => {
   const dir = join(appDir, "frontend/src/client/fetch");
   const httpMod = (await import(pathToFileURL(join(dir, "http.ts")).href)) as {
@@ -43,7 +44,7 @@ export const loadFetchClient = async (
   const entityMod = (await import(
     pathToFileURL(join(dir, `${fileBase}.ts`)).href
   )) as Record<string, (http: FetchHttp) => BindingClient>;
-  const factoryName = createCasing(settings).clientName(fileBase);
+  const factoryName = createCasing(settings).clientName(entityName);
   const factory = entityMod[factoryName];
   assert.equal(typeof factory, "function", `missing ${factoryName}`);
   const http = httpMod.createHttp(baseUrl);

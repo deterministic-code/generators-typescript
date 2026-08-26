@@ -69,18 +69,20 @@ export interface CrudRouteSpec {
   columnTypes?: Record<string, CrudFieldType>;
   enrichmentColumns?: string[];
   fields?: CrudFieldDef[];
+  /** View types expose lookup names and hide the FK on the wire (legacy auto_enrich). */
+  replaceLookupFks?: boolean;
   readonly?: boolean;
   m2m?: boolean;
   nestedOnly?: boolean;
   eagerWriteChildren?: EagerWriteChildSpec[];
   byFields?: ByFieldRouteSpec[];
   /**
-   * Name of the primary-key column on the underlying table. Only set
-   * when the YAML declares `primary_key: true` on a non-id field
-   * (e.g. `legacy_contact.key: string` in the contacts-backend
-   * sample), else the implicit auto-increment `id`. Always resolved by
-   * `assignPrimaryKey` so createBackendApp forwards a concrete column to
-   * `buildRepoForBackend` and `new EntityService(...)` with no `?? 'id'` default.
+   * Name of the primary-key column on the underlying table. Set when the
+   * YAML declares `primary_key: true` or datasource overlay `is_fixed_id: true`
+   * on a non-id field (e.g. `legacy_contact.key`), else the implicit
+   * auto-increment `id`. Always resolved by `assignPrimaryKey` so
+   * createBackendApp forwards a concrete column to `buildRepoForBackend`
+   * and `new EntityService(...)` with no `?? 'id'` default.
    */
   primaryKeyColumn: string;
   /**
@@ -98,6 +100,8 @@ type RawField = {
   is_unique?: boolean;
   is_nullable?: boolean;
   is_id?: boolean;
+  is_fixed_id?: boolean;
+  primary_key?: boolean;
   size?: number | 'unlimited';
   min_size?: number;
   default_value?: unknown;
@@ -105,6 +109,11 @@ type RawField = {
 type RawType = {
   datasource_type?: string;
   ids?: string[];
+  inherits?: string;
+  union?: string[];
+  mapping?: Record<string, string>;
+  remove_fields?: string[];
+  tags?: string[];
   fields?: Array<Record<string, RawField>>;
 };
 type DatasourceDoc = { types?: Array<Record<string, RawType>> };
@@ -123,12 +132,21 @@ export function serviceKeyFor(entityName: string): string {
   return `${camel}Service`;
 }
 
+const STAMP_COLUMNS = new Set(['id', 'uuid', 'created', 'updated', 'version']);
+
+const isCollectionType = (type: string | undefined): boolean =>
+  typeof type === 'string' && (type.endsWith('[]') || type.includes('['));
+
 export function buildBodySchema(
   spec: CrudRouteSpec,
   verb: 'create' | 'update' | 'patch' = 'update',
 ): z.ZodObject<z.ZodRawShape> {
   const enrichmentCols = new Set(spec.enrichmentColumns ?? []);
-  const allCols = new Set([...spec.columns, ...enrichmentCols]);
+  const bodyColumns = spec.columns.filter((col) => {
+    if (col === spec.primaryKeyColumn) return verb !== 'create';
+    return verb !== 'create' || !STAMP_COLUMNS.has(col);
+  });
+  const allCols = new Set([...bodyColumns, ...enrichmentCols]);
 
   const shape =
     spec.fields && spec.fields.length > 0
@@ -357,8 +375,31 @@ function enrichmentColumnsFromMap(
   return enrichmentColumns;
 }
 
-function computeEnrichmentColumns(entityName: string, datasourceDoc: unknown): string[] {
-  return enrichmentColumnsFromMap(entityName, indexEntities(datasourceDoc));
+function enrichmentColumnsFromFields(
+  fields: Array<[string, RawField]>,
+  ctx: CrudSpecContext,
+): string[] {
+  const enrichmentColumns: string[] = [];
+  for (const [colName, fdef] of fields) {
+    if (!colName.endsWith('_id')) continue;
+    if (fdef.type !== 'number' && fdef.type !== 'integer' && fdef.type !== undefined) continue;
+    if (typeof fdef.references !== 'string') continue;
+    const dot = fdef.references.indexOf('.');
+    if (dot <= 0) continue;
+    const refTable = fdef.references.slice(0, dot);
+    const refColumn = fdef.references.slice(dot + 1);
+    if (refColumn !== 'id') continue;
+    const targetFields = mergeOverlayFields(
+      flattenTypeFields(refTable, ctx.typesByName),
+      ctx.overlayFields.get(refTable),
+    );
+    const nameField = targetFields.find(([name]) => name === 'name')?.[1];
+    if (nameField?.type !== 'string' || nameField.is_unique !== true || nameField.is_nullable === true) {
+      continue;
+    }
+    enrichmentColumns.push(`${colName.slice(0, -'_id'.length)}_name`);
+  }
+  return enrichmentColumns;
 }
 
 function readTypes(doc: unknown): Array<[string, RawType]> {
@@ -377,6 +418,33 @@ function extractFields(body: RawType): Array<[string, RawField]> {
     return [name, field] as [string, RawField];
   });
 }
+
+const flattenTypeFields = (
+  name: string,
+  types: Map<string, RawType>,
+  walking: Set<string> = new Set(),
+): Array<[string, RawField]> => {
+  if (walking.has(name)) return [];
+  const body = types.get(name);
+  if (body === undefined) return [];
+  walking.add(name);
+  const inherited =
+    typeof body.inherits === 'string' && body.inherits.length > 0
+      ? flattenTypeFields(body.inherits, types, walking)
+      : [];
+  const own = extractFields(body);
+  const fields = [...inherited, ...own];
+  const mapping = body.mapping ?? {};
+  const removed = new Set(body.remove_fields ?? []);
+  for (const unionName of body.union ?? []) {
+    for (const [fieldName, field] of flattenTypeFields(unionName, types, new Set(walking))) {
+      if (removed.has(`${unionName}.${fieldName}`) || removed.has(fieldName)) continue;
+      fields.push([mapping[fieldName] ?? fieldName, field]);
+    }
+  }
+  walking.delete(name);
+  return fields;
+};
 
 function collectNestedOnlyEntities(
   routesDoc: unknown,
@@ -421,6 +489,14 @@ function collectNestedOnlyEntities(
   return nested;
 }
 
+function inferredFieldType(field: RawField): CrudFieldType | undefined {
+  if (field.type && CRUD_FIELD_TYPES.has(field.type as CrudFieldType)) {
+    return field.type as CrudFieldType;
+  }
+  if (typeof field.references === 'string' && field.references.length > 0) return 'integer';
+  return undefined;
+}
+
 function columnTypesFromFields(
   fields: Array<[string, RawField]>,
   excludeColumn?: string,
@@ -428,7 +504,8 @@ function columnTypesFromFields(
   const columnTypes: Record<string, CrudFieldType> = {};
   for (const [name, f] of fields) {
     if (name === excludeColumn) continue;
-    columnTypes[name] = f.type as CrudFieldType;
+    const type = inferredFieldType(f);
+    if (type !== undefined) columnTypes[name] = type;
   }
   return columnTypes;
 }
@@ -778,8 +855,9 @@ const CRUD_FIELD_TYPES = new Set<CrudFieldType>([
 ]);
 
 function toCrudFieldDef(name: string, raw: RawField): CrudFieldDef | null {
-  if (!raw.type || !CRUD_FIELD_TYPES.has(raw.type as CrudFieldType)) return null;
-  const out: CrudFieldDef = { name, type: raw.type as CrudFieldType };
+  const inferred = inferredFieldType(raw);
+  if (inferred === undefined) return null;
+  const out: CrudFieldDef = { name, type: inferred };
   if (raw.size !== undefined) out.size = raw.size;
   if (raw.min_size !== undefined) out.min_size = raw.min_size;
   if (raw.is_nullable === true) out.is_nullable = true;
@@ -798,7 +876,7 @@ const idTypeFromField = (type: string | undefined): StandardIdType => {
   return 'integer';
 };
 
-/** Resolves the PK column for every entity so no downstream consumer has to literal-default it. A declared `primary_key: true` non-id field (the `legacy_contact.key` pattern) sets both the column and its id shape (`string`/`uuid` skip parseInt; anything else keeps the integer contract). An authored `id` field supplies the implicit PK type. Otherwise the implicit auto-increment `id` is integer. Type-level `ids` and field `is_id` produce a composite or custom identity. */
+/** Resolves the PK column for every entity so no downstream consumer has to literal-default it. A declared `primary_key: true` or overlay `is_fixed_id: true` non-id field (the `legacy_contact.key` pattern) sets both the column and its id shape (`string`/`uuid` skip parseInt; anything else keeps the integer contract). An authored `id` field supplies the implicit PK type. Otherwise the implicit auto-increment `id` is integer. Type-level `ids` and field `is_id` produce a composite or custom identity. */
 function assignPrimaryKey(
   spec: CrudRouteSpec,
   fields: Array<[string, RawField]>,
@@ -829,8 +907,8 @@ function assignPrimaryKey(
     spec.primaryKeyIdType = idTypeFromField(idField[1].type);
   }
   for (const [fieldName, fdef] of fields) {
-    const fdefMaybePk = fdef as RawField & { primary_key?: boolean };
-    if (fdefMaybePk.primary_key !== true || fieldName === 'id') continue;
+    if (fieldName === 'id') continue;
+    if (fdef.primary_key !== true && fdef.is_fixed_id !== true) continue;
     spec.primaryKeyColumn = fieldName;
     spec.primaryKeyIdType = idTypeFromField(fdef.type);
     spec.primaryKeyColumns = [{ column: fieldName, idType: spec.primaryKeyIdType }];
@@ -843,6 +921,8 @@ interface CrudSpecContext {
   datasourceDoc: unknown;
   routesDoc: unknown;
   viewTypesDoc?: unknown;
+  typesByName: Map<string, RawType>;
+  overlayFields: Map<string, Map<string, RawField>>;
   nestedOnlyNames: ReturnType<typeof collectNestedOnlyEntities>;
   byFieldByEntity: ReturnType<typeof collectByFieldRoutes>;
 }
@@ -850,6 +930,32 @@ interface CrudSpecContext {
 function resolveEagerChildren(entityName: string, ctx: CrudSpecContext): EagerWriteChildSpec[] {
   if (!ctx.viewTypesDoc) return [];
   return extractEagerWriteChildren(entityName, ctx);
+}
+
+function mergeOverlayFields(
+  fields: Array<[string, RawField]>,
+  overlay: Map<string, RawField> | undefined,
+): Array<[string, RawField]> {
+  if (overlay === undefined || overlay.size === 0) return fields;
+  const seen = new Set(fields.map(([name]) => name));
+  const merged = fields.map(([name, field]) => {
+    const extra = overlay.get(name);
+    return extra === undefined ? [name, field] : [name, { ...field, ...extra }];
+  }) as Array<[string, RawField]>;
+  for (const [name, field] of overlay) {
+    if (!seen.has(name)) merged.push([name, field]);
+  }
+  return merged;
+}
+
+function overlayFieldsByEntity(overlaysDoc: unknown): Map<string, Map<string, RawField>> {
+  const out = new Map<string, Map<string, RawField>>();
+  for (const [entityName, body] of readTypes(overlaysDoc)) {
+    const fields = extractFields(body);
+    if (fields.length === 0) continue;
+    out.set(entityName, new Map(fields));
+  }
+  return out;
 }
 
 /** Resolve each by-field route's uniqueness from its field def (primary_key OR is_unique). Returns undefined when the entity has no by-field routes. */
@@ -862,18 +968,22 @@ function resolveByFields(
   if (!byFields || byFields.length === 0) return undefined;
   const fieldDefByName = new Map(fields);
   return byFields.map((bf) => {
-    const fdef = fieldDefByName.get(bf.field) as (RawField & { primary_key?: boolean }) | undefined;
-    return { ...bf, unique: Boolean(fdef?.is_unique || fdef?.primary_key) };
+    const fdef = fieldDefByName.get(bf.field);
+    return { ...bf, unique: Boolean(fdef?.is_unique || fdef?.primary_key || fdef?.is_fixed_id) };
   });
 }
 
 function buildCrudSpec(entityName: string, body: RawType, ctx: CrudSpecContext): CrudRouteSpec {
-  const fields = extractFields(body);
+  const fields = mergeOverlayFields(
+    flattenTypeFields(entityName, ctx.typesByName),
+    ctx.overlayFields.get(entityName),
+  ).filter(([, field]) => !isCollectionType(field.type));
   const columnTypes = columnTypesFromFields(fields);
-  const enrichmentColumns = computeEnrichmentColumns(entityName, ctx.datasourceDoc);
+  const enrichmentColumns = enrichmentColumnsFromFields(fields, ctx);
   const crudFields = fields
     .map(([name, f]) => toCrudFieldDef(name, f))
     .filter((f): f is CrudFieldDef => f !== null);
+  const tags = body.tags ?? [];
 
   const spec: CrudRouteSpec = {
     pathSegment: kebabPlural(entityName),
@@ -883,8 +993,11 @@ function buildCrudSpec(entityName: string, body: RawType, ctx: CrudSpecContext):
     primaryKeyIdType: 'integer',
     primaryKeyColumns: [{ column: 'id', idType: 'integer' }],
     columns: fields.map(([name]) => name),
-    ...(body.datasource_type === 'readonly-lookup' && { readonly: true }),
-    ...(body.datasource_type === 'many-to-many' && { m2m: true }),
+    ...((body.datasource_type === 'readonly-lookup' || tags.includes('readonly_lookup')) && {
+      readonly: true,
+    }),
+    ...((body.datasource_type === 'many-to-many' || tags.includes('many_to_many')) && { m2m: true }),
+    ...(tags.includes('view_type') && { replaceLookupFks: true }),
     ...(ctx.nestedOnlyNames.has(entityName) && { nestedOnly: true }),
     ...(Object.keys(columnTypes).length > 0 && { columnTypes }),
     ...(enrichmentColumns.length > 0 && { enrichmentColumns }),
@@ -905,13 +1018,15 @@ function buildCrudSpec(entityName: string, body: RawType, ctx: CrudSpecContext):
 export function parseCrudRouteSpecs(
   datasourceDoc: unknown,
   routesDoc: unknown,
-  opts?: { viewTypesDoc?: unknown },
+  opts?: { viewTypesDoc?: unknown; overlaysDoc?: unknown },
 ): CrudRouteSpec[] {
   const types = readTypes(datasourceDoc);
   const ctx: CrudSpecContext = {
     datasourceDoc,
     routesDoc,
     viewTypesDoc: opts?.viewTypesDoc,
+    typesByName: new Map(types),
+    overlayFields: overlayFieldsByEntity(opts?.overlaysDoc),
     nestedOnlyNames: collectNestedOnlyEntities(routesDoc, types),
     byFieldByEntity: collectByFieldRoutes(routesDoc, datasourceDoc),
   };

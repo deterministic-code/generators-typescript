@@ -70,7 +70,10 @@ import {
   serviceKeyFor,
   type CrudRouteSpec,
 } from './loaders/parseCrudRouteSpecs';
-import { computeEnrichments } from './loaders/computeEnrichments';
+import {
+  computeEnrichments,
+  enrichmentsFromCrudSpec,
+} from './loaders/computeEnrichments';
 import {
   computeEagerChildren,
   subtreeFor,
@@ -607,6 +610,7 @@ class BackendAppBuilder {
       options.crudSpecs ??
       parseCrudRouteSpecs(this.datasourceDoc, this.routesDoc, {
         viewTypesDoc: this.viewTypesDoc,
+        overlaysDoc: this.datasourceOverlaysDoc,
       });
     this.datasourceData = options.datasourceData ?? (this.datasourceDoc as DatasourceData);
     this.routesData = options.routesData ?? (this.routesDoc as RoutesData);
@@ -955,10 +959,13 @@ function buildEnrichedReadServices(
       | IEntityService<any, any>
       | undefined;
     if (!baseService) continue;
-    const enrichments = computeEnrichments(
-      spec.entityName,
-      datasourceDoc as Parameters<typeof computeEnrichments>[1],
-    );
+    const enrichments =
+      (spec.enrichmentColumns?.length ?? 0) > 0
+        ? enrichmentsFromCrudSpec(spec)
+        : computeEnrichments(
+            spec.entityName,
+            datasourceDoc as Parameters<typeof computeEnrichments>[1],
+          );
     const mappings: LookupMapping[] = [];
     for (const e of enrichments) {
       const lookupService = repos[serviceKeyFor(e.targetTable)];
@@ -966,7 +973,7 @@ function buildEnrichedReadServices(
       mappings.push({
         fkField: e.fkColumn,
         nameField: e.newField,
-        replaceFk: autoEnrich,
+        replaceFk: autoEnrich || spec.replaceLookupFks === true,
         lookupService: lookupService as LookupMapping['lookupService'],
       });
     }
