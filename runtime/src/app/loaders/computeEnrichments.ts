@@ -59,6 +59,26 @@ function parseFkReference(fdef: RawField | undefined): { table: string } | null 
   return { table };
 }
 
+/** Build enrichments from a parsed CRUD spec (flattened inherit/union + overlay unique). */
+export function enrichmentsFromCrudSpec(spec: {
+  enrichmentColumns?: string[];
+  fields?: ReadonlyArray<{ name: string; references?: string }>;
+}): RuntimeEnrichment[] {
+  const fields = spec.fields ?? [];
+  const out: RuntimeEnrichment[] = [];
+  for (const newField of spec.enrichmentColumns ?? []) {
+    if (!newField.endsWith('_name')) continue;
+    const fkColumn = `${newField.slice(0, -'_name'.length)}_id`;
+    const field = fields.find((f) => f.name === fkColumn);
+    const ref = field?.references;
+    if (typeof ref !== 'string') continue;
+    const dot = ref.indexOf('.');
+    if (dot <= 0) continue;
+    out.push({ fkColumn, newField, targetTable: ref.slice(0, dot) });
+  }
+  return out;
+}
+
 export function computeEnrichments(
   entityTable: string,
   datasourceDoc: DatasourceDoc | null | undefined,

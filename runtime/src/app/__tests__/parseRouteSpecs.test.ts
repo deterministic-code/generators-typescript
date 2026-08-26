@@ -46,6 +46,47 @@ describe('parseGenericRouteSpecs', () => {
     expect(specs[0].routeName).toBe('getHealth');
   });
 
+  it('treats spec function: as serviceMethod (contacts migrate / import routes)', () => {
+    const specs = parseGenericRouteSpecs({
+      routes: [
+        {
+          migrate_legacy_contacts: {
+            path: '/api/legacy-contacts/migrate',
+            method: 'POST',
+            service: 'LegacyMigrationService',
+            function: 'migrate',
+          },
+        },
+      ],
+    });
+    expect(specs).toEqual([
+      {
+        routeName: 'migrate_legacy_contacts',
+        path: '/api/legacy-contacts/migrate',
+        method: 'POST',
+        service: 'LegacyMigrationService',
+        serviceMethod: 'migrate',
+      },
+    ]);
+  });
+
+  it('prefers serviceMethod when both serviceMethod and function are set', () => {
+    const specs = parseGenericRouteSpecs({
+      routes: [
+        {
+          getHealth: {
+            path: '/api/healthcheck',
+            method: 'GET',
+            service: 'HealthCheckService',
+            serviceMethod: 'check',
+            function: 'other',
+          },
+        },
+      ],
+    });
+    expect(specs[0]?.serviceMethod).toBe('check');
+  });
+
   it('skips entries that declare service but omit serviceMethod (consumer hand-wires them)', () => {
     const doc = {
       routes: [

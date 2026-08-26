@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { computeEnrichments } from '../computeEnrichments';
+import { computeEnrichments, enrichmentsFromCrudSpec } from '../computeEnrichments';
 
 type Doc = Parameters<typeof computeEnrichments>[1];
 
@@ -132,6 +132,24 @@ describe('computeEnrichments', () => {
         fkColumn: 'application_visibility_id',
         newField: 'application_visibility_name',
         targetTable: 'application_visibility',
+      },
+    ]);
+  });
+
+  it('enrichmentsFromCrudSpec maps flattened enrichment columns onto FK references', () => {
+    expect(
+      enrichmentsFromCrudSpec({
+        enrichmentColumns: ['contact_source_name'],
+        fields: [
+          { name: 'first_name' },
+          { name: 'contact_source_id', references: 'contact_source.id' },
+        ],
+      }),
+    ).toEqual([
+      {
+        fkColumn: 'contact_source_id',
+        newField: 'contact_source_name',
+        targetTable: 'contact_source',
       },
     ]);
   });

@@ -36,4 +36,10 @@ export const loadEntityClient = async (
   baseUrl: string,
   settings: Record<string, string>,
 ): Promise<{ http: FetchHttp; client: BindingClient }> =>
-  loadFetchClient(appDir, clientFileBase(entity, settings), baseUrl, settings);
+  loadFetchClient(
+    appDir,
+    clientFileBase(entity, settings),
+    baseUrl,
+    settings,
+    entity,
+  );

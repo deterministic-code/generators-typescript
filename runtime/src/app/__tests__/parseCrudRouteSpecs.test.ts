@@ -168,6 +168,139 @@ describe('parseCrudRouteSpecs', () => {
     ]);
   });
 
+  it('flattens inherits and union mappings onto a view type (contact pattern)', () => {
+    const specs = parseCrudRouteSpecs(
+      {
+        types: [
+          {
+            base: {
+              fields: [
+                { id: { type: 'integer', is_id: true } },
+                { uuid: { type: 'uuid' } },
+                { created: { type: 'datetime' } },
+                { updated: { type: 'datetime' } },
+                { version: { type: 'binary', default_value: '' } },
+              ],
+            },
+          },
+          {
+            contacts_base: {
+              inherits: 'base',
+              fields: [
+                { contact_source_id: { type: 'number', references: 'contact_source.id' } },
+                { first_name: { type: 'string', size: 128 } },
+                { last_name: { type: 'string', size: 128 } },
+              ],
+            },
+          },
+          {
+            contact_source: {
+              tags: ['datasource_type', 'view_type', 'readonly_lookup'],
+              inherits: 'base',
+              fields: [{ name: { type: 'string' } }],
+            },
+          },
+          {
+            contact: {
+              tags: ['view_type'],
+              inherits: 'contacts_base',
+              union: ['contact_source'],
+              mapping: { name: 'contact_source_name' },
+              remove_fields: [
+                'contact_source.id',
+                'contact_source.uuid',
+                'contact_source.created',
+                'contact_source.updated',
+                'contact_source.version',
+              ],
+              fields: [{ addresses: { type: 'address[]', references: 'addresses_base.contact_id' } }],
+            },
+          },
+        ],
+      },
+      { combined_routes: [] },
+      {
+        overlaysDoc: {
+          types: [{ contact_source: { fields: [{ name: { is_unique: true } }] } }],
+        },
+      },
+    );
+    const contact = specs.find((s) => s.entityName === 'contact');
+    expect(contact?.columns).toEqual(
+      expect.arrayContaining(['first_name', 'last_name', 'contact_source_id', 'contact_source_name']),
+    );
+    expect(contact?.columns).not.toContain('addresses');
+    expect(contact?.enrichmentColumns).toEqual(['contact_source_name']);
+    expect(contact?.replaceLookupFks).toBe(true);
+    expect(contact?.fields?.find((f) => f.name === 'contact_source_id')?.references).toBe(
+      'contact_source.id',
+    );
+    expect(contact?.columnTypes?.contact_source_id).toBe('number');
+    const parsed = buildBodySchema(contact!, 'create').parse({
+      first_name: 'Ada',
+      last_name: 'Lovelace',
+      contact_source_name: 'Manual',
+    });
+    expect(parsed.first_name).toBe('Ada');
+    expect(parsed.contact_source_name).toBe('Manual');
+  });
+
+  it('infers integer columnTypes for a references-only FK (contacts_base.contact_source_id)', () => {
+    const specs = parseSpecs(
+      {
+        types: [
+          {
+            contacts_base: {
+              fields: [
+                { contact_source_id: { references: 'contact_source.id' } },
+                { first_name: { type: 'string' } },
+              ],
+            },
+          },
+        ],
+      },
+      { combined_routes: [] },
+    );
+    expect(specs[0]?.columnTypes?.contact_source_id).toBe('integer');
+    expect(specs[0]?.fields?.find((f) => f.name === 'contact_source_id')).toEqual({
+      name: 'contact_source_id',
+      type: 'integer',
+      references: 'contact_source.id',
+    });
+  });
+
+  it('uses datasource overlay is_fixed_id as the primary key (legacy_contact.key)', () => {
+    const specs = parseCrudRouteSpecs(
+      {
+        types: [
+          {
+            legacy_contact: {
+              fields: [
+                { key: { type: 'string', size: 64 } },
+                { first_name: { type: 'string' } },
+              ],
+            },
+          },
+        ],
+      },
+      { combined_routes: [] },
+      {
+        overlaysDoc: {
+          types: [
+            {
+              legacy_contact: {
+                fields: [{ key: { is_fixed_id: true, is_unique: true } }],
+              },
+            },
+          ],
+        },
+      },
+    );
+    expect(specs[0].primaryKeyColumn).toBe('key');
+    expect(specs[0].primaryKeyIdType).toBe('string');
+    expect(specs[0].primaryKeyColumns).toEqual([{ column: 'key', idType: 'string' }]);
+  });
+
   it('flags readonly-lookup and many-to-many datasource types', () => {
     const specs = parseSpecs(
       {

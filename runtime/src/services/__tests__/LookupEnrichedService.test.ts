@@ -647,6 +647,23 @@ describe('LookupEnrichedService', () => {
       expect((result[0] as unknown as Record<string, unknown>).fk_type_id).toBeUndefined();
     });
 
+    it('findById: resolves a TEXT-affinity FK stored as "1.0"', async () => {
+      base.findById.mockResolvedValue({
+        id: 1,
+        uuid: 't1',
+        fk_type_id: '1.0' as unknown as number,
+        name: 'A',
+        created: TS,
+        updated: TS,
+      });
+      lookup.findAll.mockResolvedValue([makeLookup(1, 'Manual')]);
+
+      const result = await svc.findById(1);
+
+      expect(result?.type_name).toBe('Manual');
+      expect((result as unknown as Record<string, unknown>).fk_type_id).toBeUndefined();
+    });
+
     it('findById: strips fkField on single read', async () => {
       base.findById.mockResolvedValue({
         id: 1,

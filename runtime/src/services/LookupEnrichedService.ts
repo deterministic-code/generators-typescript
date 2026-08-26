@@ -14,6 +14,17 @@ export interface LookupMapping {
   };
 }
 
+/** TEXT-affinity sqlite (and string wire ids) store FK values as `"1"` / `"1.0"`; lookup rows use numeric `id`. */
+export function lookupKeyOf(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'bigint') return Number(value);
+  if (typeof value === 'string' && value.trim() !== '') {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
+
 export class LookupEnrichedService<T, TMutate = Partial<T>> implements IEntityService<
   T,
   number | string,
@@ -155,7 +166,8 @@ export class LookupEnrichedService<T, TMutate = Partial<T>> implements IEntitySe
         const lookups = await mapping.lookupService.findAll();
         const map = new Map<number, string>();
         for (const lookup of lookups) {
-          map.set(lookup.id, lookup.name);
+          const key = lookupKeyOf(lookup.id);
+          if (key !== undefined) map.set(key, lookup.name);
         }
         return { mapping, map };
       }),
@@ -169,7 +181,8 @@ export class LookupEnrichedService<T, TMutate = Partial<T>> implements IEntitySe
         if (fkValue === null || fkValue === undefined) {
           enriched[target] = fkValue === null ? null : undefined;
         } else {
-          enriched[target] = map.get(fkValue as number);
+          const key = lookupKeyOf(fkValue);
+          enriched[target] = key === undefined ? undefined : map.get(key);
         }
         if (mapping.replaceFk && !mapping.suffixField) {
           delete enriched[mapping.fkField];
