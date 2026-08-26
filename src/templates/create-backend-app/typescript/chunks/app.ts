@@ -1,4 +1,4 @@
-import { createBackendApp as createDeterministicApp } from "@deterministic-code/deterministic/app";
+import { createBackendApp as createDeterministicApp } from "{{appImport}}";
 import type { Express } from "express";
 import { resolve } from "node:path";
 import { access } from "node:fs/promises";

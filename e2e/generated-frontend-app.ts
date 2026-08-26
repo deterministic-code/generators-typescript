@@ -92,7 +92,7 @@ export const bootGeneratedFrontend = async (args: {
           name: "frontend-e2e-root",
           private: true,
           dependencies: {
-            "@deterministic-code/deterministic": "^0.0.6",
+            "@deterministic-code/deterministic": "^0.0.7",
             zod: "^3.23.8",
           },
         },
