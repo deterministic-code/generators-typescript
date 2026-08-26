@@ -117,4 +117,36 @@ describe("generate-routes-tests", () => {
     });
     assert.deepEqual(entries, []);
   });
+
+  it("emits stacked member URLs for a composite identity", async () => {
+    const entries = await generate({
+      reader: memoryReader({
+        "types.yaml": `types:
+  - link:
+      tags: [datasource_type, view_type]
+      inherits: set
+      ids: [left_id, right_id]
+      fields:
+        - left_id:
+            type: integer
+        - right_id:
+            type: integer
+`,
+        "datasource.yaml": `includes:
+  - types:
+      filter: tag == "datasource_type"
+`,
+        "routes.yaml": `includes:
+  - types:
+      filter: 'type == "link"'
+routes: []
+`,
+      }),
+      settings: {},
+    });
+    const links = textOf(entries, "link.integration.test.ts");
+    assert.match(links, /:left_id\/:right_id/);
+    assert.match(links, /new PrimaryKey\("left_id", "integer"\)/);
+    assert.match(links, /new PrimaryKey\("right_id", "integer"\)/);
+  });
 });

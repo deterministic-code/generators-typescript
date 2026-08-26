@@ -7,7 +7,7 @@ import { createBackendApp } from '../createBackendApp';
 import * as repoModule from '../../repositories';
 import type { DatabaseConnection } from '../../repositories';
 import type { ICrudRepository } from '../../repositories/ICrudRepository';
-import { PrimaryKey } from '../../repositories/PrimaryKey';
+import { EntityIdentity } from '../../repositories/EntityIdentity';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const fixtureDir = resolve(
@@ -33,7 +33,7 @@ function makeService<T extends Row>(rows: T[]): ICrudRepository<T & { id: number
   const store = [...rows];
   return {
     entityName: 'mock',
-    primaryKey: new PrimaryKey('id', 'integer'),
+    primaryKey: EntityIdentity.scalar('id', 'integer'),
     query: vi.fn(async () => []),
     find: vi.fn(async (id: number) => store.find((r) => r.id === id) ?? null),
     findAll: vi.fn(async () => [...store]),

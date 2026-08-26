@@ -1,5 +1,5 @@
 import type { ICrudRepository } from '../../repositories/ICrudRepository';
-import { PrimaryKey } from '../../repositories/PrimaryKey';
+import { EntityIdentity } from '../../repositories/EntityIdentity';
 import type { StandardIdType } from '../../repositories/standardFieldConverting';
 
 /** A fully-stubbed {@link ICrudRepository} mock for service tests — every CRUD method is a `jest.fn()`, plus the `entityName`/`primaryKey` the service reads. `idType` is explicit (no default) so a fixture states the key shape it intends; `column` defaults to the structural `id`. */
@@ -9,7 +9,7 @@ export function createMockCrudRepository<T extends { id: number | string }>(
 ): jest.Mocked<ICrudRepository<T>> {
   return {
     entityName: 'test',
-    primaryKey: new PrimaryKey(column, idType),
+    primaryKey: EntityIdentity.scalar(column, idType),
     query: jest.fn(),
     find: jest.fn(),
     findAll: jest.fn(),

@@ -1,4 +1,4 @@
-import type { PrimaryKey } from '../../repositories/PrimaryKey';
+import type { EntityIdentity } from '../../repositories/EntityIdentity';
 import { NameValue } from './NameValue';
 
 interface EntityServiceOptimisticConcurrencyOptions {
@@ -10,7 +10,7 @@ interface EntityServiceOptimisticConcurrencyOptions {
  * field named `id` on {@link T}.
  */
 export interface IEntityService<T, TId = number | string, TMutate = T> {
-  readonly primaryKey: PrimaryKey;
+  readonly primaryKey: EntityIdentity;
   query(command: string, args: NameValue[]): Promise<T[]>;
   findAll(): Promise<T[]>;
   create(data: TMutate): Promise<T>;

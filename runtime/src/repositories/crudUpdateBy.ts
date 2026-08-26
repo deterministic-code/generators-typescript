@@ -12,9 +12,14 @@ export interface UpdateByRequest {
 /** What {@link updateByMatched} needs from a repository: the two reads, the raw query runner, and the primary key column that identifies the touched rows. */
 export interface UpdateByHost<TRow> {
   findBy(column: string, value: unknown): Promise<TRow[]>;
+  find(id: unknown): Promise<TRow | null>;
   findIn(column: string, values: ReadonlyArray<unknown>): Promise<TRow[]>;
   runUpdate(sql: string, values: unknown[]): Promise<unknown>;
   readonly primaryKeyColumn: string;
+  readonly primaryKey: {
+    isComposite: boolean;
+    fromRow(row: Record<string, unknown>): unknown;
+  };
 }
 
 function updateSqlFor(req: UpdateByRequest) {
@@ -39,6 +44,14 @@ export async function updateByMatched<TRow>(
   if (!mutation) return matched;
   await host.runUpdate(mutation.sql, mutation.values);
 
+  if (host.primaryKey.isComposite) {
+    const out: TRow[] = [];
+    for (const row of matched) {
+      const found = await host.find(host.primaryKey.fromRow(row as Record<string, unknown>));
+      if (found !== null) out.push(found);
+    }
+    return out;
+  }
   const pks = matched.map((r) => (r as Record<string, unknown>)[host.primaryKeyColumn]);
   return host.findIn(host.primaryKeyColumn, pks);
 }

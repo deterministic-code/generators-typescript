@@ -131,6 +131,7 @@ describe('parseCrudRouteSpecs', () => {
         entityName: 'user',
         primaryKeyColumn: 'id',
         primaryKeyIdType: 'integer',
+        primaryKeyColumns: [{ column: 'id', idType: 'integer' }],
         columns: ['name', 'active', 'age'],
         columnTypes: { name: 'string', active: 'boolean', age: 'number' },
         fields: [
@@ -139,6 +140,31 @@ describe('parseCrudRouteSpecs', () => {
           { name: 'age', type: 'number' },
         ],
       },
+    ]);
+  });
+
+  it('reads type-level ids as a composite identity', () => {
+    const specs = parseSpecs(
+      {
+        types: [
+          {
+            link: {
+              ids: ['left_id', 'right_id'],
+              fields: [
+                { left_id: { type: 'integer' } },
+                { right_id: { type: 'integer' } },
+              ],
+            },
+          },
+        ],
+      },
+      { combined_routes: [] },
+    );
+    expect(specs[0].primaryKeyColumn).toBe('left_id');
+    expect(specs[0].primaryKeyIdType).toBe('integer');
+    expect(specs[0].primaryKeyColumns).toEqual([
+      { column: 'left_id', idType: 'integer' },
+      { column: 'right_id', idType: 'integer' },
     ]);
   });
 

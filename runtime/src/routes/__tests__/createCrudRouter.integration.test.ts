@@ -2,6 +2,7 @@ import express from 'express';
 import request from 'supertest';
 import { z } from 'zod';
 import { createCrudRouter } from '../createCrudRouter';
+import { EntityIdentity } from '../../repositories/EntityIdentity';
 import { PrimaryKey } from '../../repositories/PrimaryKey';
 import { errorHandler } from '../../middleware/errorHandler';
 import type { IEntityService } from '../../services/interfaces/IEntityService';
@@ -545,3 +546,60 @@ describe('createCrudRouter — primaryKeyParam (custom URL parameter name)', () 
     expect(res.body.items).toHaveLength(2);
   });
 });
+
+describe('createCrudRouter — composite identity', () => {
+  interface LinkRow {
+    left_id: number;
+    right_id: number;
+    label: string;
+  }
+
+  function createLinkService(): jest.Mocked<IEntityService<LinkRow>> {
+    return createMockCrudService<LinkRow>(
+      EntityIdentity.of([
+        new PrimaryKey('left_id', 'integer'),
+        new PrimaryKey('right_id', 'integer'),
+      ]),
+    );
+  }
+
+  function buildLinkApp(service: jest.Mocked<IEntityService<LinkRow>>) {
+    const schema = z.object({ label: z.string() });
+    const router = createCrudRouter<LinkRow>({
+      service,
+      createSchema: schema,
+      updateSchema: schema,
+      entityName: 'Link',
+    });
+    const app = express();
+    app.use(express.json());
+    app.use('/links', router);
+    app.use(errorHandler);
+    return app;
+  }
+
+  it('GET /:left_id/:right_id passes both keys to findById', async () => {
+    const service = createLinkService();
+    service.findById.mockResolvedValue({ left_id: 1, right_id: 2, label: 'ab' });
+    const res = await request(buildLinkApp(service)).get('/links/1/2');
+    expect(res.status).toBe(200);
+    expect(service.findById).toHaveBeenCalledWith({ left_id: 1, right_id: 2 });
+  });
+
+  it('PATCH /:left_id/:right_id updates by the composite id', async () => {
+    const service = createLinkService();
+    service.patch.mockResolvedValue({ left_id: 1, right_id: 2, label: 'changed' });
+    const res = await request(buildLinkApp(service)).patch('/links/1/2').send({ label: 'changed' });
+    expect(res.status).toBe(200);
+    expect(service.patch).toHaveBeenCalledWith({ left_id: 1, right_id: 2 }, { label: 'changed' });
+  });
+
+  it('DELETE /:left_id/:right_id deletes by the composite id', async () => {
+    const service = createLinkService();
+    service.delete.mockResolvedValue(true);
+    const res = await request(buildLinkApp(service)).delete('/links/1/2');
+    expect(res.status).toBe(200);
+    expect(service.delete).toHaveBeenCalledWith({ left_id: 1, right_id: 2 });
+  });
+});
+

@@ -1,15 +1,15 @@
+import type { EntityIdentity } from './EntityIdentity';
 import type { IPrimaryKeyService } from './IPrimaryKeyService';
-import type { PrimaryKey } from './PrimaryKey';
 
 /**
  * Base for the hand-rolled dialect repositories (oracle, sqlserver) that resolve
- * their {@link PrimaryKey} from the injected {@link IPrimaryKeyService} instead of
+ * their {@link EntityIdentity} from the injected {@link IPrimaryKeyService} instead of
  * hardcoding `id`. Owns the two members every such repo exposes so no dialect
  * re-declares the fields or re-derives the key.
  */
 export abstract class PrimaryKeyBearingRepository {
   readonly entityName: string;
-  readonly primaryKey: PrimaryKey;
+  readonly primaryKey: EntityIdentity;
 
   protected constructor(entityName: string, primaryKeys: IPrimaryKeyService) {
     this.entityName = entityName;

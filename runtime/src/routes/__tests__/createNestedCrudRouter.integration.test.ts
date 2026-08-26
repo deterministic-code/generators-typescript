@@ -2,6 +2,7 @@ import express from 'express';
 import request from 'supertest';
 import { z } from 'zod';
 import { createNestedCrudRouter } from '../createNestedCrudRouter';
+import { EntityIdentity } from '../../repositories/EntityIdentity';
 import { PrimaryKey } from '../../repositories/PrimaryKey';
 import type { RouteIdType } from '../routeParamUtils';
 import { errorHandler } from '../../middleware/errorHandler';
@@ -31,7 +32,8 @@ function buildApp(
   const createSchema = overrides.createSchema ?? z.object({ title: z.string() });
   const updateSchema = overrides.updateSchema ?? z.object({ title: z.string() });
   const idType = overrides.idType ?? service.primaryKey.idType;
-  (service as unknown as { primaryKey: PrimaryKey }).primaryKey = new PrimaryKey('id', idType);
+  (service as unknown as { primaryKey: EntityIdentity }).primaryKey =
+    EntityIdentity.scalar('id', idType);
   const router = createNestedCrudRouter<Child>({
     service,
     createSchema,
@@ -41,7 +43,7 @@ function buildApp(
     parentFkField: 'user_id',
     parentEntityName: 'User',
     entityName: 'Article',
-    parentPrimaryKey: new PrimaryKey('id', idType),
+    parentPrimaryKey: EntityIdentity.scalar('id', idType),
   });
   const app = express();
   app.use(express.json());
@@ -275,5 +277,42 @@ describe('createNestedCrudRouter', () => {
       .send({ title: 'Updated' });
     expect(res.status).toBe(200);
     expect(service.update).toHaveBeenCalledWith(1, expect.objectContaining({ user_id: 10 }));
+  });
+});
+
+describe('createNestedCrudRouter — composite child identity', () => {
+  interface LinkChild {
+    left_id: number;
+    right_id: number;
+    user_id: number;
+    label: string;
+  }
+
+  it('GET /:left_id/:right_id finds the child by both keys', async () => {
+    const service = createMockCrudService<LinkChild>(
+      EntityIdentity.of([
+        new PrimaryKey('left_id', 'integer'),
+        new PrimaryKey('right_id', 'integer'),
+      ]),
+    );
+    const row: LinkChild = { left_id: 1, right_id: 2, user_id: 10, label: 'ab' };
+    service.findAll.mockResolvedValue([row]);
+    const router = createNestedCrudRouter<LinkChild>({
+      service,
+      createSchema: z.object({ label: z.string() }),
+      updateSchema: z.object({ label: z.string() }),
+      parentParamName: 'userId',
+      parentFkField: 'user_id',
+      parentEntityName: 'User',
+      entityName: 'Link',
+      parentPrimaryKey: EntityIdentity.scalar('id', 'integer'),
+    });
+    const app = express();
+    app.use(express.json());
+    app.use('/users/:userId/links', router);
+    app.use(errorHandler);
+    const res = await request(app).get('/users/10/links/1/2');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(expect.objectContaining({ left_id: 1, right_id: 2, label: 'ab' }));
   });
 });

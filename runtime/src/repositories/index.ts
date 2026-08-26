@@ -1,6 +1,8 @@
 export type { IRepository } from './IRepository';
 export type { ICrudRepository } from './ICrudRepository';
 export { PrimaryKey } from './PrimaryKey';
+export { EntityIdentity } from './EntityIdentity';
+export type { IdentityValue, IdentityRecord, IdentityScalar } from './EntityIdentity';
 export { PrimaryKeyService } from './PrimaryKeyService';
 export type { PrimaryKeyRegistration } from './PrimaryKeyService';
 export type { IPrimaryKeyService } from './IPrimaryKeyService';

@@ -7,7 +7,7 @@ import { columnValueMatches } from './columnValueMatches';
 import { comparePrimaryKeyValues } from './comparePrimaryKey';
 import { deleteRowByPredicate, deleteRowsBy, filterRows } from './inMemoryRowOps';
 import { nextInMemoryId, type InMemoryIdType } from './nextInMemoryId';
-import type { PrimaryKey } from '../PrimaryKey';
+import type { EntityIdentity, IdentityValue } from '../EntityIdentity';
 import type { IPrimaryKeyService } from '../IPrimaryKeyService';
 
 export interface InMemoryCrudOptions {
@@ -21,13 +21,13 @@ export interface InMemoryCrudOptions {
 
 // solid-i-allow: in-memory backend has no raw-SQL surface; query() intentionally refuses until ICrudRepository separates raw-query from CRUD.
 export class InMemoryCrudRepository<
-  T extends { id: number | string },
+  T = Record<string, unknown>,
 > implements ICrudRepository<T> {
   protected readonly table: InMemoryTable;
   protected readonly middlewares: readonly IDataSourceMiddleware[];
   protected readonly hasStandardColumns: boolean;
   readonly entityName: string;
-  readonly primaryKey: PrimaryKey;
+  readonly primaryKey: EntityIdentity;
   protected readonly idType: InMemoryIdType;
   protected readonly primaryKeyColumn: string;
   private readonly buildOptions: InMemoryCrudOptions;
@@ -63,19 +63,35 @@ export class InMemoryCrudRepository<
   }
 
   private primaryKeyOf(row: unknown): unknown {
-    return (row as Record<string, unknown>)[this.primaryKeyColumn];
+    return this.primaryKey.fromRow(row as Record<string, unknown>);
+  }
+
+  private matchesId(row: unknown, id: IdentityValue): boolean {
+    return this.primaryKey.matches(row as Record<string, unknown>, id);
   }
 
   private byPrimaryKey(a: T, b: T): number {
-    return comparePrimaryKeyValues(this.primaryKeyOf(a), this.primaryKeyOf(b));
+    const av = this.primaryKeyOf(a);
+    const bv = this.primaryKeyOf(b);
+    if (typeof av === 'object' && av !== null && typeof bv === 'object' && bv !== null) {
+      for (const column of this.primaryKey.columns()) {
+        const cmp = comparePrimaryKeyValues(
+          (av as Record<string, unknown>)[column],
+          (bv as Record<string, unknown>)[column],
+        );
+        if (cmp !== 0) return cmp;
+      }
+      return 0;
+    }
+    return comparePrimaryKeyValues(av, bv);
   }
 
   async query<R = unknown>(_sql: string, _params?: ReadonlyArray<unknown>): Promise<R[]> {
     throw new Error('InMemory backend does not support raw SQL queries');
   }
 
-  async find(id: T['id']): Promise<T | null> {
-    return (this.table.rows.find((r) => this.primaryKeyOf(r) === id) as T | undefined) ?? null;
+  async find(id: IdentityValue): Promise<T | null> {
+    return (this.table.rows.find((r) => this.matchesId(r, id)) as T | undefined) ?? null;
   }
 
   async findAll(): Promise<T[]> {
@@ -109,21 +125,36 @@ export class InMemoryCrudRepository<
           updated: now,
         }
       : {};
+    const identityCols = this.primaryKey.isComposite
+      ? Object.fromEntries(
+          this.primaryKey.columns().map((column) => {
+            const value = provided[column];
+            if (value === undefined || value === null) {
+              throw new Error(
+                `${this.tableName} uses primary key '${this.primaryKey.columns().join(', ')}' but the insert payload did not include a value for '${column}'`,
+              );
+            }
+            return [column, value];
+          }),
+        )
+      : {
+          [this.primaryKeyColumn]: nextInMemoryId(
+            this.idType,
+            provided[this.primaryKeyColumn],
+            () => this.table.nextId++,
+          ),
+        };
     const row = {
       ...standardCols,
       ...provided,
-      [this.primaryKeyColumn]: nextInMemoryId(
-        this.idType,
-        provided[this.primaryKeyColumn],
-        () => this.table.nextId++,
-      ),
+      ...identityCols,
     } as T;
     this.table.rows.push(row);
     return row;
   }
 
-  async update(id: T['id'], data: Partial<Omit<T, 'id'>>): Promise<T | null> {
-    const idx = this.table.rows.findIndex((r) => this.primaryKeyOf(r) === id);
+  async update(id: IdentityValue, data: Partial<Omit<T, 'id'>>): Promise<T | null> {
+    const idx = this.table.rows.findIndex((r) => this.matchesId(r, id));
     if (idx === -1) return null;
     const updateBump = this.hasStandardColumns ? { updated: new Date().toISOString() } : {};
     this.table.rows[idx] = {
@@ -134,8 +165,8 @@ export class InMemoryCrudRepository<
     return this.table.rows[idx] as T;
   }
 
-  async delete(id: T['id']): Promise<boolean> {
-    return deleteRowByPredicate(this.table.rows as T[], (r) => this.primaryKeyOf(r) === id);
+  async delete(id: IdentityValue): Promise<boolean> {
+    return deleteRowByPredicate(this.table.rows as T[], (r) => this.matchesId(r, id));
   }
 
   async updateBy(column: string, value: unknown, data: Partial<Omit<T, 'id'>>): Promise<T[]> {

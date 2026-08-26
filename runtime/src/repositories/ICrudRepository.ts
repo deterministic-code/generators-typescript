@@ -1,13 +1,13 @@
 import { IRepository } from './IRepository';
-import type { PrimaryKey } from './PrimaryKey';
+import type { EntityIdentity, IdentityValue } from './EntityIdentity';
 
 export interface OptimisticConcurrencyOptions {
   expectedUpdated?: string;
 }
 
-export interface ICrudRepository<T extends { id: unknown }, TId = number> extends IRepository {
+export interface ICrudRepository<T = Record<string, unknown>, TId = IdentityValue> extends IRepository {
   readonly entityName: string;
-  readonly primaryKey: PrimaryKey;
+  readonly primaryKey: EntityIdentity;
   find(id: TId): Promise<T | null>;
   findAll(): Promise<T[]>;
   findBy(column: string, value: unknown): Promise<T[]>;

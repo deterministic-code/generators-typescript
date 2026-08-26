@@ -4,9 +4,9 @@ import { IEntityService } from '../services/interfaces/IEntityService';
 import { handleZodError } from '../errors/handleZodError';
 import { handleConstraintError } from '../errors/handleConstraintError';
 import { sendItem, sendItems, sendError } from '../responses/sendResponse';
-import { idOr400, parseIdField } from './routeParamUtils';
+import { idOr400, parseIdentityField } from './routeParamUtils';
 import { wrapRouteHandler as wrapHandler } from './wrapRouteHandler';
-import type { PrimaryKey } from '../repositories/PrimaryKey';
+import type { EntityIdentity, IdentityValue } from '../repositories/EntityIdentity';
 
 export interface CrudRouterOptions<T, TId = number | string, TMutate = T> {
   service: IEntityService<T, TId, TMutate>;
@@ -28,7 +28,7 @@ interface ResolvedCrudRouter<T, TId, TMutate> {
   updateSchema: ZodSchema;
   patchSchema: ZodSchema;
   entityName: string;
-  primaryKey: PrimaryKey;
+  primaryKey: EntityIdentity;
   useOptimisticConcurrency: boolean;
   enrichItems?: (items: T[]) => Promise<T[]>;
   enrichItem?: (item: T) => Promise<T>;
@@ -64,17 +64,16 @@ function parseIdOrFail<T, TId, TMutate>(
   cfg: ResolvedCrudRouter<T, TId, TMutate>,
   req: Request,
   res: Response,
-): number | string | null {
-  const pk = cfg.primaryKey;
-  return idOr400(res, parseIdField(pk.routeIdType, pk.column, req.params[pk.column]));
+): IdentityValue | null {
+  return idOr400(res, parseIdentityField(cfg.primaryKey, req.params));
 }
 
 function sendNotFound<T, TId, TMutate>(
   cfg: ResolvedCrudRouter<T, TId, TMutate>,
   res: Response,
-  id: number | string,
+  id: IdentityValue,
 ): void {
-  sendError(res, 404, 'NOT_FOUND', `${cfg.entityName} with id '${id}' not found`);
+  sendError(res, 404, 'NOT_FOUND', `${cfg.entityName} with id '${cfg.primaryKey.format(id)}' not found`);
 }
 
 function makeListHandler<T, TId, TMutate>(
@@ -121,7 +120,7 @@ function resolveMutationTarget<T, TId, TMutate>(
   cfg: ResolvedCrudRouter<T, TId, TMutate>,
   req: Request,
   res: Response,
-): { id: number | string; expectedUpdated: string | undefined } | null {
+): { id: IdentityValue; expectedUpdated: string | undefined } | null {
   const id = parseIdOrFail(cfg, req, res);
   if (id === null) return null;
   const concurrency = resolveExpectedUpdated(cfg, req, res);
@@ -140,9 +139,9 @@ async function prepareMutationData<T, TId, TMutate>(
     : (parsed as unknown as T);
   const data = resolved as unknown as Partial<TMutate>;
   // URL is authoritative for the PK; stripping it from the body before update() stops PATCH/PUT renaming the row out from under the find-after-update path (silently mutated the PK then 404'd on custom-string-PK entities like legacy_mailbox.key).
-  const pkColumn = cfg.primaryKey.column;
-  if (typeof (data as Record<string, unknown>)[pkColumn] !== 'undefined') {
-    delete (data as Record<string, unknown>)[pkColumn];
+  const row = data as Record<string, unknown>;
+  for (const column of cfg.primaryKey.columns()) {
+    if (typeof row[column] !== 'undefined') delete row[column];
   }
   return data;
 }
@@ -227,7 +226,7 @@ export function createCrudRouter<T, TId = number | string, TMutate = T>(
     resolveItem: options.resolveItem,
   };
   const mutationMiddleware = options.mutationMiddleware ?? [];
-  const memberRoute = cfg.primaryKey.routeSegment();
+  const memberRoute = cfg.primaryKey.routeSegments();
   const router = Router();
 
   router.get('/', makeListHandler(cfg));

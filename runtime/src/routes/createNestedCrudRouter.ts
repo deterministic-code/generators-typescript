@@ -5,8 +5,8 @@ import { handleZodError } from '../errors/handleZodError';
 import { handleConstraintError } from '../errors/handleConstraintError';
 import { handleBusinessError } from '../errors/handleBusinessError';
 import { sendItem, sendItems, sendError } from '../responses/sendResponse';
-import { idOr400, parseIdField } from './routeParamUtils';
-import type { PrimaryKey } from '../repositories/PrimaryKey';
+import { idOr400, parseIdField, parseIdentityField } from './routeParamUtils';
+import type { EntityIdentity, IdentityValue } from '../repositories/EntityIdentity';
 
 export interface NestedCrudRouterOptions<T> {
   service: IEntityService<any, any>;
@@ -18,7 +18,7 @@ export interface NestedCrudRouterOptions<T> {
   parentEntityName: string;
   entityName: string;
   /** The parent entity's primary key — parses the `/:<parentParamName>` segment. The child's key is read from `service.primaryKey`. */
-  parentPrimaryKey: PrimaryKey;
+  parentPrimaryKey: EntityIdentity;
   mutationMiddleware?: RequestHandler[];
 }
 
@@ -30,31 +30,38 @@ interface NestedCtx<T> {
   parentParamName: string;
   parentFkField: keyof T & string;
   entityName: string;
-  parentPrimaryKey: PrimaryKey;
-  childPrimaryKey: PrimaryKey;
+  parentPrimaryKey: EntityIdentity;
+  childPrimaryKey: EntityIdentity;
 }
 
-function parseParentId<T>(cfg: NestedCtx<T>, req: Request, res: Response): number | string | null {
+function parseParentId<T>(cfg: NestedCtx<T>, req: Request, res: Response): IdentityValue | null {
   const pk = cfg.parentPrimaryKey;
+  if (pk.isComposite) {
+    return idOr400(res, parseIdentityField(pk, req.params));
+  }
   return idOr400(
     res,
     parseIdField(pk.routeIdType, cfg.parentParamName, req.params[cfg.parentParamName]),
   );
 }
 
-function parseChildId<T>(cfg: NestedCtx<T>, req: Request, res: Response): number | string | null {
-  const pk = cfg.childPrimaryKey;
-  return idOr400(res, parseIdField(pk.routeIdType, pk.column, req.params[pk.column]));
+function parseChildId<T>(cfg: NestedCtx<T>, req: Request, res: Response): IdentityValue | null {
+  return idOr400(res, parseIdentityField(cfg.childPrimaryKey, req.params));
 }
 
-function notFound<T>(cfg: NestedCtx<T>, res: Response, childId: number | string): void {
-  sendError(res, 404, 'NOT_FOUND', `${cfg.entityName} with id '${childId}' not found`);
+function notFound<T>(cfg: NestedCtx<T>, res: Response, childId: IdentityValue): void {
+  sendError(
+    res,
+    404,
+    'NOT_FOUND',
+    `${cfg.entityName} with id '${cfg.childPrimaryKey.format(childId)}' not found`,
+  );
 }
 
 /** The child row addressed by `/:id` iff it exists AND belongs to `ids.parentId`; sends the 404 and returns null otherwise. */
 async function findOwnedChild<T>(
   cfg: NestedCtx<T>,
-  ids: { parentId: number | string; childId: number | string },
+  ids: { parentId: IdentityValue; childId: IdentityValue },
   res: Response,
 ): Promise<Record<string, unknown> | null> {
   const allItems = await cfg.service.findAll();
@@ -71,14 +78,14 @@ async function findOwnedChild<T>(
 function withParent<T>(
   cfg: NestedCtx<T>,
   body: unknown,
-  parentId: number | string,
+  parentId: IdentityValue,
 ): Record<string, unknown> {
   return { ...((body ?? {}) as Record<string, unknown>), [cfg.parentFkField]: parentId };
 }
 
 interface OwnedChild {
-  parentId: number | string;
-  childId: number | string;
+  parentId: IdentityValue;
+  childId: IdentityValue;
   item: Record<string, unknown>;
 }
 
@@ -189,7 +196,7 @@ export function createNestedCrudRouter<T>(options: NestedCrudRouterOptions<T>): 
     childPrimaryKey: options.service.primaryKey,
   };
   const mutationMiddleware = options.mutationMiddleware ?? [];
-  const member = cfg.childPrimaryKey.routeSegment();
+  const member = cfg.childPrimaryKey.routeSegments();
   const router = Router({ mergeParams: true });
 
   router.get('/', makeListHandler(cfg));
