@@ -102,7 +102,7 @@ describe("generate-services", () => {
     const user = textOf(entries, "userService.ts");
     assert.match(
       user,
-      /export class UserService extends BaseService<User>/,
+      /export class UserService extends EntityService<User, number, Omit<User, "id">>/,
     );
     assert.match(user, /async find_by_email\(email: string\)/);
     assert.match(
@@ -110,7 +110,7 @@ describe("generate-services", () => {
       /from "\.\.\/\.\.\/types\/generated\/datasource\/user"/,
     );
     const role = textOf(entries, "roleService.ts");
-    assert.match(role, /export class RoleService extends BaseService<Role>/);
+    assert.match(role, /export class RoleService extends EntityService<Role, number, Omit<Role, "id">>/);
     assert.doesNotMatch(role, /UpdateRole/);
 
     const report = textOf(entries, "../custom/reportService.ts");
@@ -163,7 +163,7 @@ services: []
     });
     const user = textOf(entries, "userService.ts");
     assert.match(user, /Datasource type: standard/);
-    assert.match(user, /Target: StandardCrud/);
+    assert.match(user, /IEntityService<User, number, Omit<User, "id">>/);
   });
 
   it("emits no doc comments when comments=none", async () => {

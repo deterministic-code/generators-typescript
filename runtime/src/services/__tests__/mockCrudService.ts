@@ -1,14 +1,12 @@
-import { IStandardCrudService } from '../interfaces/IStandardCrudService';
+import { IEntityService } from '../interfaces/IEntityService';
 import { PrimaryKey } from '../../repositories/PrimaryKey';
 import type { StandardIdType } from '../../repositories/standardFieldConverting';
 
-type MockableRow = { id: number | string; uuid: string; created: string; updated: string };
-
-/** A fully-stubbed {@link IStandardCrudService} mock for router/service tests — every method is a `jest.fn()`, with `findAll`/`findBy` pre-resolved to `[]` so unconfigured list/lookup calls don't reject. `idType` is explicit (no default) so a fixture states the key shape it intends; `column` defaults to the structural `id`. Shared so the stub lives one place. */
-export function createMockCrudService<T extends MockableRow>(
+/** A fully-stubbed {@link IEntityService} mock for router/service tests — every method is a `jest.fn()`, with `findAll`/`findBy` pre-resolved to `[]` so unconfigured list/lookup calls don't reject. `idType` is explicit (no default) so a fixture states the key shape it intends; `column` defaults to the structural `id`. Shared so the stub lives one place. */
+export function createMockCrudService<T>(
   idType: StandardIdType,
   column = 'id',
-): jest.Mocked<IStandardCrudService<T>> {
+): jest.Mocked<IEntityService<T>> {
   return {
     primaryKey: new PrimaryKey(column, idType),
     query: jest.fn(),

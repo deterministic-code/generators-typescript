@@ -1,4 +1,4 @@
-import { BaseService } from '../BaseService';
+import { EntityService } from '../EntityService';
 import { InMemoryCrudRepository } from '../../repositories/inmemory/InMemoryCrudRepository';
 import { InMemoryDatasource } from '../../repositories/inmemory/InMemoryDatasource';
 import type { ICrudRepository } from '../../repositories/ICrudRepository';
@@ -28,8 +28,8 @@ function makeFixture(): {
   datasource: InMemoryDatasource;
   contactRepo: InMemoryCrudRepository<Contact>;
   addressRepo: InMemoryCrudRepository<Address>;
-  contactSvc: BaseService<Contact>;
-  addressSvc: BaseService<Address>;
+  contactSvc: EntityService<Contact>;
+  addressSvc: EntityService<Address>;
 } {
   const datasource = new InMemoryDatasource();
   const contactRepo = new InMemoryCrudRepository<Contact>(datasource, 'contact', {
@@ -44,17 +44,17 @@ function makeFixture(): {
     datasource,
     contactRepo,
     addressRepo,
-    contactSvc: new BaseService(contactRepo),
-    addressSvc: new BaseService(addressRepo),
+    contactSvc: new EntityService(contactRepo),
+    addressSvc: new EntityService(addressRepo),
   };
 }
 
-describe('BaseService.runInTransaction', () => {
+describe('EntityService.runInTransaction', () => {
   it('commit case: creates rows in two services within transaction and sees them after commit', async () => {
     const { datasource, addressRepo, contactSvc, addressSvc } = makeFixture();
 
     await contactSvc.runInTransaction(datasource, withTxnRepo, async (txnContactSvc) => {
-      const txnAddressSvc = new BaseService(withTxnRepo(addressRepo, datasource));
+      const txnAddressSvc = new EntityService(withTxnRepo(addressRepo, datasource));
 
       const contact = await txnContactSvc.create({ name: 'Alice' } as Omit<
         Contact,
@@ -84,7 +84,7 @@ describe('BaseService.runInTransaction', () => {
 
     await expect(
       contactSvc.runInTransaction(datasource, withTxnRepo, async (txnContactSvc) => {
-        const txnAddressSvc = new BaseService(withTxnRepo(addressRepo, datasource));
+        const txnAddressSvc = new EntityService(withTxnRepo(addressRepo, datasource));
 
         await txnContactSvc.create({ name: 'Alice' } as Omit<
           Contact,

@@ -1,5 +1,5 @@
 import type { ICrudRepository } from '../../repositories/ICrudRepository';
-import { BaseService } from '../BaseService';
+import { EntityService } from '../EntityService';
 import { createMockCrudRepository } from './mockCrudRepository';
 
 export interface TestEntity {
@@ -12,12 +12,12 @@ export interface TestEntity {
 
 export const TS = '2026-01-01T00:00:00Z';
 
-/** A fresh integer-PK {@link BaseService} over a mock CRUD repository — the shared per-test setup for the BaseService suites. */
-export function makeBaseService(): {
+/** A fresh integer-PK {@link EntityService} over a mock CRUD repository — the shared per-test setup for the EntityService suites. */
+export function makeEntityService(): {
   repository: jest.Mocked<ICrudRepository<TestEntity>>;
-  service: BaseService<TestEntity>;
+  service: EntityService<TestEntity>;
 } {
   const repository = createMockCrudRepository<TestEntity>('integer');
-  const service = new BaseService<TestEntity>(repository);
+  const service = new EntityService<TestEntity>(repository);
   return { repository, service };
 }

@@ -1,17 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { ZodSchema } from 'zod';
-import {
-  IStandardCrudService,
-  type StandardRow,
-} from '../services/interfaces/IStandardCrudService';
+import { IEntityService } from '../services/interfaces/IEntityService';
 import { handleZodError } from '../errors/handleZodError';
 import { sendItem, sendItems, sendError } from '../responses/sendResponse';
 import { wrapRouteHandler as wrap } from './wrapRouteHandler';
 import { snakeToKebab } from '../naming';
 
 // Runtime twin of the `byFieldsBlock` emitter in scripts/lib/emit-routes-typescript.mjs, resolving routes.yaml `entity + byField` declarations without a hand-mounted emitted router.
-export interface ByFieldRouterOptions<T extends StandardRow> {
-  service: IStandardCrudService<T, Record<string, unknown>>;
+export interface ByFieldRouterOptions<T> {
+  service: IEntityService<T, number | string, Record<string, unknown>>;
   field: string;
   /** `true` = 1:1 resource (200/404, 409 on duplicates); `false` = collection (200 items[], DELETE returns { count }). */
   unique: boolean;
@@ -21,8 +18,8 @@ export interface ByFieldRouterOptions<T extends StandardRow> {
   updateSchema?: ZodSchema;
 }
 
-interface ByFieldContext<T extends StandardRow> {
-  service: IStandardCrudService<T, Record<string, unknown>>;
+interface ByFieldContext<T> {
+  service: IEntityService<T, number | string, Record<string, unknown>>;
   field: string;
   param: string;
   unique: boolean;
@@ -35,12 +32,12 @@ function paramName(field: string): string {
   return field.replace(/_([a-z0-9])/g, (_, c) => c.toUpperCase());
 }
 
-function valueFrom<T extends StandardRow>(ctx: ByFieldContext<T>, req: Request): string {
+function valueFrom<T>(ctx: ByFieldContext<T>, req: Request): string {
   return req.params[ctx.param] ?? '';
 }
 
 /** For a unique byField, send 404 (no row) or 409 (multiple) and return true; return false when exactly one row matched so the caller proceeds. */
-function sentUniqueMiss<T extends StandardRow>(args: {
+function sentUniqueMiss<T>(args: {
   ctx: ByFieldContext<T>;
   res: Response;
   matchCount: number;
@@ -63,7 +60,7 @@ function sentUniqueMiss<T extends StandardRow>(args: {
   return false;
 }
 
-async function doGet<T extends StandardRow>(
+async function doGet<T>(
   ctx: ByFieldContext<T>,
   req: Request,
   res: Response,
@@ -78,7 +75,7 @@ async function doGet<T extends StandardRow>(
   sendItem(res, rows[0] as unknown as Record<string, unknown>);
 }
 
-async function doPut<T extends StandardRow>(
+async function doPut<T>(
   ctx: ByFieldContext<T>,
   req: Request,
   res: Response,
@@ -98,7 +95,7 @@ async function doPut<T extends StandardRow>(
   sendItem(res, (rows[0] ?? null) as unknown as Record<string, unknown> | null);
 }
 
-async function doDelete<T extends StandardRow>(
+async function doDelete<T>(
   ctx: ByFieldContext<T>,
   req: Request,
   res: Response,
@@ -113,7 +110,7 @@ async function doDelete<T extends StandardRow>(
   res.status(204).end();
 }
 
-export function createByFieldRouter<T extends StandardRow>(
+export function createByFieldRouter<T>(
   options: ByFieldRouterOptions<T>,
 ): Router {
   const router = Router();

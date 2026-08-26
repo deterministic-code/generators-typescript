@@ -4,11 +4,11 @@ import { z } from 'zod';
 import { createCrudRouter } from '../createCrudRouter';
 import { PrimaryKey } from '../../repositories/PrimaryKey';
 import { errorHandler } from '../../middleware/errorHandler';
-import type { IStandardCrudService } from '../../services/interfaces/IStandardCrudService';
+import type { IEntityService } from '../../services/interfaces/IEntityService';
 import { type Item, createItemService as createService, createMockCrudService } from './_crudRouterKit';
 
 function buildApp(
-  service: jest.Mocked<IStandardCrudService<Item>>,
+  service: jest.Mocked<IEntityService<Item>>,
   overrides: Partial<{
     patchSchema: z.ZodSchema;
     mutationMiddleware: express.RequestHandler[];
@@ -272,10 +272,10 @@ describe('createCrudRouter — idType=string for custom primary keys', () => {
     first_name: string;
     last_name: string;
   }
-  function createStringPkService(): jest.Mocked<IStandardCrudService<StringIdItem>> {
+  function createStringPkService(): jest.Mocked<IEntityService<StringIdItem>> {
     return createMockCrudService<StringIdItem>(new PrimaryKey('id', 'string'));
   }
-  function buildStringPkApp(service: jest.Mocked<IStandardCrudService<StringIdItem>>) {
+  function buildStringPkApp(service: jest.Mocked<IEntityService<StringIdItem>>) {
     const createSchema = z.object({
       key: z.string(),
       first_name: z.string(),
@@ -346,10 +346,10 @@ describe('createCrudRouter — idType=uuid for uuid-keyed entities', () => {
     uuid: string;
     name: string;
   }
-  function createUuidService(): jest.Mocked<IStandardCrudService<UuidItem>> {
+  function createUuidService(): jest.Mocked<IEntityService<UuidItem>> {
     return createMockCrudService<UuidItem>(new PrimaryKey('id', 'uuid'));
   }
-  function buildUuidApp(service: jest.Mocked<IStandardCrudService<UuidItem>>) {
+  function buildUuidApp(service: jest.Mocked<IEntityService<UuidItem>>) {
     const createSchema = z.object({ name: z.string() });
     const updateSchema = z.object({ name: z.string() });
     const router = createCrudRouter<UuidItem>({
@@ -383,7 +383,7 @@ describe('createCrudRouter — idType=uuid for uuid-keyed entities', () => {
 });
 
 describe('createCrudRouter — useOptimisticConcurrency + If-Match', () => {
-  function buildOccApp(service: jest.Mocked<IStandardCrudService<Item>>) {
+  function buildOccApp(service: jest.Mocked<IEntityService<Item>>) {
     const createSchema = z.object({ name: z.string() });
     const updateSchema = z.object({ name: z.string() });
     const router = createCrudRouter<Item>({
@@ -491,10 +491,10 @@ describe('createCrudRouter — primaryKeyParam (custom URL parameter name)', () 
     code: string;
     name: string;
   }
-  function createKeyedService(): jest.Mocked<IStandardCrudService<KeyedRow>> {
+  function createKeyedService(): jest.Mocked<IEntityService<KeyedRow>> {
     return createMockCrudService<KeyedRow>(new PrimaryKey('code', 'string'));
   }
-  function buildCodeApp(service: jest.Mocked<IStandardCrudService<KeyedRow>>) {
+  function buildCodeApp(service: jest.Mocked<IEntityService<KeyedRow>>) {
     const createSchema = z.object({ name: z.string() });
     const updateSchema = z.object({ name: z.string() });
     const router = createCrudRouter<KeyedRow>({

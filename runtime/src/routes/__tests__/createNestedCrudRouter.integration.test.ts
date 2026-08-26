@@ -5,7 +5,7 @@ import { createNestedCrudRouter } from '../createNestedCrudRouter';
 import { PrimaryKey } from '../../repositories/PrimaryKey';
 import type { RouteIdType } from '../routeParamUtils';
 import { errorHandler } from '../../middleware/errorHandler';
-import type { IStandardCrudService } from '../../services/interfaces/IStandardCrudService';
+import type { IEntityService } from '../../services/interfaces/IEntityService';
 import { createMockCrudService } from './_crudRouterKit';
 
 interface Child {
@@ -20,7 +20,7 @@ interface Child {
 const createService = () => createMockCrudService<Child>();
 
 function buildApp(
-  service: jest.Mocked<IStandardCrudService<Child>>,
+  service: jest.Mocked<IEntityService<Child>>,
   overrides: Partial<{
     createSchema: z.ZodSchema;
     updateSchema: z.ZodSchema;

@@ -1,6 +1,6 @@
 import type { Express } from 'express';
 import type { ZodSchema } from 'zod';
-import { IStandardCrudService } from '../services/interfaces/IStandardCrudService';
+import { IEntityService } from '../services/interfaces/IEntityService';
 import { createNestedCrudRouter } from './createNestedCrudRouter';
 import { addNestedManyToManyRoutes } from './nestedManyToManyRoutes';
 import {
@@ -16,14 +16,14 @@ import { Router } from 'express';
 
 export interface MountCombinedRoutesOptions {
   /** Map of camelCase service key (e.g. "appSettingService") → entity service. */
-  repos: Record<string, IStandardCrudService<any, any>>;
+  repos: Record<string, IEntityService<any, any>>;
   /**
    * Optional map of entity name → eager-loading-wrapped read service. When a
    * child entity has a wrapped service, combined-route GET handlers use it so
    * subpath responses include the same eager-loaded relations as the top-level
    * CRUD routes.
    */
-  fullReadServices?: Map<string, IStandardCrudService<any, any>>;
+  fullReadServices?: Map<string, IEntityService<any, any>>;
   datasourceData: DatasourceData;
   routesData: RoutesData;
   /** Builds the create-body Zod schema for a direct-fk child entity (typeName). */
@@ -51,9 +51,9 @@ function indexDatasource(data: DatasourceData): Map<string, DatasourceTypeDef> {
 }
 
 function requireService(
-  repos: Record<string, IStandardCrudService<any, any>>,
+  repos: Record<string, IEntityService<any, any>>,
   typeName: string,
-): IStandardCrudService<any, any> {
+): IEntityService<any, any> {
   const key = serviceKeyFor(typeName);
   const svc = repos[key];
   if (!svc) {
@@ -65,7 +65,7 @@ function requireService(
 function readServiceFor(
   options: MountCombinedRoutesOptions,
   typeName: string,
-): IStandardCrudService<any, any> {
+): IEntityService<any, any> {
   return options.fullReadServices?.get(typeName) ?? requireService(options.repos, typeName);
 }
 
@@ -80,7 +80,7 @@ function mountDirectFk(
   options: MountCombinedRoutesOptions,
 ): void {
   const childTypeName = descriptor.child.name;
-  const childService = readServiceFor(options, childTypeName) as IStandardCrudService<any, any>;
+  const childService = readServiceFor(options, childTypeName) as IEntityService<any, any>;
   const parentService = requireService(options.repos, descriptor.parent);
   const router = createNestedCrudRouter<FkRow>({
     service: childService,
@@ -118,14 +118,14 @@ function mountM2m(
     );
   }
 
-  const parentService = requireService(options.repos, descriptor.parent) as IStandardCrudService<
+  const parentService = requireService(options.repos, descriptor.parent) as IEntityService<
     any,
     any
   >;
   const junctionService = requireService(
     options.repos,
     descriptor.junction,
-  ) as IStandardCrudService<any, any>;
+  ) as IEntityService<any, any>;
   const childService = readServiceFor(options, descriptor.target);
 
   const router = Router({ mergeParams: true });

@@ -1,7 +1,7 @@
 import request from 'supertest';
 import express, { Application, Router } from 'express';
 import { z } from 'zod';
-import { IStandardCrudService } from '../../services/interfaces/IStandardCrudService';
+import { IEntityService } from '../../services/interfaces/IEntityService';
 import { addNestedManyToManyRoutes, NestedManyToManyConfig } from '../nestedManyToManyRoutes';
 import { createMockCrudService as createMockService } from '../../services/__tests__/mockCrudService';
 
@@ -23,8 +23,8 @@ interface JunctionEntity {
 }
 
 function buildApp(
-  parentService: jest.Mocked<IStandardCrudService<ParentEntity>>,
-  junctionService: jest.Mocked<IStandardCrudService<JunctionEntity>>,
+  parentService: jest.Mocked<IEntityService<ParentEntity>>,
+  junctionService: jest.Mocked<IEntityService<JunctionEntity>>,
   config: Omit<
     NestedManyToManyConfig<ParentEntity, JunctionEntity>,
     'parentService' | 'junctionService'
@@ -43,8 +43,8 @@ function buildApp(
 }
 
 describe('addNestedManyToManyRoutes', () => {
-  let parentService: jest.Mocked<IStandardCrudService<ParentEntity>>;
-  let junctionService: jest.Mocked<IStandardCrudService<JunctionEntity>>;
+  let parentService: jest.Mocked<IEntityService<ParentEntity>>;
+  let junctionService: jest.Mocked<IEntityService<JunctionEntity>>;
   let app: Application;
 
   const parent: ParentEntity = {
@@ -366,7 +366,7 @@ describe('addNestedManyToManyRoutes', () => {
       updated: string;
     }
 
-    let settingService: jest.Mocked<IStandardCrudService<SettingJunction>>;
+    let settingService: jest.Mocked<IEntityService<SettingJunction>>;
 
     const settingsConfig: Omit<
       NestedManyToManyConfig<ParentEntity, SettingJunction>,
@@ -492,7 +492,7 @@ describe('addNestedManyToManyRoutes', () => {
       updated: string;
     }
 
-    let boolService: jest.Mocked<IStandardCrudService<BooleanJunction>>;
+    let boolService: jest.Mocked<IEntityService<BooleanJunction>>;
 
     const boolConfig: Omit<
       NestedManyToManyConfig<ParentEntity, BooleanJunction>,
@@ -583,7 +583,7 @@ describe('addNestedManyToManyRoutes', () => {
       updated: string;
     }
 
-    let childService: jest.Mocked<IStandardCrudService<ChildEntity>>;
+    let childService: jest.Mocked<IEntityService<ChildEntity>>;
 
     const childEntities: ChildEntity[] = [
       {
@@ -610,9 +610,9 @@ describe('addNestedManyToManyRoutes', () => {
     ];
 
     function buildAppWithChild(
-      pService: jest.Mocked<IStandardCrudService<ParentEntity>>,
-      jService: jest.Mocked<IStandardCrudService<JunctionEntity>>,
-      cService: jest.Mocked<IStandardCrudService<ChildEntity>>,
+      pService: jest.Mocked<IEntityService<ParentEntity>>,
+      jService: jest.Mocked<IEntityService<JunctionEntity>>,
+      cService: jest.Mocked<IEntityService<ChildEntity>>,
     ): Application {
       const app = express();
       app.use(express.json());
@@ -758,12 +758,12 @@ describe('addNestedManyToManyRoutes', () => {
       description: z.string().nullable().optional().default(null),
     });
 
-    let childService: jest.Mocked<IStandardCrudService<ChildEntity>>;
+    let childService: jest.Mocked<IEntityService<ChildEntity>>;
 
     function buildCreateAndLinkApp(
-      pService: jest.Mocked<IStandardCrudService<ParentEntity>>,
-      jService: jest.Mocked<IStandardCrudService<JunctionEntity>>,
-      cService: jest.Mocked<IStandardCrudService<ChildEntity>>,
+      pService: jest.Mocked<IEntityService<ParentEntity>>,
+      jService: jest.Mocked<IEntityService<JunctionEntity>>,
+      cService: jest.Mocked<IEntityService<ChildEntity>>,
     ): Application {
       const testApp = express();
       testApp.use(express.json());
@@ -926,7 +926,7 @@ describe('addNestedManyToManyRoutes', () => {
       updated: string;
     }
 
-    let childService: jest.Mocked<IStandardCrudService<ChildEntity>>;
+    let childService: jest.Mocked<IEntityService<ChildEntity>>;
 
     const childEntities: ChildEntity[] = [
       {
@@ -946,9 +946,9 @@ describe('addNestedManyToManyRoutes', () => {
     ];
 
     function buildPutApp(
-      pService: jest.Mocked<IStandardCrudService<ParentEntity>>,
-      jService: jest.Mocked<IStandardCrudService<JunctionEntity>>,
-      cService: jest.Mocked<IStandardCrudService<ChildEntity>>,
+      pService: jest.Mocked<IEntityService<ParentEntity>>,
+      jService: jest.Mocked<IEntityService<JunctionEntity>>,
+      cService: jest.Mocked<IEntityService<ChildEntity>>,
     ): Application {
       const testApp = express();
       testApp.use(express.json());
@@ -1169,7 +1169,7 @@ describe('addNestedManyToManyRoutes', () => {
       })
       .strict();
 
-    let childService: jest.Mocked<IStandardCrudService<ChildEntity>>;
+    let childService: jest.Mocked<IEntityService<ChildEntity>>;
 
     const childEntities: ChildEntity[] = [
       {
@@ -1184,9 +1184,9 @@ describe('addNestedManyToManyRoutes', () => {
     ];
 
     function buildPatchApp(
-      pService: jest.Mocked<IStandardCrudService<ParentEntity>>,
-      jService: jest.Mocked<IStandardCrudService<JunctionEntity>>,
-      cService: jest.Mocked<IStandardCrudService<ChildEntity>>,
+      pService: jest.Mocked<IEntityService<ParentEntity>>,
+      jService: jest.Mocked<IEntityService<JunctionEntity>>,
+      cService: jest.Mocked<IEntityService<ChildEntity>>,
     ): Application {
       const testApp = express();
       testApp.use(express.json());
@@ -1398,12 +1398,12 @@ describe('addNestedManyToManyRoutes', () => {
       name: z.string().trim().min(1),
     });
 
-    let childService: jest.Mocked<IStandardCrudService<ChildWithParentFk>>;
+    let childService: jest.Mocked<IEntityService<ChildWithParentFk>>;
 
     function buildAppWithParentFk(
-      pService: jest.Mocked<IStandardCrudService<ParentEntity>>,
-      jService: jest.Mocked<IStandardCrudService<JunctionEntity>>,
-      cService: jest.Mocked<IStandardCrudService<ChildWithParentFk>>,
+      pService: jest.Mocked<IEntityService<ParentEntity>>,
+      jService: jest.Mocked<IEntityService<JunctionEntity>>,
+      cService: jest.Mocked<IEntityService<ChildWithParentFk>>,
     ): Application {
       const testApp = express();
       testApp.use(express.json());
@@ -1569,7 +1569,7 @@ describe('addNestedManyToManyRoutes', () => {
       updated: string;
     }
 
-    let childService: jest.Mocked<IStandardCrudService<ChildEntity>>;
+    let childService: jest.Mocked<IEntityService<ChildEntity>>;
 
     const childA: ChildEntity = {
       id: 10,
@@ -1685,7 +1685,7 @@ describe('addNestedManyToManyRoutes', () => {
       updated: string;
     }
 
-    let childService: jest.Mocked<IStandardCrudService<ChildEntity>>;
+    let childService: jest.Mocked<IEntityService<ChildEntity>>;
 
     const childA: ChildEntity = {
       id: 10,

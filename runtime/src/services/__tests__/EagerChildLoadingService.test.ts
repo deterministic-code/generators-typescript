@@ -1,4 +1,4 @@
-import { IStandardCrudService } from '../interfaces/IStandardCrudService';
+import { IEntityService } from '../interfaces/IEntityService';
 import { EagerChildLoadingService } from '../EagerChildLoadingService';
 import { EagerChildSpec } from '../../app/loaders/computeEagerChildren';
 import { createMockCrudService as createMockService } from './mockCrudService';
@@ -66,8 +66,8 @@ const grandchildRow = (id: number, parentId: number, data: string) => ({
 });
 
 describe('EagerChildLoadingService', () => {
-  let baseService: jest.Mocked<IStandardCrudService<Parent>>;
-  let childService: jest.Mocked<IStandardCrudService<Child>>;
+  let baseService: jest.Mocked<IEntityService<Parent>>;
+  let childService: jest.Mocked<IEntityService<Child>>;
   let childSpecs: EagerChildSpec[];
   let service: EagerChildLoadingService<Parent>;
 
@@ -81,7 +81,7 @@ describe('EagerChildLoadingService', () => {
         refColumn: 'parent_id',
       },
     ];
-    const childServiceMap = new Map<string, IStandardCrudService<any, any>>();
+    const childServiceMap = new Map<string, IEntityService<any, any>>();
     childServiceMap.set('child', childService);
     service = new EagerChildLoadingService(baseService, childSpecs, childServiceMap);
   });
@@ -92,7 +92,7 @@ describe('EagerChildLoadingService', () => {
       { fieldName: 'children', childTable: 'child', refColumn: 'parent_id' },
       { fieldName: 'grandchildren', childTable: 'grandchild', refColumn: 'parent_id' },
     ];
-    const childServiceMap = new Map<string, IStandardCrudService<any, any>>();
+    const childServiceMap = new Map<string, IEntityService<any, any>>();
     childServiceMap.set('child', childService);
     childServiceMap.set('grandchild', grandchildService);
     const multiService = new EagerChildLoadingService(baseService, multiSpecs, childServiceMap);
@@ -119,7 +119,7 @@ describe('EagerChildLoadingService', () => {
         ...parentRow(1),
         children: [childRow(10, 1, 'A'), childRow(11, 1, 'B')],
       });
-      expect(childService.findBy).toHaveBeenCalledWith([{ name: 'parent_id', value: '1' }]);
+      expect(childService.findBy).toHaveBeenCalledWith([{ name: 'parent_id', value: 1 }]);
     });
 
     it('attaches a singular nested object (or null) when isArray is false', async () => {
@@ -131,7 +131,7 @@ describe('EagerChildLoadingService', () => {
           isArray: false,
         },
       ];
-      const map = new Map<string, IStandardCrudService<any, any>>();
+      const map = new Map<string, IEntityService<any, any>>();
       map.set('child', childService);
       const singularService = new EagerChildLoadingService(baseService, singularSpecs, map);
       baseService.findById.mockResolvedValue(parentRow(1));
@@ -160,7 +160,7 @@ describe('EagerChildLoadingService', () => {
           isArray: false,
         },
       ];
-      const map = new Map<string, IStandardCrudService<any, any>>();
+      const map = new Map<string, IEntityService<any, any>>();
       map.set('child', childService);
       return new EagerChildLoadingService(baseService, specs, map);
     };
@@ -200,8 +200,8 @@ describe('EagerChildLoadingService', () => {
       expect(result[1].children).toEqual([childRow(20, 2, 'C')]);
       expect(childService.findBy).toHaveBeenCalledOnce();
       expect(childService.findBy).toHaveBeenCalledWith([
-        { name: 'parent_id', value: '1' },
-        { name: 'parent_id', value: '2' },
+        { name: 'parent_id', value: 1 },
+        { name: 'parent_id', value: 2 },
       ]);
     });
 
@@ -237,7 +237,7 @@ describe('EagerChildLoadingService', () => {
           memberOnly: true,
         },
       ];
-      const childServiceMap = new Map<string, IStandardCrudService<any, any>>();
+      const childServiceMap = new Map<string, IEntityService<any, any>>();
       childServiceMap.set('child', childService);
       childServiceMap.set('grandchild', grandchildService);
       return {
@@ -251,10 +251,10 @@ describe('EagerChildLoadingService', () => {
       baseService.findAll.mockResolvedValue([parentRow(1)]);
       childService.findBy.mockResolvedValue([childRow(10, 1, 'A')]);
 
-      const result = await memberOnlyService.findAll();
+      const result = (await memberOnlyService.findAll()) as Array<Record<string, unknown>>;
 
-      expect(result[0].children).toEqual([childRow(10, 1, 'A')]);
-      expect('grandchildren' in result[0]).toBe(false);
+      expect(result[0]!.children).toEqual([childRow(10, 1, 'A')]);
+      expect('grandchildren' in result[0]!).toBe(false);
       expect(grandchildService.findBy).not.toHaveBeenCalled();
     });
 
@@ -267,7 +267,7 @@ describe('EagerChildLoadingService', () => {
       const result = (await memberOnlyService.findById(1)) as Record<string, unknown>;
 
       expect(result.grandchildren).toEqual([grandchildRow(30, 1, 'X')]);
-      expect(grandchildService.findBy).toHaveBeenCalledWith([{ name: 'parent_id', value: '1' }]);
+      expect(grandchildService.findBy).toHaveBeenCalledWith([{ name: 'parent_id', value: 1 }]);
     });
   });
 
@@ -361,7 +361,7 @@ describe('EagerChildLoadingService', () => {
         created: TS,
         updated: TS,
       });
-      const emptyMap = new Map<string, IStandardCrudService<any, any>>();
+      const emptyMap = new Map<string, IEntityService<any, any>>();
       const serviceWithMissing = new EagerChildLoadingService(baseService, childSpecs, emptyMap);
 
       const input = { name: 'NewParent' } as unknown as Omit<
@@ -402,7 +402,7 @@ describe('EagerChildLoadingService', () => {
         updated: TS,
         children: [{ id: 10, parent_id: 1, value: 'A', created: TS, updated: TS }],
       });
-      expect(childService.findBy).toHaveBeenCalledWith([{ name: 'parent_id', value: '1' }]);
+      expect(childService.findBy).toHaveBeenCalledWith([{ name: 'parent_id', value: 1 }]);
     });
 
     it('returns null when base returns null', async () => {
@@ -466,7 +466,7 @@ describe('EagerChildLoadingService', () => {
         created: TS,
         updated: TS,
       });
-      const emptyMap = new Map<string, IStandardCrudService<any, any>>();
+      const emptyMap = new Map<string, IEntityService<any, any>>();
       const serviceWithMissing = new EagerChildLoadingService(baseService, childSpecs, emptyMap);
 
       const result = await serviceWithMissing.findById(1);

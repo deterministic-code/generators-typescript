@@ -2,7 +2,7 @@ import { describe, it, beforeEach, vi } from 'vitest';
 import { expect } from 'vitest';
 import type { Express } from 'express';
 import type { DatabaseConnection } from '../../repositories';
-import type { IStandardCrudService } from '../../services/interfaces/IStandardCrudService';
+import type { IEntityService } from '../../services/interfaces/IEntityService';
 import { createBackendApp } from '../createBackendApp';
 import { PrimaryKey } from '../../repositories/PrimaryKey';
 import * as repoModule from '../../repositories';
@@ -31,7 +31,7 @@ function createMockConnection(): MockDb {
 
 function createMockService<
   T extends { id: number; uuid: string; created: string; updated: string },
->(): jest.Mocked<IStandardCrudService<T, any>> {
+>(): jest.Mocked<IEntityService<T, any>> {
   return {
     entityName: 'mock',
     primaryKey: new PrimaryKey('id', 'integer'),
@@ -45,7 +45,7 @@ function createMockService<
     delete: jest.fn(),
     updateBy: jest.fn(),
     deleteBy: jest.fn(),
-  } as unknown as jest.Mocked<IStandardCrudService<T, any>>;
+  } as unknown as jest.Mocked<IEntityService<T, any>>;
 }
 
 describe('createBackendApp with eager_load', () => {
@@ -55,7 +55,7 @@ describe('createBackendApp with eager_load', () => {
   beforeEach(async () => {
     mockConn = createMockConnection();
 
-    const mockRepos: Record<string, IStandardCrudService<any, any>> = {
+    const mockRepos: Record<string, IEntityService<any, any>> = {
       applicationService: createMockService(),
       application_settingService: createMockService(),
     };

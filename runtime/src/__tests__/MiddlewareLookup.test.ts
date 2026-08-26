@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { MiddlewareLookup, type RouteMiddlewareFactory } from '../middleware/MiddlewareLookup';
 import type { IAuthenticationService } from '../services/IAuthenticationService';
 import type { IAuthorizationService } from '../services/IAuthorizationService';
-import type { IStandardCrudService } from '../services/interfaces/IStandardCrudService';
+import type { IEntityService } from '../services/interfaces/IEntityService';
 
 describe('MiddlewareLookup', () => {
   it('returns authenticate when authService is provided', () => {
@@ -78,7 +78,7 @@ describe('MiddlewareLookup', () => {
   it('returns protectBuiltinRow when service and entityName given', () => {
     const service = {
       findById: vi.fn(),
-    } as unknown as IStandardCrudService<{
+    } as unknown as IEntityService<{
       id: number;
       uuid: string;
       created: string;
@@ -100,7 +100,7 @@ describe('MiddlewareLookup', () => {
   it('throws for protectBuiltinRow without entityName', () => {
     const service = {
       findById: vi.fn(),
-    } as unknown as IStandardCrudService<{
+    } as unknown as IEntityService<{
       id: number;
       uuid: string;
       created: string;

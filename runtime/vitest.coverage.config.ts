@@ -34,7 +34,7 @@ export default defineConfig({
         statements: 84,
         '**/routes/iterateCombinedRoutes.ts': FULL,
         '**/services/EagerChildWritingService.ts': FULL,
-        '**/services/BaseService.ts': FULL,
+        '**/services/EntityService.ts': FULL,
       },
     },
   },

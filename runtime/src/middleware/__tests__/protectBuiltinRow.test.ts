@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { protectBuiltinRow } from '../protectBuiltinRow';
-import { IStandardCrudService } from '../../services/interfaces/IStandardCrudService';
+import { IEntityService } from '../../services/interfaces/IEntityService';
 import { createMockCrudService } from '../../services/__tests__/mockCrudService';
 
 interface BuiltinEntity {
@@ -60,7 +60,7 @@ function createNonBuiltinEntity(overrides: Partial<BuiltinEntity> = {}): Builtin
 }
 
 describe('protectBuiltinRow', () => {
-  let service: jest.Mocked<IStandardCrudService<BuiltinEntity>>;
+  let service: jest.Mocked<IEntityService<BuiltinEntity>>;
   let next: jest.MockedFunction<NextFunction>;
 
   beforeEach(() => {

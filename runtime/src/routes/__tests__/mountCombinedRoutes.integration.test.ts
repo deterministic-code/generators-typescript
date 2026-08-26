@@ -1,7 +1,7 @@
 import express, { Application } from 'express';
 import request from 'supertest';
 import { z } from 'zod';
-import { IStandardCrudService } from '../../services/interfaces/IStandardCrudService';
+import { IEntityService } from '../../services/interfaces/IEntityService';
 import { mountCombinedRoutes } from '../mountCombinedRoutes';
 import { PrimaryKey } from '../../repositories/PrimaryKey';
 import type { DatasourceData, RoutesData } from '../iterateCombinedRoutes';
@@ -87,10 +87,10 @@ interface AppTargetThingRow extends BaseRow {
 }
 
 function buildRepos(): {
-  appService: jest.Mocked<IStandardCrudService<AppRow>>;
-  appSettingService: jest.Mocked<IStandardCrudService<AppSettingRow>>;
-  targetThingService: jest.Mocked<IStandardCrudService<TargetThingRow>>;
-  appTargetThingService: jest.Mocked<IStandardCrudService<AppTargetThingRow>>;
+  appService: jest.Mocked<IEntityService<AppRow>>;
+  appSettingService: jest.Mocked<IEntityService<AppSettingRow>>;
+  targetThingService: jest.Mocked<IEntityService<TargetThingRow>>;
+  appTargetThingService: jest.Mocked<IEntityService<AppTargetThingRow>>;
 } {
   return {
     appService: createMockService<AppRow>('integer'),
@@ -113,7 +113,7 @@ function buildApp(repos: ReturnType<typeof buildRepos>, idType: 'integer' | 'uui
   const app = express();
   app.use(express.json());
   mountCombinedRoutes(app, {
-    repos: repos as unknown as Record<string, IStandardCrudService<any, any>>,
+    repos: repos as unknown as Record<string, IEntityService<any, any>>,
     datasourceData,
     routesData,
     buildCreateSchema: () => settingCreateSchema,

@@ -1,15 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
-import {
-  IStandardCrudService,
-  type StandardRow,
-} from '../services/interfaces/IStandardCrudService';
+import { IEntityService } from '../services/interfaces/IEntityService';
 import { sendError } from '../responses/sendResponse';
 import { extractParam, parsePositiveInt } from '../routes/routeParamUtils';
 
 const MUTATION_METHODS = new Set(['PUT', 'PATCH', 'DELETE']);
 
-export function protectBuiltinRow<T extends StandardRow & { is_builtin: boolean; name: string }>(
-  service: IStandardCrudService<T>,
+export function protectBuiltinRow<T extends { is_builtin: boolean; name: string }>(
+  service: IEntityService<T>,
   entityName: string,
 ) {
   return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {

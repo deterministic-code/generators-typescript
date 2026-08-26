@@ -2,7 +2,7 @@ import request from 'supertest';
 import express, { Application, NextFunction, Request, Response } from 'express';
 import { z } from 'zod';
 import { createByFieldRouter, ByFieldRouterOptions } from '../createByFieldRouter';
-import { IStandardCrudService } from '../../services/interfaces/IStandardCrudService';
+import { IEntityService } from '../../services/interfaces/IEntityService';
 import { createMockCrudService } from '../../services/__tests__/mockCrudService';
 
 interface NotificationRow {
@@ -14,7 +14,7 @@ interface NotificationRow {
   status: string;
 }
 
-type MockService = jest.Mocked<IStandardCrudService<NotificationRow>>;
+type MockService = jest.Mocked<IEntityService<NotificationRow>>;
 
 function buildApp(
   service: MockService,
