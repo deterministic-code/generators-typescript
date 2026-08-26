@@ -42,7 +42,7 @@ describe("{{className}} (sqlite integration)", () => {
     const repository = new SqliteStandardRepository<{{rowTypeName}}>(
       datasource,
       TABLE_NAME,
-      { entityName: {{&entityNameJson}}, primaryKeys, withUuidColumn: {{withUuid}} },
+      { entityName: {{&entityNameJson}}, primaryKeys },
     );
     service = new {{className}}(repository{{#isUuidPk}}, { idType: "uuid" }{{/isUuidPk}});
   });
@@ -56,12 +56,11 @@ describe("{{className}} (sqlite integration)", () => {
     expect(await service.findAll()).toEqual([]);
   });
 {{#canCreate}}
-  it("create inserts a row and auto-populates {{stampCols}}", async () => {
+  it("create inserts a row and auto-populates id/created/updated", async () => {
     const row = await service.create({}{{#createTypeName}} as {{createTypeName}}{{/createTypeName}});
     const r = row as unknown as Record<string, unknown>;
     expect(typeof r.id).toBe("{{idTsType}}");
-{{#withUuid}}    expect(typeof r.uuid).toBe("string");
-{{/withUuid}}    expect(typeof r.created).toBe("string");
+    expect(typeof r.created).toBe("string");
     expect(typeof r.updated).toBe("string");
   });
 {{/canCreate}}
@@ -84,7 +83,6 @@ describe("{{className}} (sqlite integration)", () => {
       new SqliteStandardRepository<{{rowTypeName}}>(datasource, {{&tableNameJson}}, {
         entityName: {{&entityNameJson}},
         primaryKeys,
-        withUuidColumn: {{withUuid}},
       }){{#isUuidPk}}, { idType: "uuid" }{{/isUuidPk}},
     );
 {{/chainServices}}

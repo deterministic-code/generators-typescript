@@ -377,7 +377,6 @@ types:
       "contactChangeLogService.integration.test.ts",
     );
     assert.match(body, /findAll returns \[\] on an empty table/);
-    assert.match(body, /withUuidColumn: false/);
     assert.doesNotMatch(body, /create inserts a row/);
     assert.doesNotMatch(body, /update returns null/);
     assert.doesNotMatch(body, /create, update, and delete with parents/);
