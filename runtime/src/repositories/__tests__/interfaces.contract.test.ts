@@ -36,9 +36,9 @@ describe('repositories interface contracts', () => {
 
   it('ICrudRepository extends IRepository and adds CRUD methods', () => {
     expectTypeOf<ICrudRepository<ExampleRow>>().toMatchTypeOf<IRepository>();
-    expectTypeOf<ICrudRepository<ExampleRow>['find']>().parameters.toEqualTypeOf<[number]>();
+    expectTypeOf<ICrudRepository<ExampleRow, number>['find']>().parameters.toEqualTypeOf<[number]>();
     expectTypeOf<
-      ICrudRepository<ExampleRow>['find']
+      ICrudRepository<ExampleRow, number>['find']
     >().returns.resolves.toEqualTypeOf<ExampleRow | null>();
     expectTypeOf<ICrudRepository<ExampleRow>['findAll']>().returns.resolves.toEqualTypeOf<
       ExampleRow[]
@@ -49,10 +49,10 @@ describe('repositories interface contracts', () => {
     expectTypeOf<ICrudRepository<ExampleRow>['add']>().parameters.toEqualTypeOf<
       [Omit<ExampleRow, 'id'>]
     >();
-    expectTypeOf<ICrudRepository<ExampleRow>['update']>().parameters.toEqualTypeOf<
+    expectTypeOf<ICrudRepository<ExampleRow, number>['update']>().parameters.toEqualTypeOf<
       [number, Partial<Omit<ExampleRow, 'id'>>, OptimisticConcurrencyOptions?]
     >();
-    expectTypeOf<ICrudRepository<ExampleRow>['delete']>().parameters.toEqualTypeOf<
+    expectTypeOf<ICrudRepository<ExampleRow, number>['delete']>().parameters.toEqualTypeOf<
       [number, OptimisticConcurrencyOptions?]
     >();
     expectTypeOf<ICrudRepository<ExampleRow>['delete']>().returns.resolves.toEqualTypeOf<boolean>();

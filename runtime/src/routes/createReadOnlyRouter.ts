@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { IEntityService } from '../services/interfaces/IEntityService';
 import { sendItem, sendItems, sendError } from '../responses/sendResponse';
-import { idOr400, parseIdField } from './routeParamUtils';
+import { idOr400, parseIdentityField } from './routeParamUtils';
 import { handleBusinessError } from '../errors/handleBusinessError';
 
 export interface ReadOnlyRouterOptions<T, TId = number | string> {
@@ -29,17 +29,14 @@ export function createReadOnlyRouter<T, TId = number | string>(
     }
   });
 
-  router.get(primaryKey.routeSegment(), async (req: Request, res: Response, next: NextFunction) => {
+  router.get(primaryKey.routeSegments(), async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const id = idOr400(
-        res,
-        parseIdField(primaryKey.routeIdType, primaryKey.column, req.params[primaryKey.column]),
-      );
+      const id = idOr400(res, parseIdentityField(primaryKey, req.params));
       if (id === null) return;
 
       const item = await service.findById(id as Parameters<typeof service.findById>[0]);
       if (!item) {
-        sendError(res, 404, 'NOT_FOUND', `${entityName} with id '${id}' not found`);
+        sendError(res, 404, 'NOT_FOUND', `${entityName} with id '${primaryKey.format(id)}' not found`);
         return;
       }
 

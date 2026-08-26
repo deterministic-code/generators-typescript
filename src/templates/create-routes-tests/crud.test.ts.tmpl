@@ -24,42 +24,42 @@ describe("{{fnName}}", () => {
     expect(service.findAll).toHaveBeenCalledOnce();
   });
 
-  it("GET {{mountPath}}/:{{idFieldName}} delegates to service.findById", async () => {
+  it("GET {{mountPath}}/{{memberLabel}} delegates to service.findById", async () => {
     const id = {{&idExpr}};
-    service.findById.mockResolvedValueOnce({ {{idFieldName}}: id{{&fkSuffix}} });
-    const res = await request(app).get(`{{mountPath}}/${id}`);
+    service.findById.mockResolvedValueOnce({ {{&rowLiteral}}{{&fkSuffix}} });
+    const res = await request(app).get(`{{mountPath}}/${{{&idPathExpr}}}`);
     expect(res.status).toBe(200);
     expect(service.findById).toHaveBeenCalledWith(id);
   });
 
   it("POST {{mountPath}} delegates to service.create", async () => {
     const payload = { name: "{{entity}}-new"{{&nameSuffix}} };
-    service.create.mockResolvedValueOnce({ {{idFieldName}}: {{&idExpr}}{{&fkSuffix}} });
+    service.create.mockResolvedValueOnce({ {{&createRowLiteral}}{{&fkSuffix}} });
     const res = await request(app).post("{{mountPath}}").send(payload);
     expect(res.status).toBe(201);
     expect(service.create).toHaveBeenCalledWith({ name: "{{entity}}-new"{{&nameSuffix}} });
   });
 
-  it("PUT {{mountPath}}/:{{idFieldName}} delegates to service.update", async () => {
+  it("PUT {{mountPath}}/{{memberLabel}} delegates to service.update", async () => {
     const id = {{&idExpr}};
     const payload = { name: "{{entity}}-updated"{{&nameSuffix}} };
-    service.update.mockResolvedValueOnce({ {{idFieldName}}: id{{&fkSuffix}} });
-    await request(app).put(`{{mountPath}}/${id}`){{&ifMatch}}.send(payload);
+    service.update.mockResolvedValueOnce({ {{&rowLiteral}}{{&fkSuffix}} });
+    await request(app).put(`{{mountPath}}/${{{&idPathExpr}}}`){{&ifMatch}}.send(payload);
     expect(service.update).toHaveBeenCalledWith(id, { name: "{{entity}}-updated"{{&nameSuffix}} }{{&occCallArg}});
   });
 
-  it("PATCH {{mountPath}}/:{{idFieldName}} delegates to service.patch", async () => {
+  it("PATCH {{mountPath}}/{{memberLabel}} delegates to service.patch", async () => {
     const id = {{&idExpr}};
     const payload = { name: "{{entity}}-patched"{{&nameSuffix}} };
-    service.patch.mockResolvedValueOnce({ {{idFieldName}}: id{{&fkSuffix}} });
-    await request(app).patch(`{{mountPath}}/${id}`){{&ifMatch}}.send(payload);
+    service.patch.mockResolvedValueOnce({ {{&rowLiteral}}{{&fkSuffix}} });
+    await request(app).patch(`{{mountPath}}/${{{&idPathExpr}}}`){{&ifMatch}}.send(payload);
     expect(service.patch).toHaveBeenCalledWith(id, { name: "{{entity}}-patched"{{&nameSuffix}} }{{&occCallArg}});
   });
 
-  it("DELETE {{mountPath}}/:{{idFieldName}} delegates to service.delete", async () => {
+  it("DELETE {{mountPath}}/{{memberLabel}} delegates to service.delete", async () => {
     const id = {{&idExpr}};
     service.delete.mockResolvedValueOnce(true);
-    const res = await request(app).delete(`{{mountPath}}/${id}`){{&ifMatch}};
+    const res = await request(app).delete(`{{mountPath}}/${{{&idPathExpr}}}`){{&ifMatch}};
     expect(res.status).toBe(200);
     expect(service.delete).toHaveBeenCalledWith(id{{&occCallArg}});
   });

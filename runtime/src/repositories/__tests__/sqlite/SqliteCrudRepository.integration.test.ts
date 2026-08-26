@@ -1,4 +1,4 @@
-import { testPrimaryKeys } from '../testPrimaryKeys';
+import { testCompositeKeys, testPrimaryKeys } from '../testPrimaryKeys';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -182,6 +182,56 @@ describe('SqliteCrudRepository custom primary key column', () => {
       await expect(repo.add({ first_name: 'Anon', last_name: 'Anon' } as never)).rejects.toThrow(
         /NOT NULL constraint failed|primary key/i,
       );
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+describe('SqliteCrudRepository composite primary key', () => {
+  type LinkRow = { left_id: number; right_id: number; label: string };
+
+  async function setup() {
+    const dbPath = path.join(os.tmpdir(), `sqlite-crud-comp-${Date.now()}-${Math.random()}.db`);
+    const ds = new SqliteDatasource({ dbPath });
+    await ds.open();
+    await ds.query(
+      `CREATE TABLE links (
+        left_id INTEGER NOT NULL,
+        right_id INTEGER NOT NULL,
+        label TEXT NOT NULL,
+        PRIMARY KEY (left_id, right_id)
+      )`,
+    );
+    const repo = new SqliteCrudRepository<LinkRow>(ds, 'links', {
+      entityName: 'link',
+      primaryKeys: testCompositeKeys([
+        { column: 'left_id', idType: 'integer' },
+        { column: 'right_id', idType: 'integer' },
+      ]),
+    });
+    return {
+      repo,
+      cleanup: async () => {
+        await ds.close();
+        if (await pathExists(dbPath)) await fs.unlink(dbPath);
+      },
+    };
+  }
+
+  it('add/find/update/delete address both identity columns', async () => {
+    const { repo, cleanup } = await setup();
+    try {
+      const created = await repo.add({ left_id: 1, right_id: 2, label: 'ab' });
+      expect(created).toEqual(expect.objectContaining({ left_id: 1, right_id: 2, label: 'ab' }));
+      expect(await repo.find({ left_id: 1, right_id: 2 })).toEqual(
+        expect.objectContaining({ label: 'ab' }),
+      );
+      expect(await repo.find({ left_id: 1, right_id: 9 })).toBeNull();
+      await repo.update({ left_id: 1, right_id: 2 }, { label: 'changed' });
+      expect((await repo.find({ left_id: 1, right_id: 2 }))?.label).toBe('changed');
+      expect(await repo.delete({ left_id: 1, right_id: 2 })).toBe(true);
+      expect(await repo.find({ left_id: 1, right_id: 2 })).toBeNull();
     } finally {
       await cleanup();
     }

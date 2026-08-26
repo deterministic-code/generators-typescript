@@ -218,4 +218,39 @@ services:
       false,
     );
   });
+
+  it("emits a composite identity object type and omits every PK field", async () => {
+    const entries = await generate({
+      reader: fixtureReader({
+        "types.yaml": `types:
+  - link:
+      tags: [datasource_type, view_type]
+      inherits: set
+      ids: [left_id, right_id]
+      fields:
+        - left_id:
+            type: integer
+        - right_id:
+            type: integer
+        - label:
+            type: string
+`,
+        "datasource.yaml": `includes:
+  - types:
+      filter: tag == "datasource_type"
+`,
+        "services.yaml": `includes:
+  - types:
+      filter: 'type == "link"'
+services: []
+`,
+      }),
+      settings: {},
+    });
+    const link = textOf(entries, "linkService.ts");
+    assert.match(
+      link,
+      /EntityService<Link, \{ left_id: number; right_id: number \}, Omit<Link, "left_id" \| "right_id">>/,
+    );
+  });
 });

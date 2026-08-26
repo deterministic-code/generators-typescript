@@ -1,7 +1,7 @@
 import { InMemoryCrudRepository } from '../../inmemory/InMemoryCrudRepository';
 import { InMemoryDatasource } from '../../inmemory/InMemoryDatasource';
 import { describeCrudRepositoryContract, type SimpleRow } from '../shared/crudRepositoryContract';
-import { testPrimaryKeys } from '../testPrimaryKeys';
+import { testCompositeKeys, testPrimaryKeys } from '../testPrimaryKeys';
 
 describeCrudRepositoryContract('InMemoryCrudRepository', async () => {
   const datasource = new InMemoryDatasource();
@@ -129,5 +129,38 @@ describe('InMemoryCrudRepository custom primary key', () => {
     await expect(
       makeRepo().add({ first_name: 'Ada' } as unknown as Omit<LegacyLike, 'id'>),
     ).rejects.toThrow("Caller-supplied id required when idType='string'");
+  });
+});
+
+type LinkRow = { left_id: number; right_id: number; label: string };
+
+describe('InMemoryCrudRepository composite primary key', () => {
+  const makeRepo = (): InMemoryCrudRepository<LinkRow> =>
+    new InMemoryCrudRepository<LinkRow>(new InMemoryDatasource(), 'links', {
+      entityName: 'link',
+      primaryKeys: testCompositeKeys([
+        { column: 'left_id', idType: 'integer' },
+        { column: 'right_id', idType: 'integer' },
+      ]),
+    });
+
+  it('find/update/delete address the row by both key columns', async () => {
+    const repo = makeRepo();
+    const created = await repo.add({ left_id: 1, right_id: 2, label: 'ab' });
+    expect(created).toEqual(expect.objectContaining({ left_id: 1, right_id: 2, label: 'ab' }));
+    expect(await repo.find({ left_id: 1, right_id: 2 })).toEqual(
+      expect.objectContaining({ label: 'ab' }),
+    );
+    expect(await repo.find({ left_id: 1, right_id: 9 })).toBeNull();
+    await repo.update({ left_id: 1, right_id: 2 }, { label: 'changed' });
+    expect((await repo.find({ left_id: 1, right_id: 2 }))?.label).toBe('changed');
+    expect(await repo.delete({ left_id: 1, right_id: 2 })).toBe(true);
+    expect(await repo.find({ left_id: 1, right_id: 2 })).toBeNull();
+  });
+
+  it('add throws when a composite key column is missing', async () => {
+    await expect(
+      makeRepo().add({ left_id: 1, label: 'x' } as Omit<LinkRow, 'id'>),
+    ).rejects.toThrow(/right_id/);
   });
 });

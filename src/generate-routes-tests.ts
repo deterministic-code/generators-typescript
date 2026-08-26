@@ -3,7 +3,7 @@ import type { GenerateContext } from "@deterministic-code/generators-common/gene
 import { content, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import {
   isReadonlyLookup,
-  pkName,
+  identityColumns,
   ROUTES_YAML,
   tableByName,
 } from "@deterministic-code/generators-common/spec-types";
@@ -107,10 +107,39 @@ class Generator extends Emit {
   private test(candidate: RouteCandidate): GenerateEntry {
     const table = this.types.find((d) => d.name === candidate.name);
     const overlay = this.tables.get(candidate.name);
-    const column =
-      table !== undefined ? pkName(table, overlay) : "id";
-    const pkType =
-      table?.fields.find((f) => f.name === column)?.type ?? "integer";
+    const columns =
+      table !== undefined ? identityColumns(table, overlay) : ["id"];
+    const keys = (columns.length > 0 ? columns : ["id"]).map((column) => {
+      const pkType =
+        table?.fields.find((f) => f.name === column)?.type ?? "integer";
+      return { column, pkType };
+    });
+    const column = keys[0]!.column;
+    const pkType = keys[0]!.pkType;
+    const pkExpr = `EntityIdentity.of([${keys
+      .map(
+        (k) =>
+          `new PrimaryKey(${JSON.stringify(k.column)}, ${JSON.stringify(k.pkType)})`,
+      )
+      .join(", ")}])`;
+    const idExpr =
+      keys.length === 1
+        ? fakeTestData.id(asIdType(pkType))
+        : `{ ${keys
+            .map((k) => `${k.column}: ${fakeTestData.id(asIdType(k.pkType))}`)
+            .join(", ")} }`;
+    const memberLabel = keys.map((k) => `:${k.column}`).join("/");
+    const idPathExpr =
+      keys.length === 1
+        ? "id"
+        : `[${keys.map((k) => `id.${k.column}`).join(", ")}].join("/")`;
+    const rowLiteral =
+      keys.length === 1
+        ? `${column}: id`
+        : keys.map((k) => `${k.column}: id.${k.column}`).join(", ");
+    const createRowLiteral = keys
+      .map((k) => `${k.column}: ${fakeTestData.id(asIdType(k.pkType))}`)
+      .join(", ");
     const path = this.imports.routeTest(candidate.name);
     const fileBase = candidate.name;
     const mountPath = `/api/${candidate.name}`;
@@ -121,7 +150,7 @@ class Generator extends Emit {
     const ifMatch = occ ? `.set("If-Match", occToken)` : "";
     const shared = {
       prelude: preludeSource(fakeTestData),
-      pkImport: `import { PrimaryKey } from "${libraryImportSpecifier(
+      pkImport: `import { EntityIdentity, PrimaryKey } from "${libraryImportSpecifier(
         "repositories",
         this.settings.libraryReferenceMode,
         path,
@@ -129,10 +158,14 @@ class Generator extends Emit {
       fnName: this.casing.routerFnName(candidate.name),
       fileBase,
       mockFactory: mockFactoryTmpl,
-      pkExpr: `new PrimaryKey(${JSON.stringify(column)}, ${JSON.stringify(pkType)})`,
+      pkExpr,
       mountPath,
       idFieldName: column,
-      idExpr: fakeTestData.id(asIdType(pkType)),
+      memberLabel,
+      idPathExpr,
+      rowLiteral,
+      createRowLiteral,
+      idExpr,
       fkSuffix: "",
       byFieldsBlock: byFieldsBlock(mountPath, candidate.byFields, ifMatch),
     };

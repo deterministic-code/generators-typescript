@@ -4,12 +4,12 @@ import { LookupEnrichedService } from '../LookupEnrichedService';
 import { EagerChildLoadingService } from '../EagerChildLoadingService';
 import { rebindServiceToTxn } from '../rebindServiceToTxn';
 import type { ICrudRepository } from '../../repositories/ICrudRepository';
-import { PrimaryKey } from '../../repositories/PrimaryKey';
+import { EntityIdentity } from '../../repositories/EntityIdentity';
 
 function mockRepo(): ICrudRepository<any> {
   return {
     entityName: 'test',
-    primaryKey: new PrimaryKey('id', 'integer'),
+    primaryKey: EntityIdentity.scalar('id', 'integer'),
     query: vi.fn(async () => []),
     findAll: vi.fn(async () => []),
     find: vi.fn(async () => null),

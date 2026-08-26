@@ -1,4 +1,5 @@
 import type { Response } from 'express';
+import type { EntityIdentity, IdentityValue } from '../repositories/EntityIdentity';
 import { sendError } from '../responses/sendResponse';
 
 /**
@@ -46,7 +47,7 @@ export function idTypeConstraint(idType: RouteIdType): string {
   return 'must be a non-empty string';
 }
 
-export type ParsedId = { id: number | string } | { error: string };
+export type ParsedId = { id: IdentityValue } | { error: string };
 
 /** Parse a path id param for `idType`, returning the value or a `field`-labelled validation message — shared by the flat, nested, and m2m routers so id parsing lives one place. */
 export function parseIdField(
@@ -59,8 +60,26 @@ export function parseIdField(
   return { id };
 }
 
+/** Parse every identity column from `params` (one segment each). */
+export function parseIdentityField(
+  identity: EntityIdentity,
+  params: Record<string, string | string[] | undefined>,
+): ParsedId {
+  if (!identity.isComposite) {
+    const key = identity.keys[0]!;
+    return parseIdField(key.routeIdType, key.column, extractParam(params[key.column]));
+  }
+  const rec: Record<string, number | string> = {};
+  for (const key of identity.keys) {
+    const parsed = parseIdField(key.routeIdType, key.column, extractParam(params[key.column]));
+    if ('error' in parsed) return parsed;
+    rec[key.column] = parsed.id as number | string;
+  }
+  return { id: rec };
+}
+
 /** Unwrap a {@link ParsedId}: the id, or null after sending the 400 for its validation message. */
-export function idOr400(res: Response, parsed: ParsedId): number | string | null {
+export function idOr400(res: Response, parsed: ParsedId): IdentityValue | null {
   if ('error' in parsed) {
     sendError(res, 400, 'VALIDATION_ERROR', parsed.error);
     return null;

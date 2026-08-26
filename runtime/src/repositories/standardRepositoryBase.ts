@@ -2,7 +2,7 @@ import { PreconditionFailedError } from '../errors/AppError';
 import type { SupportedDatasource } from '../converters/ITypeFieldConverter';
 import { getDefaultConverters } from '../converters/registry';
 import { IStandardCrudRepository, type StandardSystemKeys } from './IStandardCrudRepository';
-import { PrimaryKey } from './PrimaryKey';
+import type { EntityIdentity, IdentityValue } from './EntityIdentity';
 import { IDatasource } from './IDatasource';
 import { assertValidIdentifier } from './sqlIdentifier';
 import { placeholderList } from './sqlPlaceholders';
@@ -45,7 +45,7 @@ export interface StandardDialectConfig {
  * here once.
  */
 export abstract class AbstractStandardRepository<
-  T extends { id: TId },
+  T extends object,
   TId,
 >
   implements IStandardCrudRepository<T, TId>, StandardSpHost<T, TId>
@@ -53,7 +53,7 @@ export abstract class AbstractStandardRepository<
   protected readonly tableName: string;
   readonly fieldConverter: StandardFieldConverter;
   readonly idType: StandardIdType;
-  readonly primaryKey: PrimaryKey;
+  readonly primaryKey: EntityIdentity;
   protected readonly withUuidColumn: boolean;
   readonly useOptimisticConcurrency: boolean;
   readonly entityName: string;
@@ -152,15 +152,20 @@ export abstract class AbstractStandardRepository<
     const parts = [
       `SELECT * FROM ${this.tableName}`,
       whereClause,
-      `ORDER BY ${this.dialect.quoteId('id')} ASC`,
+      `ORDER BY ${this.primaryKey.orderBySql((c) => this.dialect.quoteId(c))}`,
     ];
     return parts.filter((p) => p.length > 0).join(' ');
   }
 
   async find(id: TId): Promise<T | null> {
     if (this.spClient) return (await this.spRows(`find_${this.entityName}`, [id]))[0] ?? null;
-    const where = `WHERE ${this.dialect.quoteId('id')} = ${this.dialect.placeholder(0)}`;
-    const rows = await this.queryRows(`SELECT * FROM ${this.tableName} ${where}`, [id]);
+    const { sql, values } = this.primaryKey.whereEqual(
+      id as IdentityValue,
+      (c) => this.dialect.quoteId(c),
+      this.dialect.placeholder,
+      (column, value) => this.fieldConverter.applyTo(column, value),
+    );
+    const rows = await this.queryRows(`SELECT * FROM ${this.tableName} WHERE ${sql}`, values);
     return rows[0] ?? null;
   }
 
@@ -218,13 +223,20 @@ export abstract class AbstractStandardRepository<
     }
 
     const { setClauses, boundValues } = this.mutationSet(data as Record<string, unknown>);
+    const idWhere = this.primaryKey.whereEqual(
+      id as IdentityValue,
+      (c) => this.dialect.quoteId(c),
+      this.dialect.placeholder,
+      (column, value) => this.fieldConverter.applyTo(column, value),
+      boundValues.length,
+    );
     const useInlineOcc = this.useOptimisticConcurrency && opts?.expectedUpdated !== undefined;
     const values = useInlineOcc
-      ? [...boundValues, id, opts!.expectedUpdated]
-      : [...boundValues, id];
+      ? [...boundValues, ...idWhere.values, opts!.expectedUpdated]
+      : [...boundValues, ...idWhere.values];
     const whereTail = useInlineOcc
-      ? `WHERE ${this.dialect.quoteId('id')} = ${this.dialect.placeholder(values.length - 2)} AND ${this.dialect.quoteId('updated')} = ${this.dialect.placeholder(values.length - 1)}`
-      : `WHERE ${this.dialect.quoteId('id')} = ${this.dialect.placeholder(values.length - 1)}`;
+      ? `WHERE ${idWhere.sql} AND ${this.dialect.quoteId('updated')} = ${this.dialect.placeholder(values.length - 1)}`
+      : `WHERE ${idWhere.sql}`;
 
     const sql = `UPDATE ${this.tableName} SET ${setClauses.join(', ')} ${whereTail}${this.dialect.mutationReturning}`;
     const raw = await this.datasource.query<unknown>(sql, values);
@@ -240,15 +252,24 @@ export abstract class AbstractStandardRepository<
   async delete(id: TId, opts?: { expectedUpdated?: string }): Promise<boolean> {
     if (this.spClient) return deleteViaSp<T, TId>(this, { id, opts });
 
+    const idWhere = this.primaryKey.whereEqual(
+      id as IdentityValue,
+      (c) => this.dialect.quoteId(c),
+      this.dialect.placeholder,
+      (column, value) => this.fieldConverter.applyTo(column, value),
+    );
     if (this.useOptimisticConcurrency && opts?.expectedUpdated !== undefined) {
-      const sql = `DELETE FROM ${this.tableName} WHERE ${this.dialect.quoteId('id')} = ${this.dialect.placeholder(0)} AND ${this.dialect.quoteId('updated')} = ${this.dialect.placeholder(1)}${this.dialect.deleteReturning}`;
-      const raw = await this.datasource.query<unknown>(sql, [id, opts.expectedUpdated]);
+      const sql = `DELETE FROM ${this.tableName} WHERE ${idWhere.sql} AND ${this.dialect.quoteId('updated')} = ${this.dialect.placeholder(idWhere.values.length)}${this.dialect.deleteReturning}`;
+      const raw = await this.datasource.query<unknown>(sql, [
+        ...idWhere.values,
+        opts.expectedUpdated,
+      ]);
       this.assertAffectedOne(this.affectedOf(raw), 'delete');
       return true;
     }
 
-    const sql = `DELETE FROM ${this.tableName} WHERE ${this.dialect.quoteId('id')} = ${this.dialect.placeholder(0)}${this.dialect.deleteReturning}`;
-    const raw = await this.datasource.query<unknown>(sql, [id]);
+    const sql = `DELETE FROM ${this.tableName} WHERE ${idWhere.sql}${this.dialect.deleteReturning}`;
+    const raw = await this.datasource.query<unknown>(sql, idWhere.values);
     return this.affectedOf(raw) > 0;
   }
 
@@ -279,6 +300,17 @@ export abstract class AbstractStandardRepository<
     const matched = await this.findBy(column, value);
     if (matched.length === 0) return [];
     await this.datasource.query(mutation.sql, mutation.values);
-    return this.findIn('id', matched.map((r) => (r as { id: TId }).id) as ReadonlyArray<unknown>);
+    if (this.primaryKey.isComposite) {
+      const out: T[] = [];
+      for (const row of matched) {
+        const found = await this.find(this.primaryKey.fromRow(row as Record<string, unknown>) as TId);
+        if (found !== null) out.push(found);
+      }
+      return out;
+    }
+    return this.findIn(
+      this.primaryKey.column,
+      matched.map((r) => this.primaryKey.valueOf(r as Record<string, unknown>)),
+    );
   }
 }

@@ -4,7 +4,7 @@ import { ICrudRepository, OptimisticConcurrencyOptions } from './ICrudRepository
 export type StandardSystemKeys = 'id' | 'uuid' | 'created' | 'updated';
 
 export interface IStandardCrudRepository<
-  T extends { id: TId },
+  T extends object = { id: unknown },
   TId = number,
 > extends Omit<ICrudRepository<T, TId>, 'add' | 'update' | 'updateBy'> {
   add(data: Omit<T, StandardSystemKeys>): Promise<T>;

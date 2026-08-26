@@ -4,7 +4,7 @@ import type { GenerateContext } from "@deterministic-code/generators-common/gene
 import { content, patch, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import {
   SERVICES_YAML,
-  primaryKeyColumn,
+  identityColumns,
   tableByName,
   tableKind,
   typeHasTag,
@@ -88,18 +88,28 @@ class Generator extends Emit {
     return undefined;
   }
 
-  private pkColumn(type: Type | undefined, name: string): string {
-    return primaryKeyColumn(this.tables.get(type?.name ?? name), type);
+  private identity(type: Type | undefined, name: string): string[] {
+    const cols = identityColumns(type, this.tables.get(type?.name ?? name));
+    return cols.length > 0 ? cols : ["id"];
   }
 
-  private idTsType(type: Type | undefined, name: string): string {
-    const column = this.pkColumn(type, name);
+  private pkColumn(type: Type | undefined, name: string): string {
+    return this.identity(type, name)[0] ?? "id";
+  }
+
+  private fieldIdTs(type: Type | undefined, column: string): string {
     const field = type?.fields.find((f) => f.name === column);
     if (field === undefined) return "number";
     return toNative(typeof field.type === "string" ? field.type : "integer") ===
       "number"
       ? "number"
       : "string";
+  }
+
+  private idTsType(type: Type | undefined, name: string): string {
+    const columns = this.identity(type, name);
+    if (columns.length <= 1) return this.fieldIdTs(type, columns[0] ?? "id");
+    return `{ ${columns.map((c) => `${c}: ${this.fieldIdTs(type, c)}`).join("; ")} }`;
   }
 
   private generic(
@@ -154,9 +164,12 @@ class Generator extends Emit {
         className,
         idTsType: this.idTsType(type, candidate.name),
         pkField: this.casing.convertFields(this.pkColumn(type, candidate.name)),
+        pkOmit: this.identity(type, candidate.name)
+          .map((c) => `"${c}"`)
+          .join(" | "),
         datasourceType: type === undefined ? "standard" : tableKind(type),
         finders: candidate.byFields
-          .filter((bf) => bf.field !== this.pkColumn(type, candidate.name))
+          .filter((bf) => !this.identity(type, candidate.name).includes(bf.field))
           .map((bf) => ({
             method: this.casing.finderMethod(bf.field),
             param: this.casing.fieldIdent(bf.field),

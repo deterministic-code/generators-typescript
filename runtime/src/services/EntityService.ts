@@ -1,5 +1,5 @@
 import { ICrudRepository } from '../repositories/ICrudRepository';
-import type { PrimaryKey } from '../repositories/PrimaryKey';
+import type { EntityIdentity } from '../repositories/EntityIdentity';
 import type { IDatasource } from '../repositories/IDatasource';
 import { IEntityService } from './interfaces/IEntityService';
 import { NameValue } from './interfaces/NameValue';
@@ -9,18 +9,18 @@ export class EntityService<T, TId = number | string, TMutate = Partial<T>> imple
   TId,
   TMutate
 > {
-  readonly primaryKey: PrimaryKey;
+  readonly primaryKey: EntityIdentity;
   protected readonly primaryKeyColumn: string;
   protected readonly hasCustomPrimaryKey: boolean;
   protected readonly idIsUuid: boolean;
-  /** True when the incoming id IS the row's key — a custom PK ("cnt-001") or a uuid `id` — so lookups/mutations go straight to the key column, never the `findBy('uuid', …)` / `resolveId` detour that targets a separate integer key. */
+  /** True when the incoming id IS the row's key — a custom PK ("cnt-001"), a uuid `id`, or a composite identity — so lookups/mutations go straight to the key columns, never the `findBy('uuid', …)` / `resolveId` detour that targets a separate integer key. */
   protected readonly idIsRowKey: boolean;
 
-  constructor(protected readonly repository: ICrudRepository<T & { id: unknown }>) {
+  constructor(protected readonly repository: ICrudRepository<T, TId>) {
     const pk = repository.primaryKey;
     this.primaryKey = pk;
     this.primaryKeyColumn = pk.column;
-    this.hasCustomPrimaryKey = pk.column !== 'id';
+    this.hasCustomPrimaryKey = pk.column !== 'id' || pk.isComposite;
     this.idIsUuid = pk.idType === 'uuid';
     this.idIsRowKey = this.hasCustomPrimaryKey || this.idIsUuid;
   }
@@ -37,7 +37,7 @@ export class EntityService<T, TId = number | string, TMutate = Partial<T>> imple
   }
 
   async create(data: TMutate): Promise<T> {
-    return this.repository.add(data as unknown as Omit<T & { id: unknown }, 'id'>);
+    return this.repository.add(data as unknown as Omit<T, 'id'>);
   }
 
   async find(query: string, args: NameValue[]): Promise<T[]> {
@@ -49,10 +49,10 @@ export class EntityService<T, TId = number | string, TMutate = Partial<T>> imple
 
   async findById(id: TId): Promise<T | null> {
     if (this.idIsRowKey) {
-      return this.repository.find(id as number);
+      return this.repository.find(id);
     }
     if (typeof id === 'number') {
-      return this.repository.find(id);
+      return this.repository.find(id as TId);
     }
     const rows = await this.repository.findBy('uuid', id);
     return rows[0] ?? null;
@@ -67,11 +67,11 @@ export class EntityService<T, TId = number | string, TMutate = Partial<T>> imple
     data: Partial<TMutate>,
     opts?: { expectedUpdated?: string },
   ): Promise<T | null> {
-    const payload = data as Partial<Omit<T & { id: unknown }, 'id'>>;
+    const payload = data as Partial<Omit<T, 'id'>>;
     if (this.idIsRowKey) {
       return opts === undefined
-        ? this.repository.update(id as number, payload)
-        : this.repository.update(id as number, payload, opts);
+        ? this.repository.update(id, payload)
+        : this.repository.update(id, payload, opts);
     }
     const numericId = await this.resolveId(id);
     if (numericId === null) return null;
@@ -91,8 +91,8 @@ export class EntityService<T, TId = number | string, TMutate = Partial<T>> imple
   async delete(id: TId, opts?: { expectedUpdated?: string }): Promise<boolean> {
     if (this.idIsRowKey) {
       return opts === undefined
-        ? this.repository.delete(id as number)
-        : this.repository.delete(id as number, opts);
+        ? this.repository.delete(id)
+        : this.repository.delete(id, opts);
     }
     const numericId = await this.resolveId(id);
     if (numericId === null) return false;
@@ -102,7 +102,7 @@ export class EntityService<T, TId = number | string, TMutate = Partial<T>> imple
   }
 
   async updateBy(whereArgs: NameValue[], data: Partial<TMutate>): Promise<number> {
-    const payload = data as Partial<Omit<T & { id: unknown }, 'id'>>;
+    const payload = data as Partial<Omit<T, 'id'>>;
     if (whereArgs.length === 1) {
       const { name, value } = whereArgs[0];
       const updated = await this.repository.updateBy(name, value, payload);
@@ -113,7 +113,7 @@ export class EntityService<T, TId = number | string, TMutate = Partial<T>> imple
     for (const row of matches) {
       const key = this.rowKey(row);
       if (key === undefined) continue;
-      const updated = await this.repository.update(key as number, payload);
+      const updated = await this.repository.update(key as TId, payload);
       if (updated !== null) count++;
     }
     return count;
@@ -129,7 +129,7 @@ export class EntityService<T, TId = number | string, TMutate = Partial<T>> imple
     for (const row of matches) {
       const key = this.rowKey(row);
       if (key === undefined) continue;
-      if (await this.repository.delete(key as number)) count++;
+      if (await this.repository.delete(key as TId)) count++;
     }
     return count;
   }
@@ -137,9 +137,9 @@ export class EntityService<T, TId = number | string, TMutate = Partial<T>> imple
   async runInTransaction<R>(
     datasource: IDatasource,
     withTxnRepoFn: (
-      repo: ICrudRepository<T & { id: unknown }>,
+      repo: ICrudRepository<T, TId>,
       txn: IDatasource,
-    ) => ICrudRepository<T & { id: unknown }>,
+    ) => ICrudRepository<T, TId>,
     fn: (txnService: this) => Promise<R>,
   ): Promise<R> {
     return datasource.runInTransaction(async (txn) => {

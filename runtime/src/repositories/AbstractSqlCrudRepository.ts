@@ -7,7 +7,7 @@ import type { IDatasource } from './IDatasource';
 import { placeholderList } from './sqlPlaceholders';
 import { updateByMatched } from './crudUpdateBy';
 import { randomUUID } from 'node:crypto';
-import type { PrimaryKey } from './PrimaryKey';
+import type { EntityIdentity, IdentityValue } from './EntityIdentity';
 import type { IPrimaryKeyService } from './IPrimaryKeyService';
 import type { OptimisticConcurrencyOptions } from './ICrudRepository';
 import { PreconditionFailedError } from '../errors/AppError';
@@ -40,15 +40,15 @@ export interface SqlRepoConfig {
  * `this`; every SQL-shaping and value-binding decision lives here once.
  */
 export abstract class AbstractSqlCrudRepository<
-  T extends { id: number | string } = { id: number },
-  TId extends number | string = number,
+  T = Record<string, unknown>,
+  TId = IdentityValue,
 > {
   protected readonly datasource: IDatasource;
   protected readonly tableName: string;
   protected readonly originalTableName: string;
   protected readonly fieldConverter: FieldConverter;
   readonly entityName: string;
-  readonly primaryKey: PrimaryKey;
+  readonly primaryKey: EntityIdentity;
   readonly primaryKeyColumn: string;
   protected readonly idType: 'integer' | 'biginteger' | 'uuid' | 'string';
   protected readonly physicalPrimaryKeyColumn: string;
@@ -133,8 +133,9 @@ export abstract class AbstractSqlCrudRepository<
 
   protected async resolveInsertedRow(raw: unknown[], source: Record<string, unknown>): Promise<T> {
     // A uuid PK is generated client-side, so read it back by the value we inserted rather than a (non-existent) auto-increment rowid.
-    const id =
-      this.idType === 'uuid' && this.primaryKeyColumn === 'id'
+    const id = this.primaryKey.isComposite
+      ? this.requireIdentityIn(source)
+      : this.idType === 'uuid' && this.primaryKeyColumn === 'id'
         ? (source[this.primaryKeyColumn] as TId)
         : this.convertLastInsert(raw[0]);
     const row = await this.find(id);
@@ -192,8 +193,28 @@ export abstract class AbstractSqlCrudRepository<
     return this.runQuery<R>(sql, params);
   }
 
+  private identityWhere(id: TId, startIndex = 0): { sql: string; values: unknown[] } {
+    return this.primaryKey.whereEqual(
+      id as IdentityValue,
+      (column) => this.quotedColumn(column),
+      this.placeholder,
+      (column, value) => this.applyTo(column, value),
+      startIndex,
+    );
+  }
+
+  private requireIdentityIn(source: Record<string, unknown>): TId {
+    const missing = this.primaryKey.columns().filter((c) => source[c] === undefined || source[c] === null);
+    if (missing.length > 0) {
+      throw new Error(
+        `${this.originalTableName} uses primary key '${this.primaryKey.columns().join(', ')}' but the insert payload did not include a value for ${missing.map((c) => `'${c}'`).join(', ')}`,
+      );
+    }
+    return this.primaryKey.fromRow(source) as TId;
+  }
+
   private orderedSelect(where: string, params: ReadonlyArray<unknown>): Promise<T[]> {
-    const tail = `${where} ORDER BY ${this.quotedPrimaryKey} ASC`.trimStart();
+    const tail = `${where} ORDER BY ${this.primaryKey.orderBySql((c) => this.quotedColumn(c))}`.trimStart();
     return this.selectRows(tail, params);
   }
 
@@ -203,9 +224,8 @@ export abstract class AbstractSqlCrudRepository<
   }
 
   async find(id: TId): Promise<T | null> {
-    const rows = await this.selectRows(`WHERE ${this.quotedPrimaryKey} = ${this.placeholder(0)}`, [
-      this.applyTo(this.primaryKeyColumn, id),
-    ]);
+    const { sql, values } = this.identityWhere(id);
+    const rows = await this.selectRows(`WHERE ${sql}`, values);
     return rows[0] ?? null;
   }
 
@@ -238,16 +258,11 @@ export abstract class AbstractSqlCrudRepository<
   }
 
   protected async findByCustomPk(source: Record<string, unknown>): Promise<T> {
-    const customPk = source[this.primaryKeyColumn];
-    if (customPk === undefined || customPk === null) {
-      throw new Error(
-        `${this.originalTableName} uses primary key '${this.primaryKeyColumn}' but the insert payload did not include a value for that column`,
-      );
-    }
-    const row = await this.find(customPk as TId);
+    const id = this.requireIdentityIn(source);
+    const row = await this.find(id);
     if (!row) {
       throw new Error(
-        `inserted row not found by ${this.primaryKeyColumn}=${String(customPk)} in ${this.originalTableName}`,
+        `inserted row not found by ${this.primaryKey.format(id as IdentityValue)} in ${this.originalTableName}`,
       );
     }
     return row;
@@ -273,7 +288,7 @@ export abstract class AbstractSqlCrudRepository<
 
     const sql = `INSERT INTO ${this.tableName} (${columns.join(', ')}) VALUES (${placeholderList(this.placeholder, entries.length)})${this.insertReturning()}`;
     const raw = await this.runQuery<unknown>(sql, values);
-    if (this.primaryKeyColumn !== 'id' && !this.insertReadsBackInline()) {
+    if ((this.primaryKeyColumn !== 'id' || this.primaryKey.isComposite) && !this.insertReadsBackInline()) {
       return this.findByCustomPk(source);
     }
     return this.resolveInsertedRow(raw, source);
@@ -289,21 +304,15 @@ export abstract class AbstractSqlCrudRepository<
 
     const { setClauses, boundValues } = this.mutationSet(entries);
     const expectedUpdated = opts?.expectedUpdated;
+    const idWhere = this.identityWhere(id, boundValues.length);
     const values =
       expectedUpdated === undefined
-        ? [...boundValues, this.applyTo(this.primaryKeyColumn, id)]
-        : [
-            ...boundValues,
-            this.applyTo(this.primaryKeyColumn, id),
-            expectedUpdated,
-          ];
-    const idPlaceholder = this.placeholder(
-      expectedUpdated === undefined ? values.length - 1 : values.length - 2,
-    );
+        ? [...boundValues, ...idWhere.values]
+        : [...boundValues, ...idWhere.values, expectedUpdated];
     const where =
       expectedUpdated === undefined
-        ? `WHERE ${this.quotedPrimaryKey} = ${idPlaceholder}`
-        : `WHERE ${this.quotedPrimaryKey} = ${idPlaceholder} AND ${this.quotedColumn('updated')} = ${this.placeholder(values.length - 1)}`;
+        ? `WHERE ${idWhere.sql}`
+        : `WHERE ${idWhere.sql} AND ${this.quotedColumn('updated')} = ${this.placeholder(values.length - 1)}`;
     const sql = `UPDATE ${this.tableName} SET ${setClauses.join(', ')} ${where}${this.mutationReturning()}`;
     const raw = await this.runQuery<unknown>(sql, values);
     if (expectedUpdated !== undefined && this.affectedOf(raw) === 0) {
@@ -316,14 +325,13 @@ export abstract class AbstractSqlCrudRepository<
 
   async delete(id: TId, opts?: OptimisticConcurrencyOptions): Promise<boolean> {
     const expectedUpdated = opts?.expectedUpdated;
+    const idWhere = this.identityWhere(id);
     const values =
-      expectedUpdated === undefined
-        ? [this.applyTo(this.primaryKeyColumn, id)]
-        : [this.applyTo(this.primaryKeyColumn, id), expectedUpdated];
+      expectedUpdated === undefined ? idWhere.values : [...idWhere.values, expectedUpdated];
     const where =
       expectedUpdated === undefined
-        ? `WHERE ${this.quotedPrimaryKey} = ${this.placeholder(0)}`
-        : `WHERE ${this.quotedPrimaryKey} = ${this.placeholder(0)} AND ${this.quotedColumn('updated')} = ${this.placeholder(1)}`;
+        ? `WHERE ${idWhere.sql}`
+        : `WHERE ${idWhere.sql} AND ${this.quotedColumn('updated')} = ${this.placeholder(idWhere.values.length)}`;
     const sql = `DELETE FROM ${this.tableName} ${where}${this.deleteReturning()}`;
     const raw = await this.runQuery<unknown>(sql, values);
     if (expectedUpdated !== undefined && this.affectedOf(raw) === 0) {

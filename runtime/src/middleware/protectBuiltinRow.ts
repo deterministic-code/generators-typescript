@@ -15,14 +15,18 @@ export function protectBuiltinRow<T extends { is_builtin: boolean; name: string 
       return;
     }
 
-    const id = parsePositiveInt(extractParam(req.params.id));
-    if (id === null) {
+    const pk = service.primaryKey;
+    const raw = extractParam(req.params[pk.column] ?? req.params.id);
+    const id = pk.idType === 'integer' || pk.idType === 'biginteger'
+      ? parsePositiveInt(raw)
+      : raw;
+    if (id === null || id === undefined || id === '') {
       next();
       return;
     }
 
     try {
-      const entity = await service.findById(id);
+      const entity = await service.findById(id as Parameters<typeof service.findById>[0]);
       if (!entity) {
         next();
         return;

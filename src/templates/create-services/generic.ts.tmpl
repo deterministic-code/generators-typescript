@@ -8,7 +8,7 @@
  * Datasource type: {{datasourceType}}.
  * Fields: 0.
  */
-{{/descriptionDoc}}export type {{interfaceName}} = IEntityService<{{typeName}}, {{idTsType}}, {{#mutateTypeName}}{{mutateTypeName}}{{/mutateTypeName}}{{^mutateTypeName}}Omit<{{typeName}}, "{{pkField}}">{{/mutateTypeName}}>;
+{{/descriptionDoc}}export type {{interfaceName}} = IEntityService<{{typeName}}, {{idTsType}}, {{#mutateTypeName}}{{mutateTypeName}}{{/mutateTypeName}}{{^mutateTypeName}}Omit<{{typeName}}, {{pkOmit}}>{{/mutateTypeName}}>;
 
 {{#simpleDoc}}/** Service {{className}}. */
 {{/simpleDoc}}{{#descriptionDoc}}/**
@@ -16,7 +16,7 @@
  * Datasource type: {{datasourceType}}.
  * Fields: 0.
  */
-{{/descriptionDoc}}export class {{className}} extends EntityService<{{typeName}}, {{idTsType}}, {{#mutateTypeName}}{{mutateTypeName}}{{/mutateTypeName}}{{^mutateTypeName}}Omit<{{typeName}}, "{{pkField}}">{{/mutateTypeName}}> {
+{{/descriptionDoc}}export class {{className}} extends EntityService<{{typeName}}, {{idTsType}}, {{#mutateTypeName}}{{mutateTypeName}}{{/mutateTypeName}}{{^mutateTypeName}}Omit<{{typeName}}, {{pkOmit}}>{{/mutateTypeName}}> {
 {{#finders}}
   async {{method}}({{param}}: {{paramType}}): Promise<{{typeName}} | null> {
     const rows = await this.findBy([{ name: "{{field}}", value: {{param}} }]);

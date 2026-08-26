@@ -88,6 +88,8 @@ export interface CrudRouteSpec {
    * own type, else the project id_type from settings. Never a literal default.
    */
   primaryKeyIdType: StandardIdType;
+  /** Full identity when the entity authors `ids: [...]` or multiple `is_id` fields. */
+  primaryKeyColumns?: Array<{ column: string; idType: StandardIdType }>;
 }
 
 type RawField = {
@@ -95,11 +97,16 @@ type RawField = {
   references?: string;
   is_unique?: boolean;
   is_nullable?: boolean;
+  is_id?: boolean;
   size?: number | 'unlimited';
   min_size?: number;
   default_value?: unknown;
 };
-type RawType = { datasource_type?: string; fields?: Array<Record<string, RawField>> };
+type RawType = {
+  datasource_type?: string;
+  ids?: string[];
+  fields?: Array<Record<string, RawField>>;
+};
 type DatasourceDoc = { types?: Array<Record<string, RawType>> };
 type CombinedChildOpts = { via?: string; target?: string; route?: string };
 type CombinedParent = { combined_types?: Array<string | Record<string, CombinedChildOpts>> };
@@ -791,8 +798,32 @@ const idTypeFromField = (type: string | undefined): StandardIdType => {
   return 'integer';
 };
 
-/** Resolves the PK column for every entity so no downstream consumer has to literal-default it. A declared `primary_key: true` non-id field (the `legacy_contact.key` pattern) sets both the column and its id shape (`string`/`uuid` skip parseInt; anything else keeps the integer contract). An authored `id` field supplies the implicit PK type. Otherwise the implicit auto-increment `id` is integer. */
-function assignPrimaryKey(spec: CrudRouteSpec, fields: Array<[string, RawField]>): void {
+/** Resolves the PK column for every entity so no downstream consumer has to literal-default it. A declared `primary_key: true` non-id field (the `legacy_contact.key` pattern) sets both the column and its id shape (`string`/`uuid` skip parseInt; anything else keeps the integer contract). An authored `id` field supplies the implicit PK type. Otherwise the implicit auto-increment `id` is integer. Type-level `ids` and field `is_id` produce a composite or custom identity. */
+function assignPrimaryKey(
+  spec: CrudRouteSpec,
+  fields: Array<[string, RawField]>,
+  body: RawType,
+): void {
+  const fieldMap = new Map(fields);
+  if (body.ids !== undefined && body.ids.length > 0) {
+    spec.primaryKeyColumns = body.ids.map((column) => ({
+      column,
+      idType: idTypeFromField(fieldMap.get(column)?.type),
+    }));
+    spec.primaryKeyColumn = spec.primaryKeyColumns[0]!.column;
+    spec.primaryKeyIdType = spec.primaryKeyColumns[0]!.idType;
+    return;
+  }
+  const marked = fields.filter(([, f]) => f.is_id === true);
+  if (marked.length > 0) {
+    spec.primaryKeyColumns = marked.map(([column, f]) => ({
+      column,
+      idType: idTypeFromField(f.type),
+    }));
+    spec.primaryKeyColumn = spec.primaryKeyColumns[0]!.column;
+    spec.primaryKeyIdType = spec.primaryKeyColumns[0]!.idType;
+    return;
+  }
   const idField = fields.find(([name]) => name === 'id');
   if (idField !== undefined) {
     spec.primaryKeyIdType = idTypeFromField(idField[1].type);
@@ -802,8 +833,10 @@ function assignPrimaryKey(spec: CrudRouteSpec, fields: Array<[string, RawField]>
     if (fdefMaybePk.primary_key !== true || fieldName === 'id') continue;
     spec.primaryKeyColumn = fieldName;
     spec.primaryKeyIdType = idTypeFromField(fdef.type);
+    spec.primaryKeyColumns = [{ column: fieldName, idType: spec.primaryKeyIdType }];
     return;
   }
+  spec.primaryKeyColumns = [{ column: spec.primaryKeyColumn, idType: spec.primaryKeyIdType }];
 }
 
 interface CrudSpecContext {
@@ -848,6 +881,7 @@ function buildCrudSpec(entityName: string, body: RawType, ctx: CrudSpecContext):
     // Implicit auto-increment `id` is integer; assignPrimaryKey overrides when the entity authors `id` or a custom primary_key.
     primaryKeyColumn: 'id',
     primaryKeyIdType: 'integer',
+    primaryKeyColumns: [{ column: 'id', idType: 'integer' }],
     columns: fields.map(([name]) => name),
     ...(body.datasource_type === 'readonly-lookup' && { readonly: true }),
     ...(body.datasource_type === 'many-to-many' && { m2m: true }),
@@ -857,7 +891,7 @@ function buildCrudSpec(entityName: string, body: RawType, ctx: CrudSpecContext):
     ...(crudFields.length > 0 && { fields: crudFields }),
   };
 
-  assignPrimaryKey(spec, fields);
+  assignPrimaryKey(spec, fields, body);
 
   const eagerWriteChildren = resolveEagerChildren(entityName, ctx);
   if (eagerWriteChildren.length > 0) spec.eagerWriteChildren = eagerWriteChildren;

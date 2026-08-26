@@ -3,7 +3,7 @@ import type { GenerateContext } from "@deterministic-code/generators-common/gene
 import { content, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import {
   datasourceTypesOf,
-  pkName,
+  identityColumns,
   SERVICES_YAML,
   tableByName,
 } from "@deterministic-code/generators-common/spec-types";
@@ -46,10 +46,30 @@ class Generator extends Emit {
   private test(candidate: ServiceCandidate): GenerateEntry {
     const table = this.types.find((d) => d.name === candidate.name);
     const overlay = this.tables.get(candidate.name);
-    const column =
-      table !== undefined ? pkName(table, overlay) : "id";
-    const pkType =
-      table?.fields.find((f) => f.name === column)?.type ?? "integer";
+    const columns =
+      table !== undefined ? identityColumns(table, overlay) : ["id"];
+    const keys = (columns.length > 0 ? columns : ["id"]).map((column) => {
+      const pkType =
+        table?.fields.find((f) => f.name === column)?.type ?? "integer";
+      return { column, pkType };
+    });
+    const column = keys[0]!.column;
+    const pkType = keys[0]!.pkType;
+    const pkExpr =
+      keys.length === 1
+        ? `new PrimaryKey(${JSON.stringify(column)}, ${JSON.stringify(pkType)})`
+        : `EntityIdentity.of([${keys
+            .map(
+              (k) =>
+                `new PrimaryKey(${JSON.stringify(k.column)}, ${JSON.stringify(k.pkType)})`,
+            )
+            .join(", ")}])`;
+    const idExpr =
+      keys.length === 1
+        ? fakeTestData.id(asIdType(pkType))
+        : `{ ${keys
+            .map((k) => `${k.column}: ${fakeTestData.id(asIdType(k.pkType))}`)
+            .join(", ")} }`;
     const src = this.imports.service(candidate.name);
     const path = this.imports.serviceTest(candidate.name);
     const fileBase = `${candidate.name}_service`;
@@ -66,8 +86,11 @@ class Generator extends Emit {
         className,
         importPath: this.imports.testSpec(src, fileBase),
         entityNameJson: JSON.stringify(candidate.name),
-        pkExpr: `new PrimaryKey(${JSON.stringify(column)}, ${JSON.stringify(pkType)})`,
-        idExpr: fakeTestData.id(asIdType(pkType)),
+        pkExpr:
+          keys.length === 1
+            ? `EntityIdentity.of([${pkExpr}])`
+            : pkExpr,
+        idExpr,
       }),
       bag({
         module: this.imports.serviceTestRel(candidate.name),

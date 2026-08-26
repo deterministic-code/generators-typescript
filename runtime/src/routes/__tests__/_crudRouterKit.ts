@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { vi } from 'vitest';
 import { createCrudRouter } from '../createCrudRouter';
 import { errorHandler } from '../../middleware/errorHandler';
+import { EntityIdentity } from '../../repositories/EntityIdentity';
 import { PrimaryKey } from '../../repositories/PrimaryKey';
 import type {
   IEntityService,
@@ -61,10 +62,11 @@ export const createItemService = (): jest.Mocked<IEntityService<Item>> =>
 
 /** A fully mocked {@link IEntityService} for the crud-router integration suites; `primaryKey` defaults to the integer `id` key. */
 export function createMockCrudService<T>(
-  primaryKey: PrimaryKey = new PrimaryKey('id', 'integer'),
+  primaryKey: EntityIdentity | PrimaryKey = EntityIdentity.scalar('id', 'integer'),
 ): jest.Mocked<IEntityService<T>> {
   return {
-    primaryKey,
+    primaryKey:
+      primaryKey instanceof EntityIdentity ? primaryKey : EntityIdentity.of([primaryKey]),
     query: vi.fn(),
     findAll: vi.fn(),
     create: vi.fn(),

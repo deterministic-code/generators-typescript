@@ -4,7 +4,7 @@ import type { Express } from 'express';
 import type { DatabaseConnection } from '../../repositories';
 import type { IEntityService } from '../../services/interfaces/IEntityService';
 import { createBackendApp } from '../createBackendApp';
-import { PrimaryKey } from '../../repositories/PrimaryKey';
+import { EntityIdentity } from '../../repositories/EntityIdentity';
 import * as repoModule from '../../repositories';
 
 interface MockDb extends DatabaseConnection {
@@ -34,7 +34,7 @@ function createMockService<
 >(): jest.Mocked<IEntityService<T, any>> {
   return {
     entityName: 'mock',
-    primaryKey: new PrimaryKey('id', 'integer'),
+    primaryKey: EntityIdentity.scalar('id', 'integer'),
     query: jest.fn().mockResolvedValue([]),
     findById: jest.fn().mockResolvedValue(null),
     find: jest.fn().mockResolvedValue([]),
