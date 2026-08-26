@@ -121,10 +121,16 @@
   "files": [
     "dist",
     "src",
-    "tsconfig.build.json"
+    "tsconfig.build.json",
+    "runtime/package.json",
+    "runtime/package-lock.json",
+    "runtime/tsconfig.json",
+    "runtime/vite.config.ts",
+    "runtime/src"
   ],
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.build.json && cp -R src/templates dist/ && (test -f runtime/dist/app.js && mkdir -p dist/runtime-bundle && cp -R runtime/dist/. dist/runtime-bundle/ && cp runtime/package.json dist/runtime-package.json || true)",
+    "build:runtime": "npm install --no-audit --no-fund --prefix runtime && npm run build --prefix runtime",
+    "build": "npm run build:runtime && rm -rf dist && tsc -p tsconfig.build.json && cp -R src/templates dist/ && mkdir -p dist/runtime-bundle && cp -R runtime/dist/. dist/runtime-bundle/ && cp runtime/package.json dist/runtime-package.json",
     "prepare": "npm run build",
     "test": "node --experimental-strip-types --test test/*.test.ts src/common/default-casing.test.ts src/import-generator.test.ts",
     "tests:e2e": "node --experimental-strip-types e2e/run.ts",
