@@ -1,9 +1,9 @@
-import { type TestEntity, TS, makeBaseService } from './_baseServiceKit';
+import { type TestEntity, TS, makeEntityService } from './_entityServiceKit';
 
-describe('BaseService.patch', () => {
-  let repository: ReturnType<typeof makeBaseService>['repository'];
-  let service: ReturnType<typeof makeBaseService>['service'];
-  beforeEach(() => void ({ repository, service } = makeBaseService()));
+describe('EntityService.patch', () => {
+  let repository: ReturnType<typeof makeEntityService>['repository'];
+  let service: ReturnType<typeof makeEntityService>['service'];
+  beforeEach(() => void ({ repository, service } = makeEntityService()));
 
   it('delegates to update and returns the patched row', async () => {
     const patch = { name: 'patched' };

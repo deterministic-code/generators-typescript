@@ -1,4 +1,4 @@
-import { IStandardCrudService } from '../interfaces/IStandardCrudService';
+import { IEntityService } from '../interfaces/IEntityService';
 import { LookupEnrichedService, LookupMapping } from '../LookupEnrichedService';
 import { BusinessError } from '../../errors/BusinessError';
 import { createMockCrudService as createMockService } from './mockCrudService';
@@ -39,8 +39,8 @@ function makeLookup(id: number, name: string): TestLookup {
 }
 
 describe('LookupEnrichedService', () => {
-  let baseService: jest.Mocked<IStandardCrudService<TestEntity>>;
-  let lookupService: jest.Mocked<IStandardCrudService<TestLookup>>;
+  let baseService: jest.Mocked<IEntityService<TestEntity>>;
+  let lookupService: jest.Mocked<IEntityService<TestLookup>>;
   let mappings: LookupMapping[];
   let enrichedService: LookupEnrichedService<TestEntity>;
 
@@ -235,10 +235,10 @@ describe('LookupEnrichedService', () => {
   });
 
   describe('multiple mappings', () => {
-    let alphaLookup: jest.Mocked<IStandardCrudService<TestLookup>>;
-    let betaLookup: jest.Mocked<IStandardCrudService<TestLookup>>;
+    let alphaLookup: jest.Mocked<IEntityService<TestLookup>>;
+    let betaLookup: jest.Mocked<IEntityService<TestLookup>>;
     let multiService: LookupEnrichedService<MultiFK>;
-    let multiBase: jest.Mocked<IStandardCrudService<MultiFK>>;
+    let multiBase: jest.Mocked<IEntityService<MultiFK>>;
 
     beforeEach(() => {
       multiBase = createMockService<MultiFK>('integer');
@@ -298,8 +298,8 @@ describe('LookupEnrichedService', () => {
   });
 
   describe('suffixField — inbound resolution (name → ID)', () => {
-    let baseWithSuffix: jest.Mocked<IStandardCrudService<TestEntity>>;
-    let suffixLookup: jest.Mocked<IStandardCrudService<TestLookup>>;
+    let baseWithSuffix: jest.Mocked<IEntityService<TestEntity>>;
+    let suffixLookup: jest.Mocked<IEntityService<TestLookup>>;
     let suffixService: LookupEnrichedService<TestEntity>;
 
     beforeEach(() => {
@@ -611,8 +611,8 @@ describe('LookupEnrichedService', () => {
   });
 
   describe('replaceFk: true (auto_enrich)', () => {
-    let base: jest.Mocked<IStandardCrudService<TestEntity>>;
-    let lookup: jest.Mocked<IStandardCrudService<TestLookup>>;
+    let base: jest.Mocked<IEntityService<TestEntity>>;
+    let lookup: jest.Mocked<IEntityService<TestLookup>>;
     let svc: LookupEnrichedService<TestEntity>;
 
     beforeEach(() => {

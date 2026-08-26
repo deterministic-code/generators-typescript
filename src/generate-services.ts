@@ -4,6 +4,8 @@ import type { GenerateContext } from "@deterministic-code/generators-common/gene
 import { content, patch, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import {
   SERVICES_YAML,
+  primaryKeyColumn,
+  tableByName,
   tableKind,
   typeHasTag,
   viewTypesOf,
@@ -11,6 +13,7 @@ import {
 import {
   DeterministicParser,
   type CustomServiceEntry,
+  type DatasourceTable,
   type IDeterministic,
   type ServiceCandidate,
   type Type,
@@ -25,11 +28,13 @@ import {
 
 class Generator extends Emit {
   private viewNames = new Set<string>();
+  private tables = new Map<string, DatasourceTable>();
 
   from(deterministic: IDeterministic): GenerateEntry[] {
     const typesByName = new Map(
       deterministic.expandedTypes.map((t) => [t.name, t]),
     );
+    this.tables = tableByName(deterministic);
     this.viewNames = new Set(viewTypesOf(deterministic).map((view) => view.name));
     const { generics, customs } = deterministic.services;
     const entries: GenerateEntry[] = [
@@ -83,6 +88,20 @@ class Generator extends Emit {
     return undefined;
   }
 
+  private pkColumn(type: Type | undefined, name: string): string {
+    return primaryKeyColumn(this.tables.get(type?.name ?? name), type);
+  }
+
+  private idTsType(type: Type | undefined, name: string): string {
+    const column = this.pkColumn(type, name);
+    const field = type?.fields.find((f) => f.name === column);
+    if (field === undefined) return "number";
+    return toNative(typeof field.type === "string" ? field.type : "integer") ===
+      "number"
+      ? "number"
+      : "string";
+  }
+
   private generic(
     candidate: ServiceCandidate,
     type: Type | undefined,
@@ -133,14 +152,18 @@ class Generator extends Emit {
         servicesImport,
         interfaceName,
         className,
+        idTsType: this.idTsType(type, candidate.name),
+        pkField: this.casing.convertFields(this.pkColumn(type, candidate.name)),
         datasourceType: type === undefined ? "standard" : tableKind(type),
-        finders: candidate.byFields.map((bf) => ({
-          method: this.casing.finderMethod(bf.field),
-          param: this.casing.fieldIdent(bf.field),
-          paramType: toNative(bf.type),
-          field: this.casing.convertFields(bf.field),
-          typeName,
-        })),
+        finders: candidate.byFields
+          .filter((bf) => bf.field !== this.pkColumn(type, candidate.name))
+          .map((bf) => ({
+            method: this.casing.finderMethod(bf.field),
+            param: this.casing.fieldIdent(bf.field),
+            paramType: toNative(bf.type),
+            field: this.casing.convertFields(bf.field),
+            typeName,
+          })),
       }),
       bag({
         module,

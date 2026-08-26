@@ -1,24 +1,22 @@
 {{#typeImport}}import { {{typeName}} } from "{{typeImportPath}}";
 {{/typeImport}}{{#mutateImport}}import { {{mutateTypeName}} } from "{{mutateImportPath}}";
-{{/mutateImport}}import { BaseService, type IStandardCrudService } from "{{servicesImport}}";
+{{/mutateImport}}import { EntityService, type IEntityService } from "{{servicesImport}}";
 
 {{#simpleDoc}}/** Service {{interfaceName}}. */
 {{/simpleDoc}}{{#descriptionDoc}}/**
  * Service {{interfaceName}}.
  * Datasource type: {{datasourceType}}.
- * Target: StandardCrud.
  * Fields: 0.
  */
-{{/descriptionDoc}}export type {{interfaceName}} = IStandardCrudService<{{typeName}}{{#mutateTypeName}}, {{mutateTypeName}}{{/mutateTypeName}}>;
+{{/descriptionDoc}}export type {{interfaceName}} = IEntityService<{{typeName}}, {{idTsType}}, {{#mutateTypeName}}{{mutateTypeName}}{{/mutateTypeName}}{{^mutateTypeName}}Omit<{{typeName}}, "{{pkField}}">{{/mutateTypeName}}>;
 
 {{#simpleDoc}}/** Service {{className}}. */
 {{/simpleDoc}}{{#descriptionDoc}}/**
  * Service {{className}}.
  * Datasource type: {{datasourceType}}.
- * Target: StandardCrud.
  * Fields: 0.
  */
-{{/descriptionDoc}}export class {{className}} extends BaseService<{{typeName}}{{#mutateTypeName}}, {{mutateTypeName}}{{/mutateTypeName}}> {
+{{/descriptionDoc}}export class {{className}} extends EntityService<{{typeName}}, {{idTsType}}, {{#mutateTypeName}}{{mutateTypeName}}{{/mutateTypeName}}{{^mutateTypeName}}Omit<{{typeName}}, "{{pkField}}">{{/mutateTypeName}}> {
 {{#finders}}
   async {{method}}({{param}}: {{paramType}}): Promise<{{typeName}} | null> {
     const rows = await this.findBy([{ name: "{{field}}", value: {{param}} }]);

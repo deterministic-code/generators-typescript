@@ -2,7 +2,7 @@ import type { RequestHandler, ErrorRequestHandler } from 'express';
 import type { ZodSchema } from 'zod';
 import type { IAuthenticationService } from '../services/IAuthenticationService';
 import type { IAuthorizationService } from '../services/IAuthorizationService';
-import type { IStandardCrudService } from '../services/interfaces/IStandardCrudService';
+import type { IEntityService } from '../services/interfaces/IEntityService';
 
 import { authenticate } from './authenticate';
 import { authenticateSignin } from './authenticateSignin';
@@ -80,7 +80,7 @@ export class MiddlewareLookup {
       is_builtin: boolean;
       name: string;
     },
-  >(key: 'protectBuiltinRow', service: IStandardCrudService<T>, entityName: string): RequestHandler;
+  >(key: 'protectBuiltinRow', service: IEntityService<T>, entityName: string): RequestHandler;
   get(key: string, ...args: unknown[]): MiddlewareHandler;
   get(key: string, ...args: unknown[]): MiddlewareHandler {
     switch (key) {
@@ -130,7 +130,7 @@ export class MiddlewareLookup {
       }
       case 'protectBuiltinRow': {
         const service = args[0] as
-          | IStandardCrudService<{
+          | IEntityService<{
               id: number;
               uuid: string;
               created: string;

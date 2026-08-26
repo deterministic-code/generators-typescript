@@ -86,7 +86,7 @@ describe('subpath barrels', () => {
   });
 
   it('services barrel exposes service classes', () => {
-    expect(services.BaseService).toBeDefined();
+    expect(services.EntityService).toBeDefined();
     expect(services.AuthenticationService).toBeDefined();
     expect(services.LookupEnrichedService).toBeDefined();
   });

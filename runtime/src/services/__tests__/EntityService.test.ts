@@ -1,11 +1,11 @@
-import { BaseService } from '../BaseService';
+import { EntityService } from '../EntityService';
 import { createMockCrudRepository } from './mockCrudRepository';
-import { type TestEntity, TS, makeBaseService } from './_baseServiceKit';
+import { type TestEntity, TS, makeEntityService } from './_entityServiceKit';
 
-describe('BaseService', () => {
-  let repository: ReturnType<typeof makeBaseService>['repository'];
-  let service: ReturnType<typeof makeBaseService>['service'];
-  beforeEach(() => void ({ repository, service } = makeBaseService()));
+describe('EntityService', () => {
+  let repository: ReturnType<typeof makeEntityService>['repository'];
+  let service: ReturnType<typeof makeEntityService>['service'];
+  beforeEach(() => void ({ repository, service } = makeEntityService()));
 
   describe('findAll', () => {
     it('delegates to the repository and returns its result', async () => {
@@ -112,11 +112,11 @@ describe('BaseService', () => {
 
   describe('idType uuid — a uuid id IS the row key, not a separate uuid-column lookup', () => {
     const UUID = '00000000-0000-0000-0000-000000000042';
-    let uuidService: BaseService<TestEntity>;
+    let uuidService: EntityService<TestEntity>;
 
     beforeEach(() => {
       repository = createMockCrudRepository<TestEntity>('uuid');
-      uuidService = new BaseService<TestEntity>(repository);
+      uuidService = new EntityService<TestEntity>(repository);
     });
 
     it('findById looks the uuid up by the id column, not findBy(uuid, …)', async () => {

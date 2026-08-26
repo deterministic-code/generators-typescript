@@ -1,4 +1,4 @@
-import { IStandardCrudService, type StandardRow } from './interfaces/IStandardCrudService';
+import { IEntityService } from './interfaces/IEntityService';
 import { NameValue } from './interfaces/NameValue';
 import {
   EagerChildSpec,
@@ -8,22 +8,23 @@ import {
 import { rebindServiceToTxn } from './rebindServiceToTxn';
 import type { ICrudRepository } from '../repositories/ICrudRepository';
 
-type LooseService = IStandardCrudService<StandardRow, Partial<StandardRow>>;
+type LooseService = IEntityService<any>;
 
 function toNameValues(name: string, values: ReadonlyArray<unknown>): NameValue[] {
-  return values.map((v) => ({ name, value: String(v) }));
+  return values.map((v) => ({ name, value: v }));
 }
 
 function toSingleNameValue(name: string, value: unknown): NameValue[] {
-  return [{ name, value: String(value) }];
+  return [{ name, value }];
 }
 
-export class EagerChildLoadingService<
-  T extends StandardRow,
-  TMutate = Omit<T, 'id' | 'uuid' | 'created' | 'updated'>,
-> implements IStandardCrudService<T, TMutate> {
+export class EagerChildLoadingService<T, TMutate = Partial<T>> implements IEntityService<
+  T,
+  number | string,
+  TMutate
+> {
   constructor(
-    private readonly base: IStandardCrudService<T, TMutate>,
+    private readonly base: IEntityService<T, number | string, TMutate>,
     private readonly children: EagerChildSpec[],
     private readonly childServices: Map<string, LooseService>,
     private readonly joinServices: Map<string, LooseService> = new Map(),

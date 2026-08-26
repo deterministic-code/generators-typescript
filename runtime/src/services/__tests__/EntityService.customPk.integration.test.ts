@@ -1,10 +1,10 @@
-// BaseService + SqliteCrudRepository over a real in-memory SQLite, exercising the custom-PK path (legacy_contact.key) through the route → service → repo → SQL chain.
+// EntityService + SqliteCrudRepository over a real in-memory SQLite, exercising the custom-PK path (legacy_contact.key) through the route → service → repo → SQL chain.
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { SqliteDatasource } from '../../repositories/sqlite/SqliteDatasource';
 import { SqliteCrudRepository } from '../../repositories/sqlite/SqliteCrudRepository';
 import type { ICrudRepository } from '../../repositories/ICrudRepository';
-import { BaseService } from '../BaseService';
+import { EntityService } from '../EntityService';
 import { testPrimaryKeys } from '../../repositories/__tests__/testPrimaryKeys';
 
 interface LegacyContact {
@@ -14,10 +14,10 @@ interface LegacyContact {
   last_name: string;
 }
 
-describe('BaseService — custom primary key end-to-end', () => {
+describe('EntityService — custom primary key end-to-end', () => {
   let ds: SqliteDatasource;
   let repo: SqliteCrudRepository<LegacyContact, string>;
-  let service: BaseService<LegacyContact>;
+  let service: EntityService<LegacyContact>;
 
   beforeAll(async () => {
     ds = new SqliteDatasource({ dbPath: ':memory:' });
@@ -31,7 +31,7 @@ describe('BaseService — custom primary key end-to-end', () => {
       entityName: 'legacy_contact',
       primaryKeys: testPrimaryKeys('string', 'key'),
     });
-    service = new BaseService<LegacyContact>(
+    service = new EntityService<LegacyContact>(
       repo as unknown as ICrudRepository<LegacyContact & { id: number | string }>,
     );
   });

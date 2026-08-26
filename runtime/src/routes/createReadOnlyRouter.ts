@@ -1,21 +1,18 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import {
-  IStandardCrudService,
-  type StandardRow,
-} from '../services/interfaces/IStandardCrudService';
+import { IEntityService } from '../services/interfaces/IEntityService';
 import { sendItem, sendItems, sendError } from '../responses/sendResponse';
 import { idOr400, parseIdField } from './routeParamUtils';
 import { handleBusinessError } from '../errors/handleBusinessError';
 
-export interface ReadOnlyRouterOptions<T extends StandardRow> {
-  service: IStandardCrudService<T>;
+export interface ReadOnlyRouterOptions<T, TId = number | string> {
+  service: IEntityService<T, TId>;
   entityName: string;
   enrichItems?: (items: T[]) => Promise<T[]>;
   enrichItem?: (item: T) => Promise<T>;
 }
 
-export function createReadOnlyRouter<T extends StandardRow>(
-  options: ReadOnlyRouterOptions<T>,
+export function createReadOnlyRouter<T, TId = number | string>(
+  options: ReadOnlyRouterOptions<T, TId>,
 ): Router {
   const { service, entityName, enrichItems, enrichItem } = options;
   const primaryKey = service.primaryKey;

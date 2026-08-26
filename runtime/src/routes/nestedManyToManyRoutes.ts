@@ -1,6 +1,6 @@
 import { Router, Request, Response, RequestHandler } from 'express';
 import { z, ZodTypeAny } from 'zod';
-import { IStandardCrudService } from '../services/interfaces/IStandardCrudService';
+import { IEntityService } from '../services/interfaces/IEntityService';
 import { handleZodError } from '../errors/handleZodError';
 import { handleBusinessError } from '../errors/handleBusinessError';
 import { sendItem, sendItems, sendError } from '../responses/sendResponse';
@@ -9,9 +9,9 @@ import type { PrimaryKey } from '../repositories/PrimaryKey';
 
 export interface NestedManyToManyConfig<_TParent, _TJunction> {
   /** The parent entity service (e.g., projectService) */
-  parentService: IStandardCrudService<any, any>;
+  parentService: IEntityService<any, any>;
   /** The junction entity service (e.g., projectSettingService) */
-  junctionService: IStandardCrudService<any, any>;
+  junctionService: IEntityService<any, any>;
   /** The URL param name for the parent ID (e.g., "projectId") */
   parentParamName: string;
   /** The display name for the parent entity (e.g., "Project") */
@@ -38,7 +38,7 @@ export interface NestedManyToManyConfig<_TParent, _TJunction> {
    *  When provided, GET returns resolved child entities instead of junction records,
    *  and POST returns the resolved child entity instead of the junction record.
    */
-  childService?: IStandardCrudService<any, any>;
+  childService?: IEntityService<any, any>;
   /** Optional: Zod schema for creating a new child entity.
    *  When provided along with childService, POST uses create-and-link mode:
    *  validates body against this schema, creates child via childService.add(),

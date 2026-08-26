@@ -1,4 +1,4 @@
-import { IStandardCrudService, type StandardRow } from './interfaces/IStandardCrudService';
+import { IEntityService } from './interfaces/IEntityService';
 import { NameValue } from './interfaces/NameValue';
 import { BusinessError } from '../errors/BusinessError';
 import { rebindServiceToTxn } from './rebindServiceToTxn';
@@ -14,12 +14,13 @@ export interface LookupMapping {
   };
 }
 
-export class LookupEnrichedService<
-  T extends StandardRow,
-  TMutate = Omit<T, 'id' | 'uuid' | 'created' | 'updated'>,
-> implements IStandardCrudService<T, TMutate> {
+export class LookupEnrichedService<T, TMutate = Partial<T>> implements IEntityService<
+  T,
+  number | string,
+  TMutate
+> {
   constructor(
-    private readonly baseService: IStandardCrudService<T, TMutate>,
+    private readonly baseService: IEntityService<T, number | string, TMutate>,
     private readonly mappings: LookupMapping[],
   ) {}
 

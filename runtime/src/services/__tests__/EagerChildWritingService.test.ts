@@ -1,8 +1,8 @@
-import { IStandardCrudService } from '../interfaces/IStandardCrudService';
+import { IEntityService } from '../interfaces/IEntityService';
 import { EagerChildWritingService } from '../EagerChildWritingService';
 import { InMemoryDatasource } from '../../repositories/inmemory/InMemoryDatasource';
 import { InMemoryCrudRepository } from '../../repositories/inmemory/InMemoryCrudRepository';
-import { BaseService } from '../BaseService';
+import { EntityService } from '../EntityService';
 import type { IDatasource } from '../../repositories/IDatasource';
 import type { ICrudRepository } from '../../repositories/ICrudRepository';
 import { testPrimaryKeys } from '../../repositories/__tests__/testPrimaryKeys';
@@ -53,9 +53,9 @@ describe('EagerChildWritingService', () => {
   let contactRepo: ICrudRepository<ContactBase & { id: number }>;
   let addressRepo: ICrudRepository<Address & { id: number }>;
   let phoneRepo: ICrudRepository<Phone & { id: number }>;
-  let baseContactService: BaseService<ContactBase>;
-  let baseAddressService: BaseService<Address>;
-  let basePhoneService: BaseService<Phone>;
+  let baseContactService: EntityService<ContactBase>;
+  let baseAddressService: EntityService<Address>;
+  let basePhoneService: EntityService<Phone>;
   let service: EagerChildWritingService<ContactBase>;
 
   beforeEach(async () => {
@@ -72,16 +72,16 @@ describe('EagerChildWritingService', () => {
       entityName: 'test',
       primaryKeys: testPrimaryKeys('integer'),
     }) as ICrudRepository<Phone & { id: number }>;
-    baseContactService = new BaseService(contactRepo);
-    baseAddressService = new BaseService(addressRepo);
-    basePhoneService = new BaseService(phoneRepo);
+    baseContactService = new EntityService(contactRepo);
+    baseAddressService = new EntityService(addressRepo);
+    basePhoneService = new EntityService(phoneRepo);
 
     const childBindings = [
       {
         fieldName: 'addresses',
         childTable: 'address',
         fkColumn: 'contact_id',
-        service: baseAddressService as IStandardCrudService<any>,
+        service: baseAddressService as IEntityService<any>,
         repository: addressRepo,
         withTxnRepoFn: withInMemoryTxnRepo,
       },
@@ -89,7 +89,7 @@ describe('EagerChildWritingService', () => {
         fieldName: 'phones',
         childTable: 'phone',
         fkColumn: 'contact_id',
-        service: basePhoneService as IStandardCrudService<any>,
+        service: basePhoneService as IEntityService<any>,
         repository: phoneRepo,
         withTxnRepoFn: withInMemoryTxnRepo,
       },
@@ -140,7 +140,7 @@ describe('EagerChildWritingService', () => {
             fieldName: 'address',
             childTable: 'address',
             fkColumn: 'contact_id',
-            service: baseAddressService as IStandardCrudService<any>,
+            service: baseAddressService as IEntityService<any>,
             repository: addressRepo,
             withTxnRepoFn: withInMemoryTxnRepo,
             isArray: false,
@@ -174,7 +174,7 @@ describe('EagerChildWritingService', () => {
             fieldName: 'address',
             childTable: 'address',
             fkColumn: 'contact_id',
-            service: baseAddressService as IStandardCrudService<any>,
+            service: baseAddressService as IEntityService<any>,
             repository: addressRepo,
             withTxnRepoFn: withInMemoryTxnRepo,
             isArray: false,
@@ -460,7 +460,7 @@ describe('EagerChildWritingService', () => {
             fieldName: 'address',
             childTable: 'address',
             fkColumn: 'contact_id',
-            service: baseAddressService as IStandardCrudService<any>,
+            service: baseAddressService as IEntityService<any>,
             repository: addressRepo,
             withTxnRepoFn: withInMemoryTxnRepo,
             isArray: false,
@@ -522,7 +522,7 @@ describe('EagerChildWritingService', () => {
             service: {
               ...baseAddressService,
               create: jest.fn().mockRejectedValueOnce(new Error('Child service error')),
-            } as unknown as IStandardCrudService<any>,
+            } as unknown as IEntityService<any>,
             repository: addressRepo,
             withTxnRepoFn: withInMemoryTxnRepo,
           },
@@ -732,7 +732,7 @@ describe('EagerChildWritingService', () => {
 
     let tagRepo: ICrudRepository<Tag & { id: number }>;
     let junctionRepo: ICrudRepository<ContactTag & { id: number }>;
-    let baseTagService: BaseService<Tag>;
+    let baseTagService: EntityService<Tag>;
     let m2mService: EagerChildWritingService<ContactBase>;
 
     beforeEach(async () => {
@@ -744,7 +744,7 @@ describe('EagerChildWritingService', () => {
         entityName: 'test',
         primaryKeys: testPrimaryKeys('integer'),
       }) as ICrudRepository<ContactTag & { id: number }>;
-      baseTagService = new BaseService(tagRepo);
+      baseTagService = new EntityService(tagRepo);
 
       m2mService = new EagerChildWritingService({
         base: baseContactService,
@@ -759,7 +759,7 @@ describe('EagerChildWritingService', () => {
             junctionTable: 'contact_tag',
             parentFkColumn: 'contact_id',
             targetFkColumn: 'tag_id',
-            service: baseTagService as IStandardCrudService<any>,
+            service: baseTagService as IEntityService<any>,
             repository: tagRepo,
             junctionRepository: junctionRepo,
             withTxnRepoFn: withInMemoryTxnRepo,
@@ -934,7 +934,7 @@ describe('EagerChildWritingService', () => {
     }
 
     let noteRepo: ICrudRepository<Note & { id: number }>;
-    let baseNoteService: BaseService<Note>;
+    let baseNoteService: EntityService<Note>;
     let depth2Service: EagerChildWritingService<ContactBase>;
 
     beforeEach(async () => {
@@ -942,7 +942,7 @@ describe('EagerChildWritingService', () => {
         entityName: 'test',
         primaryKeys: testPrimaryKeys('integer'),
       }) as ICrudRepository<Note & { id: number }>;
-      baseNoteService = new BaseService(noteRepo);
+      baseNoteService = new EntityService(noteRepo);
 
       // contact (root) → addresses (direct-fk) → notes (direct-fk).
       depth2Service = new EagerChildWritingService({
@@ -956,7 +956,7 @@ describe('EagerChildWritingService', () => {
             fieldName: 'addresses',
             childTable: 'address',
             fkColumn: 'contact_id',
-            service: baseAddressService as IStandardCrudService<any>,
+            service: baseAddressService as IEntityService<any>,
             repository: addressRepo,
             withTxnRepoFn: withInMemoryTxnRepo,
             children: [
@@ -965,7 +965,7 @@ describe('EagerChildWritingService', () => {
                 fieldName: 'notes',
                 childTable: 'note',
                 fkColumn: 'address_id',
-                service: baseNoteService as IStandardCrudService<any>,
+                service: baseNoteService as IEntityService<any>,
                 repository: noteRepo,
                 withTxnRepoFn: withInMemoryTxnRepo,
               },
@@ -1235,7 +1235,7 @@ describe('EagerChildWritingService', () => {
             junctionTable: 'contact_tag',
             parentFkColumn: 'contact_id',
             targetFkColumn: 'tag_id',
-            service: new BaseService(tagRepo) as IStandardCrudService<any>,
+            service: new EntityService(tagRepo) as IEntityService<any>,
             repository: tagRepo,
             junctionRepository: junctionRepo,
             withTxnRepoFn: withInMemoryTxnRepo,
@@ -1245,7 +1245,7 @@ describe('EagerChildWritingService', () => {
                 fieldName: 'labels',
                 childTable: 'label',
                 fkColumn: 'tag_id',
-                service: new BaseService(labelRepo) as IStandardCrudService<any>,
+                service: new EntityService(labelRepo) as IEntityService<any>,
                 repository: labelRepo,
                 withTxnRepoFn: withInMemoryTxnRepo,
               },

@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import { ZodSchema } from 'zod';
-import { IStandardCrudService } from '../services/interfaces/IStandardCrudService';
+import { IEntityService } from '../services/interfaces/IEntityService';
 import { handleZodError } from '../errors/handleZodError';
 import { handleConstraintError } from '../errors/handleConstraintError';
 import { handleBusinessError } from '../errors/handleBusinessError';
@@ -9,7 +9,7 @@ import { idOr400, parseIdField } from './routeParamUtils';
 import type { PrimaryKey } from '../repositories/PrimaryKey';
 
 export interface NestedCrudRouterOptions<T> {
-  service: IStandardCrudService<any, any>;
+  service: IEntityService<any, any>;
   createSchema: ZodSchema;
   updateSchema: ZodSchema;
   patchSchema?: ZodSchema;
@@ -23,7 +23,7 @@ export interface NestedCrudRouterOptions<T> {
 }
 
 interface NestedCtx<T> {
-  service: IStandardCrudService<any, any>;
+  service: IEntityService<any, any>;
   createSchema: ZodSchema;
   updateSchema: ZodSchema;
   patchSchema: ZodSchema;

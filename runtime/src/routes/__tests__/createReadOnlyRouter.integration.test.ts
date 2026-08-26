@@ -3,7 +3,7 @@ import express, { Application } from 'express';
 import { createReadOnlyRouter } from '../createReadOnlyRouter';
 import { PrimaryKey } from '../../repositories/PrimaryKey';
 import type { RouteIdType } from '../routeParamUtils';
-import { IStandardCrudService } from '../../services/interfaces/IStandardCrudService';
+import { IEntityService } from '../../services/interfaces/IEntityService';
 import { createMockCrudService } from '../../services/__tests__/mockCrudService';
 
 interface TestEntity {
@@ -15,7 +15,7 @@ interface TestEntity {
 }
 
 function buildApp(
-  mockService: jest.Mocked<IStandardCrudService<TestEntity>>,
+  mockService: jest.Mocked<IEntityService<TestEntity>>,
   { idType, primaryKeyParam = 'id' }: { idType: RouteIdType; primaryKeyParam?: string },
 ): Application {
   (mockService as unknown as { primaryKey: PrimaryKey }).primaryKey = new PrimaryKey(
@@ -37,7 +37,7 @@ function buildApp(
 const A_UUID = '00000000-0000-0000-0000-000000000007';
 
 describe('createReadOnlyRouter', () => {
-  let mockService: jest.Mocked<IStandardCrudService<TestEntity>>;
+  let mockService: jest.Mocked<IEntityService<TestEntity>>;
   let app: Application;
 
   beforeEach(() => {

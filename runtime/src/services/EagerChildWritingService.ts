@@ -1,7 +1,7 @@
 import type { IDatasource } from '../repositories/IDatasource';
 import type { ICrudRepository } from '../repositories/ICrudRepository';
 import { ValidationError } from '../errors/AppError';
-import { IStandardCrudService, type StandardRow } from './interfaces/IStandardCrudService';
+import { IEntityService } from './interfaces/IEntityService';
 import { NameValue } from './interfaces/NameValue';
 import { rebindServiceToTxn } from './rebindServiceToTxn';
 import {
@@ -18,7 +18,7 @@ interface EagerWriteDirectFkBinding {
   fieldName: string;
   childTable: string;
   fkColumn: string;
-  service: IStandardCrudService<any>;
+  service: IEntityService<any>;
   repository: ICrudRepository<any>;
   withTxnRepoFn: (repo: ICrudRepository<any>, txn: IDatasource) => ICrudRepository<any>;
   /** Nested eager-write bindings whose parent is each row of this child. */
@@ -39,7 +39,7 @@ export interface EagerWriteM2MBinding {
   /** Junction column referencing the target (e.g. 'tag_id'). */
   targetFkColumn: string;
   /** Service for the target table. */
-  service: IStandardCrudService<any>;
+  service: IEntityService<any>;
   /** Raw repository for the target table. */
   repository: ICrudRepository<any>;
   /** Raw repository for the junction table. */
@@ -55,8 +55,8 @@ function isM2MBinding(b: EagerWriteChildBinding): b is EagerWriteM2MBinding {
   return b.kind === 'm2m';
 }
 
-export interface EagerChildWritingServiceDeps<T extends StandardRow, TMutate> {
-  base: IStandardCrudService<T, TMutate>;
+export interface EagerChildWritingServiceDeps<T, TMutate> {
+  base: IEntityService<T, number | string, TMutate>;
   datasource: IDatasource;
   parentRepository: ICrudRepository<T & { id: number }>;
   parentWithTxnRepoFn: (
@@ -68,10 +68,11 @@ export interface EagerChildWritingServiceDeps<T extends StandardRow, TMutate> {
 
 type Mode = 'create' | 'update' | 'patch';
 
-export class EagerChildWritingService<
-  T extends StandardRow,
-  TMutate = Omit<T, 'id' | 'uuid' | 'created' | 'updated'>,
-> implements IStandardCrudService<T, TMutate> {
+export class EagerChildWritingService<T, TMutate = Partial<T>> implements IEntityService<
+  T,
+  number | string,
+  TMutate
+> {
   constructor(private readonly deps: EagerChildWritingServiceDeps<T, TMutate>) {}
 
   get primaryKey() {
@@ -555,9 +556,9 @@ export class EagerChildWritingService<
   // Helpers
 
   private cloneService(
-    service: IStandardCrudService<any>,
+    service: IEntityService<any>,
     repo: ICrudRepository<any>,
-  ): IStandardCrudService<any> {
+  ): IEntityService<any> {
     return rebindServiceToTxn(service, repo);
   }
 
@@ -583,7 +584,7 @@ export class EagerChildWritingService<
 
   private async resolveOrCreateTargetId(
     row: Record<string, unknown>,
-    txnTargetService: IStandardCrudService<any>,
+    txnTargetService: IEntityService<any>,
   ): Promise<number> {
     const incomingId = row.id;
     if (typeof incomingId === 'number') {

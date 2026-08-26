@@ -5,9 +5,8 @@ import { createCrudRouter } from '../createCrudRouter';
 import { errorHandler } from '../../middleware/errorHandler';
 import { PrimaryKey } from '../../repositories/PrimaryKey';
 import type {
-  IStandardCrudService,
-  StandardRow,
-} from '../../services/interfaces/IStandardCrudService';
+  IEntityService,
+} from '../../services/interfaces/IEntityService';
 
 export interface Item {
   id: number;
@@ -30,7 +29,7 @@ export interface ItemCrudAppOptions {
 
 /** Mount `createCrudRouter` for {@link Item} on a bare express app at `/items`, sharing the schema + wiring boilerplate across the crud-router suites. */
 export function buildItemCrudApp(
-  service: jest.Mocked<IStandardCrudService<Item>>,
+  service: jest.Mocked<IEntityService<Item>>,
   options: ItemCrudAppOptions = {},
 ): express.Express {
   const schema = z.object({ name: z.string() });
@@ -57,13 +56,13 @@ export function buildItemCrudApp(
 }
 
 /** A fully mocked integer-`id` service typed to {@link Item}, the default service the `Item` crud-router suites drive. */
-export const createItemService = (): jest.Mocked<IStandardCrudService<Item>> =>
+export const createItemService = (): jest.Mocked<IEntityService<Item>> =>
   createMockCrudService<Item>();
 
-/** A fully mocked {@link IStandardCrudService} for the crud-router integration suites; `primaryKey` defaults to the integer `id` key. */
-export function createMockCrudService<T extends StandardRow>(
+/** A fully mocked {@link IEntityService} for the crud-router integration suites; `primaryKey` defaults to the integer `id` key. */
+export function createMockCrudService<T>(
   primaryKey: PrimaryKey = new PrimaryKey('id', 'integer'),
-): jest.Mocked<IStandardCrudService<T>> {
+): jest.Mocked<IEntityService<T>> {
   return {
     primaryKey,
     query: vi.fn(),

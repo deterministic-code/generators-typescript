@@ -1,9 +1,6 @@
 import { Router, Request, Response, RequestHandler } from 'express';
 import { ZodSchema } from 'zod';
-import {
-  IStandardCrudService,
-  type StandardRow,
-} from '../services/interfaces/IStandardCrudService';
+import { IEntityService } from '../services/interfaces/IEntityService';
 import { handleZodError } from '../errors/handleZodError';
 import { handleConstraintError } from '../errors/handleConstraintError';
 import { sendItem, sendItems, sendError } from '../responses/sendResponse';
@@ -11,11 +8,8 @@ import { idOr400, parseIdField } from './routeParamUtils';
 import { wrapRouteHandler as wrapHandler } from './wrapRouteHandler';
 import type { PrimaryKey } from '../repositories/PrimaryKey';
 
-export interface CrudRouterOptions<
-  T extends StandardRow,
-  TMutate = Omit<T, 'id' | 'uuid' | 'created' | 'updated'>,
-> {
-  service: IStandardCrudService<T, TMutate>;
+export interface CrudRouterOptions<T, TId = number | string, TMutate = T> {
+  service: IEntityService<T, TId, TMutate>;
   createSchema: ZodSchema;
   updateSchema: ZodSchema;
   patchSchema?: ZodSchema;
@@ -28,8 +22,8 @@ export interface CrudRouterOptions<
   useOptimisticConcurrency?: boolean;
 }
 
-interface ResolvedCrudRouter<T extends StandardRow, TMutate> {
-  service: IStandardCrudService<T, TMutate>;
+interface ResolvedCrudRouter<T, TId, TMutate> {
+  service: IEntityService<T, TId, TMutate>;
   createSchema: ZodSchema;
   updateSchema: ZodSchema;
   patchSchema: ZodSchema;
@@ -55,8 +49,8 @@ function requireIfMatch(cfg: { entityName: string }, req: Request, res: Response
   return ifMatch.replace(/^"|"$/g, '');
 }
 
-function resolveExpectedUpdated<T extends StandardRow, TMutate>(
-  cfg: ResolvedCrudRouter<T, TMutate>,
+function resolveExpectedUpdated<T, TId, TMutate>(
+  cfg: ResolvedCrudRouter<T, TId, TMutate>,
   req: Request,
   res: Response,
 ): { ok: true; expectedUpdated: string | undefined } | { ok: false } {
@@ -66,8 +60,8 @@ function resolveExpectedUpdated<T extends StandardRow, TMutate>(
   return { ok: true, expectedUpdated: token };
 }
 
-function parseIdOrFail<T extends StandardRow, TMutate>(
-  cfg: ResolvedCrudRouter<T, TMutate>,
+function parseIdOrFail<T, TId, TMutate>(
+  cfg: ResolvedCrudRouter<T, TId, TMutate>,
   req: Request,
   res: Response,
 ): number | string | null {
@@ -75,16 +69,16 @@ function parseIdOrFail<T extends StandardRow, TMutate>(
   return idOr400(res, parseIdField(pk.routeIdType, pk.column, req.params[pk.column]));
 }
 
-function sendNotFound<T extends StandardRow, TMutate>(
-  cfg: ResolvedCrudRouter<T, TMutate>,
+function sendNotFound<T, TId, TMutate>(
+  cfg: ResolvedCrudRouter<T, TId, TMutate>,
   res: Response,
   id: number | string,
 ): void {
   sendError(res, 404, 'NOT_FOUND', `${cfg.entityName} with id '${id}' not found`);
 }
 
-function makeListHandler<T extends StandardRow, TMutate>(
-  cfg: ResolvedCrudRouter<T, TMutate>,
+function makeListHandler<T, TId, TMutate>(
+  cfg: ResolvedCrudRouter<T, TId, TMutate>,
 ): RequestHandler {
   return wrapHandler([], async (_req, res) => {
     const items = await cfg.service.findAll();
@@ -93,8 +87,8 @@ function makeListHandler<T extends StandardRow, TMutate>(
   });
 }
 
-function makeGetByIdHandler<T extends StandardRow, TMutate>(
-  cfg: ResolvedCrudRouter<T, TMutate>,
+function makeGetByIdHandler<T, TId, TMutate>(
+  cfg: ResolvedCrudRouter<T, TId, TMutate>,
 ): RequestHandler {
   return wrapHandler([], async (req, res) => {
     const id = parseIdOrFail(cfg, req, res);
@@ -109,8 +103,8 @@ function makeGetByIdHandler<T extends StandardRow, TMutate>(
   });
 }
 
-function makeCreateHandler<T extends StandardRow, TMutate>(
-  cfg: ResolvedCrudRouter<T, TMutate>,
+function makeCreateHandler<T, TId, TMutate>(
+  cfg: ResolvedCrudRouter<T, TId, TMutate>,
 ): RequestHandler {
   return wrapHandler([handleZodError, handleConstraintError], async (req, res) => {
     const parsed = cfg.createSchema.parse(req.body);
@@ -123,8 +117,8 @@ function makeCreateHandler<T extends StandardRow, TMutate>(
   });
 }
 
-function resolveMutationTarget<T extends StandardRow, TMutate>(
-  cfg: ResolvedCrudRouter<T, TMutate>,
+function resolveMutationTarget<T, TId, TMutate>(
+  cfg: ResolvedCrudRouter<T, TId, TMutate>,
   req: Request,
   res: Response,
 ): { id: number | string; expectedUpdated: string | undefined } | null {
@@ -135,8 +129,8 @@ function resolveMutationTarget<T extends StandardRow, TMutate>(
   return { id, expectedUpdated: concurrency.expectedUpdated };
 }
 
-async function prepareMutationData<T extends StandardRow, TMutate>(
-  cfg: ResolvedCrudRouter<T, TMutate>,
+async function prepareMutationData<T, TId, TMutate>(
+  cfg: ResolvedCrudRouter<T, TId, TMutate>,
   schema: ZodSchema,
   body: unknown,
 ): Promise<Partial<TMutate>> {
@@ -153,8 +147,8 @@ async function prepareMutationData<T extends StandardRow, TMutate>(
   return data;
 }
 
-async function runMutation<T extends StandardRow, TMutate>(
-  cfg: ResolvedCrudRouter<T, TMutate>,
+async function runMutation<T, TId, TMutate>(
+  cfg: ResolvedCrudRouter<T, TId, TMutate>,
   args: {
     mode: 'put' | 'patch';
     typedId: unknown;
@@ -174,8 +168,8 @@ async function runMutation<T extends StandardRow, TMutate>(
     : cfg.service.patch(id, data, { expectedUpdated });
 }
 
-function makeMutationHandler<T extends StandardRow, TMutate>(
-  cfg: ResolvedCrudRouter<T, TMutate>,
+function makeMutationHandler<T, TId, TMutate>(
+  cfg: ResolvedCrudRouter<T, TId, TMutate>,
   schema: ZodSchema,
   mode: 'put' | 'patch',
 ): RequestHandler {
@@ -198,8 +192,8 @@ function makeMutationHandler<T extends StandardRow, TMutate>(
   });
 }
 
-function makeDeleteHandler<T extends StandardRow, TMutate>(
-  cfg: ResolvedCrudRouter<T, TMutate>,
+function makeDeleteHandler<T, TId, TMutate>(
+  cfg: ResolvedCrudRouter<T, TId, TMutate>,
 ): RequestHandler {
   return wrapHandler([handleConstraintError], async (req, res) => {
     const target = resolveMutationTarget(cfg, req, res);
@@ -217,11 +211,10 @@ function makeDeleteHandler<T extends StandardRow, TMutate>(
   });
 }
 
-export function createCrudRouter<
-  T extends StandardRow,
-  TMutate = Omit<T, 'id' | 'uuid' | 'created' | 'updated'>,
->(options: CrudRouterOptions<T, TMutate>): Router {
-  const cfg: ResolvedCrudRouter<T, TMutate> = {
+export function createCrudRouter<T, TId = number | string, TMutate = T>(
+  options: CrudRouterOptions<T, TId, TMutate>,
+): Router {
+  const cfg: ResolvedCrudRouter<T, TId, TMutate> = {
     service: options.service,
     createSchema: options.createSchema,
     updateSchema: options.updateSchema,

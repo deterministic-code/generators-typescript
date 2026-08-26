@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { BaseService } from '../BaseService';
+import { EntityService } from '../EntityService';
 import { LookupEnrichedService } from '../LookupEnrichedService';
 import { EagerChildLoadingService } from '../EagerChildLoadingService';
 import { rebindServiceToTxn } from '../rebindServiceToTxn';
@@ -28,7 +28,7 @@ describe('rebindServiceToTxn', () => {
     const poolRepo = mockRepo();
     const txnRepo = mockRepo();
     // Mirrors the contact stack: EagerChildLoading(LookupEnriched(Base(poolRepo))).
-    const base = new BaseService(poolRepo);
+    const base = new EntityService(poolRepo);
     const enriched = new LookupEnrichedService(base as never, []);
     const stack = new EagerChildLoadingService(enriched as never, [], new Map());
 
@@ -42,7 +42,7 @@ describe('rebindServiceToTxn', () => {
   it('a plain repository-backed service is cloned with the txn repo swapped in', async () => {
     const poolRepo = mockRepo();
     const txnRepo = mockRepo();
-    const rebound = rebindServiceToTxn(new BaseService(poolRepo), txnRepo);
+    const rebound = rebindServiceToTxn(new EntityService(poolRepo), txnRepo);
 
     await rebound.delete(2);
 

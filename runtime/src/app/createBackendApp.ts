@@ -38,8 +38,8 @@ import {
   type GenericRouterMethod,
   type RoutesData,
 } from '../routes';
-import type { IStandardCrudService } from '../services/interfaces/IStandardCrudService';
-import { BaseService } from '../services/BaseService';
+import type { IEntityService } from '../services/interfaces/IEntityService';
+import { EntityService } from '../services/EntityService';
 import { LookupEnrichedService, type LookupMapping } from '../services/LookupEnrichedService';
 import { EagerChildLoadingService } from '../services/EagerChildLoadingService';
 import {
@@ -118,7 +118,7 @@ export type CreateAppHook = (ctx: CreateAppContext) => void | Promise<void>;
  * cross-cutting behavior lives in the composed stack. Mirrors the Rust ComposeContext.
  */
 export interface RouteComposeContext {
-  entityService(entityName: string): IStandardCrudService<any, any>;
+  entityService(entityName: string): IEntityService<any, any>;
   bodySchema(entityName: string, verb: 'create' | 'update'): ZodSchema;
   repos: Record<string, unknown>;
   datasourceData: DatasourceData;
@@ -446,7 +446,7 @@ function wrapCtxServices(
 }
 
 function wrapCrudServiceMap(
-  serviceMap: Map<string, IStandardCrudService<any, any>>,
+  serviceMap: Map<string, IEntityService<any, any>>,
   middlewares: ReadonlyArray<IServiceMiddleware>,
 ): void {
   if (middlewares.length === 0) return;
@@ -458,7 +458,7 @@ function wrapCrudServiceMap(
         entityName,
         middlewares,
         CRUD_SERVICE_METHODS,
-      ) as IStandardCrudService<any, any>,
+      ) as IEntityService<any, any>,
     );
   }
 }
@@ -656,8 +656,8 @@ class BackendAppBuilder {
         ),
       });
       this.rawRepos[serviceKeyFor(spec.entityName)] = repo;
-      this.repos[serviceKeyFor(spec.entityName)] = new BaseService(
-        repo as unknown as ConstructorParameters<typeof BaseService>[0],
+      this.repos[serviceKeyFor(spec.entityName)] = new EntityService(
+        repo as unknown as ConstructorParameters<typeof EntityService>[0],
       );
     }
   }
@@ -774,7 +774,7 @@ class BackendAppBuilder {
       return buildBodySchema(spec, 'update');
     };
     mountCombinedRoutes(app, {
-      repos: ctx.repos as unknown as Record<string, IStandardCrudService<any, any>>,
+      repos: ctx.repos as unknown as Record<string, IEntityService<any, any>>,
       fullReadServices,
       datasourceData: this.datasourceData,
       routesData: this.routesData,
@@ -785,16 +785,16 @@ class BackendAppBuilder {
 
   /** Composer set ⇒ mount the generated router that forwards to the composed entityService (write stack over the enriched+eager read stack); else the dynamic per-spec CRUD/byField mounting. */
   private mountEntityCrudRoutes(
-    fullReadServices: Map<string, IStandardCrudService<any, any>>,
-    fullWriteServices: Map<string, IStandardCrudService<any, any>>,
+    fullReadServices: Map<string, IEntityService<any, any>>,
+    fullWriteServices: Map<string, IEntityService<any, any>>,
   ): void {
     const { app, ctx } = this;
     const composer = this.options.routeComposer;
     if (composer) {
-      const entityService = (name: string): IStandardCrudService<any, any> =>
+      const entityService = (name: string): IEntityService<any, any> =>
         fullWriteServices.get(name) ??
         fullReadServices.get(name) ??
-        (ctx.repos[serviceKeyFor(name)] as IStandardCrudService<any, any>);
+        (ctx.repos[serviceKeyFor(name)] as IEntityService<any, any>);
       const crudSpecsByEntity = new Map(this.crudSpecs.map((s) => [s.entityName, s]));
       // The generated router validates bodies with the same buildBodySchema the dynamic path uses (full create, partial update) so eager-write children round-trip and nullable fields stay optional.
       const bodySchema = (name: string, verb: 'create' | 'update'): ZodSchema => {
@@ -938,11 +938,11 @@ function buildEnrichedReadServices(
   repos: Record<string, unknown>,
   datasourceDoc: unknown,
   autoEnrich: boolean,
-): Map<string, IStandardCrudService<any, any>> {
-  const out = new Map<string, IStandardCrudService<any, any>>();
+): Map<string, IEntityService<any, any>> {
+  const out = new Map<string, IEntityService<any, any>>();
   for (const spec of crudSpecs) {
     const baseService = repos[serviceKeyFor(spec.entityName)] as
-      | IStandardCrudService<any, any>
+      | IEntityService<any, any>
       | undefined;
     if (!baseService) continue;
     const enrichments = computeEnrichments(
@@ -968,11 +968,11 @@ function buildEnrichedReadServices(
   return out;
 }
 
-type EagerServiceMap = Map<string, IStandardCrudService<any, any>>;
+type EagerServiceMap = Map<string, IEntityService<any, any>>;
 
 interface ChildServiceResolver {
   repos: Record<string, unknown>;
-  wrap: (entityName: string, gate: EagerLoadGate) => IStandardCrudService<any, any> | undefined;
+  wrap: (entityName: string, gate: EagerLoadGate) => IEntityService<any, any> | undefined;
 }
 
 function markMemberOnly(
@@ -1004,11 +1004,11 @@ function collectEagerChildServices(
     // why raw-repo alongside enriched: attachChildrenBatched groups by FK (application_id), but LookupEnrichedService(replaceFk=true) strips it — raw repo keeps FK for grouping; enriched service then re-queried by id for the per-parent eager-load attach.
     const rawRepo = repos[serviceKeyFor(child.childTable)];
     if (rawRepo)
-      rawChildServiceMap.set(child.childTable, rawRepo as IStandardCrudService<any, any>);
+      rawChildServiceMap.set(child.childTable, rawRepo as IEntityService<any, any>);
     if (child.joinTable) {
       const joinService = repos[serviceKeyFor(child.joinTable)];
       if (joinService)
-        joinServiceMap.set(child.joinTable, joinService as IStandardCrudService<any, any>);
+        joinServiceMap.set(child.joinTable, joinService as IEntityService<any, any>);
     }
   }
   return { childServiceMap, joinServiceMap, rawChildServiceMap };
@@ -1084,14 +1084,14 @@ function buildFullReadServices(args: FullReadServicesArgs): EagerServiceMap {
   const inProgress = new Set<string>();
   const eagerWriteFields = buildEagerWriteFieldMap(crudSpecs);
 
-  const baseFor = (entityName: string): IStandardCrudService<any, any> | undefined =>
+  const baseFor = (entityName: string): IEntityService<any, any> | undefined =>
     enrichedReadServices.get(entityName) ??
-    (repos[serviceKeyFor(entityName)] as IStandardCrudService<any, any> | undefined);
+    (repos[serviceKeyFor(entityName)] as IEntityService<any, any> | undefined);
 
   const wrap = (
     entityName: string,
     gate: EagerLoadGate,
-  ): IStandardCrudService<any, any> | undefined => {
+  ): IEntityService<any, any> | undefined => {
     const base = baseFor(entityName);
     if (!base) return undefined;
     if (inProgress.has(entityName)) return base;
@@ -1143,8 +1143,8 @@ function withTxnRepo(repo: any, txn: any): any {
 function buildEagerWriteBindings(
   childSpecs: import('./loaders/parseCrudRouteSpecs').EagerWriteChildSpec[] | undefined,
   rawRepos: Record<string, unknown>,
-  fullReadServices: Map<string, IStandardCrudService<any, any>>,
-  enrichedReadServices: Map<string, IStandardCrudService<any, any>>,
+  fullReadServices: Map<string, IEntityService<any, any>>,
+  enrichedReadServices: Map<string, IEntityService<any, any>>,
   withTxnRepoFn: (repo: any, txn: any) => any,
 ): EagerWriteChildBinding[] {
   if (!childSpecs) return [];
@@ -1204,8 +1204,8 @@ function buildEagerWriteBindings(
 
 interface WriteServiceContext {
   rawRepos: Record<string, unknown>;
-  fullReadServices: Map<string, IStandardCrudService<any, any>>;
-  enrichedReadServices: Map<string, IStandardCrudService<any, any>>;
+  fullReadServices: Map<string, IEntityService<any, any>>;
+  enrichedReadServices: Map<string, IEntityService<any, any>>;
 }
 
 interface WriteServiceDeps extends WriteServiceContext {
@@ -1217,7 +1217,7 @@ interface WriteServiceDeps extends WriteServiceContext {
 function writeServiceForSpec(
   spec: CrudRouteSpec,
   deps: WriteServiceDeps,
-): IStandardCrudService<any, any> | null {
+): IEntityService<any, any> | null {
   const readService =
     deps.fullReadServices.get(spec.entityName) ?? deps.enrichedReadServices.get(spec.entityName);
   if (!spec.eagerWriteChildren || spec.eagerWriteChildren.length === 0) return readService ?? null;
@@ -1248,7 +1248,7 @@ function buildFullWriteServices(
   crudSpecs: CrudRouteSpec[],
   context: WriteServiceContext,
   conn: DatabaseConnection,
-): Map<string, IStandardCrudService<any, any>> {
+): Map<string, IEntityService<any, any>> {
   const hasEagerWrite = crudSpecs.some(
     (s) => s.eagerWriteChildren && s.eagerWriteChildren.length > 0,
   );
@@ -1258,7 +1258,7 @@ function buildFullWriteServices(
     withTxnRepoFn: hasEagerWrite ? withTxnRepo : null,
   };
 
-  const out = new Map<string, IStandardCrudService<any, any>>();
+  const out = new Map<string, IEntityService<any, any>>();
   for (const spec of crudSpecs) {
     const service = writeServiceForSpec(spec, deps);
     if (service) out.set(spec.entityName, service);
@@ -1270,7 +1270,7 @@ function mountByFieldRoutes(
   app: Express,
   spec: CrudRouteSpec,
   repos: Record<string, unknown>,
-  fullWriteServices: Map<string, IStandardCrudService<any, any>>,
+  fullWriteServices: Map<string, IEntityService<any, any>>,
 ): void {
   const serviceKey = serviceKeyFor(spec.entityName);
   if (!repos[serviceKey]) {
@@ -1280,7 +1280,7 @@ function mountByFieldRoutes(
   }
 
   const service =
-    fullWriteServices.get(spec.entityName) ?? (repos[serviceKey] as IStandardCrudService<any, any>);
+    fullWriteServices.get(spec.entityName) ?? (repos[serviceKey] as IEntityService<any, any>);
 
   const basePath = `/api/${spec.pathSegment}`;
   const partialUpdateSchema = buildBodySchema(spec, 'update').partial();
@@ -1302,7 +1302,7 @@ function mountByFieldRoutes(
 
 interface MountCrudRouterDeps {
   repos: Record<string, unknown>;
-  fullWriteServices: Map<string, IStandardCrudService<any, any>>;
+  fullWriteServices: Map<string, IEntityService<any, any>>;
   useOptimisticConcurrency: boolean;
 }
 
@@ -1324,7 +1324,7 @@ function mountCrudRouter(
   }
 
   const service =
-    fullWriteServices.get(spec.entityName) ?? (repos[serviceKey] as IStandardCrudService<any, any>);
+    fullWriteServices.get(spec.entityName) ?? (repos[serviceKey] as IEntityService<any, any>);
 
   const basePath = `/api/${spec.pathSegment}`;
 

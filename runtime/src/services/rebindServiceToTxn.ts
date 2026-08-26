@@ -1,8 +1,8 @@
 import type { ICrudRepository } from '../repositories/ICrudRepository';
-import type { IStandardCrudService } from './interfaces/IStandardCrudService';
+import type { IEntityService } from './interfaces/IEntityService';
 
 interface TxnRebindable {
-  withTxnRepository(repo: ICrudRepository<any>): IStandardCrudService<any, any>;
+  withTxnRepository(repo: ICrudRepository<any>): IEntityService<any>;
 }
 
 function isTxnRebindable(service: unknown): service is TxnRebindable {
@@ -25,7 +25,7 @@ function isTxnRebindable(service: unknown): service is TxnRebindable {
  * a txn-bound inner service; a plain repository-backed service is cloned with
  * the txn repository swapped in.
  */
-export function rebindServiceToTxn<S extends IStandardCrudService<any, any>>(
+export function rebindServiceToTxn<S extends IEntityService<any>>(
   service: S,
   repo: ICrudRepository<any>,
 ): S {

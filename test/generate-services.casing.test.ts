@@ -60,7 +60,7 @@ describe("generate services casing", () => {
     const body = files.get("notificationTypeService.ts")!;
     assert.match(
       body,
-      /export class NotificationTypeService extends BaseService<NotificationType>/,
+      /export class NotificationTypeService extends EntityService<NotificationType, number, Omit<NotificationType, "id">>/,
     );
     assert.match(body, /async find_by_channel_name\(channel_name: string\)/);
   });

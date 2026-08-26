@@ -80,7 +80,7 @@ export interface CrudRouteSpec {
    * (e.g. `legacy_contact.key: string` in the contacts-backend
    * sample), else the implicit auto-increment `id`. Always resolved by
    * `assignPrimaryKey` so createBackendApp forwards a concrete column to
-   * `buildRepoForBackend` and `new BaseService(...)` with no `?? 'id'` default.
+   * `buildRepoForBackend` and `new EntityService(...)` with no `?? 'id'` default.
    */
   primaryKeyColumn: string;
   /**

@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { SqliteDatasource } from '../SqliteDatasource';
 import { SqliteStandardRepository } from '../SqliteStandardRepository';
 import { testPrimaryKeys } from '../../__tests__/testPrimaryKeys';
-import { BaseService } from '../../../services/BaseService';
+import { EntityService } from '../../../services/EntityService';
 import { createCrudRouter } from '../../../routes/createCrudRouter';
 import { errorHandler } from '../../../middleware/errorHandler';
 
@@ -24,7 +24,7 @@ async function createSchema(ds: SqliteDatasource): Promise<void> {
 }
 
 function buildApp(
-  service: BaseService<Item>,
+  service: EntityService<Item>,
   options: { useOptimisticConcurrency?: boolean } = {},
 ): express.Express {
   const createSchemaZ = z.object({ name: z.string() });
@@ -49,7 +49,7 @@ function occApp(ds: SqliteDatasource): express.Express {
     entityName: 'item',
     primaryKeys: testPrimaryKeys('integer'),
   });
-  const service = new BaseService<Item>(repo);
+  const service = new EntityService<Item>(repo);
   return buildApp(service, { useOptimisticConcurrency: true });
 }
 
@@ -71,7 +71,7 @@ describe('OCC end-to-end on SQLite (router + service + repo + :memory:)', () => 
       entityName: 'item',
       primaryKeys: testPrimaryKeys('integer'),
     });
-    const service = new BaseService<Item>(repo);
+    const service = new EntityService<Item>(repo);
     const app = buildApp(service, { useOptimisticConcurrency: false });
 
     const created = await request(app).post('/items').send({ name: 'Alpha' });
