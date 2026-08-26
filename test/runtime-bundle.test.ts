@@ -6,12 +6,22 @@ import { describe, it } from "node:test";
 import {
   applyBundledPackageJson,
   bundledRuntimeEntries,
+  resolveRuntimeBundleDir,
   runtimePackageVersion,
 } from "../src/runtime-bundle.ts";
 
 describe("runtime-bundle", () => {
   it("reads the runtime package version", async () => {
     assert.equal(await runtimePackageVersion(), "0.0.7");
+  });
+
+  it("resolves a built runtime without requiring a manual build step", async () => {
+    const dir = await resolveRuntimeBundleDir();
+    assert.ok(dir.endsWith("runtime/dist") || dir.endsWith("runtime-bundle"));
+    const entries = await bundledRuntimeEntries(dir);
+    const names = entries.map((e) => e.filename);
+    assert.ok(names.includes("_deterministic/app.js"), names.join("\n"));
+    assert.ok(names.includes("_deterministic/routes.js"), names.join("\n"));
   });
 
   it("emits js, maps, and declarations and skips cjs", async () => {
