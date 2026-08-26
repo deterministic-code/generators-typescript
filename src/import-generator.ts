@@ -63,6 +63,20 @@ export class TypeScriptImportGenerator implements IImportGenerator {
     );
   }
 
+  datasourceTestRel(entity: string): string {
+    return this.rel(
+      "types/generated/datasource",
+      this.test(this.datasource(entity), entity),
+    );
+  }
+
+  datasourceValidatorTestRel(entity: string): string {
+    return this.rel(
+      "types/generated/datasource/validators",
+      this.test(this.datasourceValidator(entity), entity),
+    );
+  }
+
   view(entity: string): string {
     return this.underBase(this.viewLike(entity, ""));
   }
@@ -84,6 +98,23 @@ export class TypeScriptImportGenerator implements IImportGenerator {
       "types/generated/views/validators",
       this.viewValidator(entity),
     );
+  }
+
+  viewTestRel(entity: string): string {
+    return this.rel("types/generated/views", this.test(this.view(entity), entity));
+  }
+
+  viewValidatorTestRel(entity: string): string {
+    return this.rel(
+      "types/generated/views/validators",
+      this.test(this.viewValidator(entity), entity),
+    );
+  }
+
+  validatorTestRel(kind: "datasource" | "view", entity: string): string {
+    return kind === "datasource"
+      ? this.datasourceValidatorTestRel(entity)
+      : this.viewValidatorTestRel(entity);
   }
 
   service(entity: string): string {
@@ -160,6 +191,10 @@ export class TypeScriptImportGenerator implements IImportGenerator {
       ? `features/${this.casing.directory(entity)}/__tests__/${file}`
       : file;
     return this.underBase(path);
+  }
+
+  routeTestRel(entity: string): string {
+    return this.rel("routes/generated/__tests__", this.routeTest(entity));
   }
 
   enrichment(_targetTable: string): string {

@@ -30,7 +30,7 @@ import {
   preludeSource,
   withFakerPackagePatch,
 } from "./common/fake-test-data.ts";
-import { Emit } from "./emit.ts";
+import { bag, Emit } from "./emit.ts";
 
 const SYSTEM_COLUMNS = new Set(["id", "uuid", "created", "updated"]);
 
@@ -293,6 +293,11 @@ class Generator extends Emit {
             ? false
             : { lookupName: missingLookup },
       }),
+      bag({
+        module: this.imports.serviceIntegrationTestRel(entity),
+        imports: this.imports.serviceRel(entity),
+        uses: className,
+      }),
     );
   }
 
@@ -411,6 +416,7 @@ class Generator extends Emit {
   }
 }
 
+/** Returns attributed entries. Cross-lane service imports need host `finalizeEntries`. */
 export const generate = async (
   ctx: GenerateContext,
 ): Promise<GenerateEntry[]> => {

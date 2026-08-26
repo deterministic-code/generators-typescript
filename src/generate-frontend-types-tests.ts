@@ -4,6 +4,7 @@ import { Emit } from "./emit.ts";
 import { generate as generateViewTypesTests } from "./generate-view-types-tests.ts";
 import { referencesBackend } from "./inline-inherited.ts";
 
+/** Returns attributed entries. Cross-lane type imports need host `finalizeEntries`. */
 export const generate = async (
   ctx: GenerateContext,
 ): Promise<GenerateEntry[]> => {

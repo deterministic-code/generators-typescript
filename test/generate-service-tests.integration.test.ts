@@ -105,6 +105,20 @@ describe("generate-service-tests", () => {
     const sku = textOf(entries, "skuService.test.ts");
     assert.match(sku, /new PrimaryKey\("code", "string"\)/);
     assert.match(sku, /faker\.string\.alphanumeric/);
+
+    const userBag = entries.find(
+      (entry) =>
+        entry.kind === "content" &&
+        entry.attributes?.module ===
+          "services/generated/__tests__/userService.test.ts",
+    );
+    assert.ok(userBag);
+    assert.equal(userBag.kind, "content");
+    assert.equal(
+      userBag.attributes?.imports,
+      "services/generated/userService.ts",
+    );
+    assert.equal(userBag.attributes?.uses, "UserService");
   });
 
   it("emits nothing without view_type_services", async () => {

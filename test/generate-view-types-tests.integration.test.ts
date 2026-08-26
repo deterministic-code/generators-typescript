@@ -162,6 +162,23 @@ describe("generate view types tests", () => {
     );
   });
 
+  it("declares Rel bag keys for the type under test", async () => {
+    const entries = await generateWith({});
+    const card = entries.find(
+      (entry) =>
+        entry.kind === "content" &&
+        entry.attributes?.module ===
+          "types/generated/views/cardPayment.test.ts",
+    );
+    assert.ok(card);
+    assert.equal(card.kind, "content");
+    assert.equal(
+      card.attributes?.imports,
+      "types/generated/views/cardPayment.ts",
+    );
+    assert.equal(card.attributes?.uses, "CardPayment");
+  });
+
   it("imports the generated type and covers get/set plus null assignment", async () => {
     const card = await bodyOf(
       "cardPayment.test.ts",

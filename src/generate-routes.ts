@@ -18,7 +18,7 @@ import {
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
 import type { PackCasing } from "./common/default-casing.ts";
 import { libraryImportSpecifier } from "./library-import.ts";
-import { Emit } from "./emit.ts";
+import { bag, customRelKey, Emit } from "./emit.ts";
 import {
   byFieldDeleteListTmpl,
   byFieldDeleteUniqueTmpl,
@@ -105,10 +105,7 @@ class Generator extends Emit {
   }
 
   private customModuleKey(emitPath: string): string {
-    if (emitPath.startsWith("../custom/")) {
-      return `routes/custom/${emitPath.slice("../custom/".length)}`;
-    }
-    return emitPath;
+    return customRelKey(emitPath, "routes");
   }
 
   private entityRouter(
@@ -152,12 +149,12 @@ class Generator extends Emit {
         hasByFields: byFields.length > 0,
         byFieldsBlock: byFieldsBlock(entity, byFields),
       }),
-      {
+      bag({
         module: this.imports.routeRel(entity),
         exports: fnName,
         imports: serviceRel,
         uses: serviceInterfaceName,
-      },
+      }),
     );
   }
 
@@ -176,10 +173,10 @@ class Generator extends Emit {
         interfaceName,
         className,
       }),
-      {
+      bag({
         module: this.customModuleKey(path),
-        exports: `${className}, ${interfaceName}`,
-      },
+        exports: [className, interfaceName],
+      }),
     );
   }
 
@@ -204,16 +201,14 @@ class Generator extends Emit {
                 fileBase: this.casing.fileBase(c.name),
               })),
             }),
-            {
+            bag({
               module: this.imports
                 .routeRel(sorted[0]!.name)
                 .replace(/[^/]+$/, "index.ts"),
               exports,
-              imports: sorted
-                .map((c) => this.imports.routeRel(c.name))
-                .join(", "),
+              imports: sorted.map((c) => this.imports.routeRel(c.name)),
               uses: exports,
-            },
+            }),
           ),
         );
       }
@@ -251,18 +246,16 @@ class Generator extends Emit {
                 };
               }),
             }),
-            {
+            bag({
               module: this.customModuleKey(index),
               exports,
-              imports: sorted
-                .map((e) =>
-                  this.customModuleKey(
-                    this.imports.routeCustom(e.name, e.module),
-                  ),
-                )
-                .join(", "),
+              imports: sorted.map((e) =>
+                this.customModuleKey(
+                  this.imports.routeCustom(e.name, e.module),
+                ),
+              ),
               uses: exports,
-            },
+            }),
           ),
         );
       }

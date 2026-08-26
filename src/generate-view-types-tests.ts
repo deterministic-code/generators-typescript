@@ -4,7 +4,6 @@ import { content, type GenerateEntry } from "@deterministic-code/generators-comm
 import {
   datasourceTypesOf,
   TYPES_YAML,
-  unionMembers,
   viewTypesOf,
 } from "@deterministic-code/generators-common/spec-types";
 import {
@@ -25,11 +24,10 @@ import {
   renderObject,
   renderValue,
   shapedViewNodes,
-  viewNodes,
   type ShapeNode,
   type ShapeOpts,
 } from "./common/view-test-shape.ts";
-import { Emit } from "./emit.ts";
+import { bag, Emit } from "./emit.ts";
 
 const renderFieldTests = (node: ShapeNode, className: string): string =>
   fill(fieldTestsTmpl, {
@@ -72,45 +70,35 @@ class Generator extends Emit implements ShapeOpts {
   }
 
   private tests(view: Type): GenerateEntry {
-    const members = unionMembers(view);
-    const fields =
-      members === undefined ? shapedViewNodes(view, this) : [];
+    const fields = shapedViewNodes(view, this);
     const src = this.imports.view(view.name);
+    const className = this.casing.convertTypes(view.name);
     return content(
       this.imports.test(src, view.name),
       fill(typeTestTmpl, {
         prelude: preludeSource(fakeTestData),
         schemaVersion: this.settings.schemaVersion,
-        className: this.casing.convertTypes(view.name),
+        className,
         viewName: view.name,
         typeImport: this.imports.testSpec(src, view.name),
-        isShaped: members === undefined,
-        isUnion: members !== undefined,
+        isShaped: true,
+        isUnion: false,
         fixture: fields.length === 0 ? "{}" : renderObject(fields),
         fieldTests: fields
-          .map((field) =>
-            renderFieldTests(field, this.casing.convertTypes(view.name)),
-          )
+          .map((field) => renderFieldTests(field, className))
           .join(""),
-        members:
-          members !== undefined
-            ? members.map((name) => ({
-                name: this.casing.convertTypes(name),
-                memberClass: this.casing.convertTypes(name),
-                memberImport: this.imports.spec(
-                  this.imports.viewRel(view.name),
-                  this.imports.viewRel(name),
-                ),
-                memberFixture: renderObject(
-                  viewNodes(name, this, new Set([view.name])),
-                ),
-              }))
-            : [],
+        members: [],
+      }),
+      bag({
+        module: this.imports.viewTestRel(view.name),
+        imports: this.imports.viewRel(view.name),
+        uses: className,
       }),
     );
   }
 }
 
+/** Returns attributed entries. Cross-lane view imports need host `finalizeEntries`. */
 export const generate = async (
   ctx: GenerateContext,
   basePath = ".",

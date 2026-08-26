@@ -126,6 +126,19 @@ describe("generate datasource type validators", () => {
     assert.match(user, /schema-version: 9.9/);
   });
 
+  it("declares Rel bag keys for the schema under test", async () => {
+    const entries = await generateWith({});
+    const user = entries.find(
+      (entry) =>
+        entry.kind === "content" &&
+        entry.attributes?.module ===
+          "types/generated/datasource/validators/user.ts",
+    );
+    assert.ok(user);
+    assert.equal(user.kind, "content");
+    assert.equal(user.attributes?.exports, "UserSchema, UserValidated");
+  });
+
   it("re-exports schemas from the barrel", async () => {
     const index = entryBody(
       requireEntry(indexEntries(await generateWith({})), "index.ts"),

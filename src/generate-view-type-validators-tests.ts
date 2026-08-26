@@ -4,7 +4,6 @@ import { content, type GenerateEntry } from "@deterministic-code/generators-comm
 import {
   datasourceTypesOf,
   TYPES_YAML,
-  unionMembers,
   viewTypesOf,
 } from "@deterministic-code/generators-common/spec-types";
 import {
@@ -24,11 +23,10 @@ import {
   renderMutatedObject,
   renderObject,
   shapedViewNodes,
-  viewNodes,
   type ShapeNode,
   type ShapeOpts,
 } from "./common/view-test-shape.ts";
-import { Emit } from "./emit.ts";
+import { bag, Emit } from "./emit.ts";
 
 type CaseTok = {
   name: string;
@@ -186,43 +184,29 @@ class Generator extends Emit implements ShapeOpts {
     return cases;
   }
 
-  private unionCases(view: Type): CaseTok[] {
-    const cases = (unionMembers(view) ?? []).map((name) => ({
-      name: escapeTestName(
-        `accepts a ${this.casing.convertTypes(name)} member`,
-      ),
-      fixture: renderObject(viewNodes(name, this, new Set([view.name]))),
-      assertion: "not.toThrow",
-    }));
-    cases.push({
-      name: escapeTestName(
-        `rejects when matches neither member of union "${view.name}"`,
-      ),
-      fixture: `{ __not_a_member__: true }`,
-      assertion: "toThrow",
-    });
-    return cases;
-  }
-
   private tests(view: Type): GenerateEntry {
     const src = this.imports.viewValidator(view.name);
+    const schemaName = this.casing.schemaName(view.name);
     return content(
       this.imports.test(src, view.name),
       fill(typeTestTmpl, {
         prelude: preludeSource(fakeTestData),
         schemaVersion: this.settings.schemaVersion,
-        schemaName: this.casing.schemaName(view.name),
+        schemaName,
         viewName: view.name,
         schemaImport: this.imports.testSpec(src, view.name),
-        cases:
-          unionMembers(view) !== undefined
-            ? this.unionCases(view)
-            : this.shapedCases(view),
+        cases: this.shapedCases(view),
+      }),
+      bag({
+        module: this.imports.validatorTestRel("view", view.name),
+        imports: this.imports.viewValidatorRel(view.name),
+        uses: schemaName,
       }),
     );
   }
 }
 
+/** Returns attributed entries. Cross-lane validator imports need host `finalizeEntries`. */
 export const generate = async (
   ctx: GenerateContext,
   basePath = ".",

@@ -97,6 +97,23 @@ describe("generate datasource type validators tests", () => {
     );
   });
 
+  it("declares Rel bag keys for the schema under test", async () => {
+    const entries = await generateWith({});
+    const user = entries.find(
+      (entry) =>
+        entry.kind === "content" &&
+        entry.attributes?.module ===
+          "types/generated/datasource/validators/user.test.ts",
+    );
+    assert.ok(user);
+    assert.equal(user.kind, "content");
+    assert.equal(
+      user.attributes?.imports,
+      "types/generated/datasource/validators/user.ts",
+    );
+    assert.equal(user.attributes?.uses, "UserSchema");
+  });
+
   it("imports the generated schema and covers parse, nullable, and reject cases", async () => {
     const user = await userBody();
     assert.match(user, /import \{ UserSchema \} from "\.\.\/user";/);

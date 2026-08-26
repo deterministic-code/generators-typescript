@@ -20,7 +20,7 @@ import {
   preludeSource,
   withFakerPackagePatch,
 } from "./common/fake-test-data.ts";
-import { Emit } from "./emit.ts";
+import { bag, Emit } from "./emit.ts";
 
 type FieldTok = {
   name: string;
@@ -161,20 +161,27 @@ class Generator extends Emit {
       fieldTok(f, (name) => this.casing.fieldIdent(name)),
     );
     const src = this.imports.datasourceValidator(table.name);
+    const schemaName = this.casing.schemaName(table.name);
     return content(
       this.imports.test(src, table.name),
       fill(typeTestTmpl, {
         prelude: preludeSource(fakeTestData),
         schemaVersion: this.settings.schemaVersion,
-        schemaName: this.casing.schemaName(table.name),
+        schemaName,
         tableName: table.name,
         schemaImport: this.imports.testSpec(src, table.name),
         cases: casesFor(fields),
+      }),
+      bag({
+        module: this.imports.validatorTestRel("datasource", table.name),
+        imports: this.imports.datasourceValidatorRel(table.name),
+        uses: schemaName,
       }),
     );
   }
 }
 
+/** Returns attributed entries. Cross-lane validator imports need host `finalizeEntries`. */
 export const generate = async (
   ctx: GenerateContext,
 ): Promise<GenerateEntry[]> => {

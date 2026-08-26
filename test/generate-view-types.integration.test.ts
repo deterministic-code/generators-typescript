@@ -207,6 +207,23 @@ describe("generate view types", () => {
     assert.match(payment, /export interface Payment \{\}/);
   });
 
+  it("declares Rel bag keys and the inherited datasource edge", async () => {
+    const entries = await generateWith({});
+    const summary = entries.find(
+      (entry) =>
+        entry.kind === "content" &&
+        entry.attributes?.module === "types/generated/views/userSummary.ts",
+    );
+    assert.ok(summary);
+    assert.equal(summary.kind, "content");
+    assert.equal(summary.attributes?.exports, "UserSummary");
+    assert.match(
+      summary.attributes?.imports ?? "",
+      /types\/generated\/datasource\/user\.ts/,
+    );
+    assert.match(summary.attributes?.uses ?? "", /User/);
+  });
+
   it("extends the inherited datasource type and omits enrichment FKs plus explicit omit", async () => {
     const summary = await bodyOf("userSummary.ts");
     assert.match(

@@ -33,7 +33,7 @@ import {
   mockFactoryTmpl,
   readonlyTmpl,
 } from "./resources/routes-tests.ts";
-import { Emit } from "./emit.ts";
+import { bag, Emit } from "./emit.ts";
 
 const byFieldTokens = (
   mountPath: string,
@@ -136,8 +136,13 @@ class Generator extends Emit {
       fkSuffix: "",
       byFieldsBlock: byFieldsBlock(mountPath, candidate.byFields, ifMatch),
     };
+    const attrs = bag({
+      module: this.imports.routeTestRel(candidate.name),
+      imports: this.imports.routeRel(candidate.name),
+      uses: this.casing.routerFnName(candidate.name),
+    });
     if (table !== undefined && isReadonlyLookup(table)) {
-      return content(path, fill(readonlyTmpl, shared));
+      return content(path, fill(readonlyTmpl, shared), attrs);
     }
     return content(
       path,
@@ -149,10 +154,12 @@ class Generator extends Emit {
         ifMatch,
         occCallArg: occ ? `, { expectedUpdated: occToken }` : "",
       }),
+      attrs,
     );
   }
 }
 
+/** Returns attributed entries. Cross-lane route imports need host `finalizeEntries`. */
 export const generate = async (
   ctx: GenerateContext,
 ): Promise<GenerateEntry[]> => {

@@ -22,6 +22,18 @@ describe("TypeScriptImportGenerator layered (organize_by_feature unset)", () => 
       imports.datasourceValidatorRel("user"),
       "types/generated/datasource/validators/user.ts",
     );
+    assert.equal(
+      imports.datasourceTestRel("user"),
+      "types/generated/datasource/user.test.ts",
+    );
+    assert.equal(
+      imports.datasourceValidatorTestRel("user"),
+      "types/generated/datasource/validators/user.test.ts",
+    );
+    assert.equal(
+      imports.validatorTestRel("datasource", "user"),
+      "types/generated/datasource/validators/user.test.ts",
+    );
     assert.equal(imports.view("card_payment"), "cardPayment.ts");
     assert.equal(
       imports.viewRel("card_payment"),
@@ -32,6 +44,18 @@ describe("TypeScriptImportGenerator layered (organize_by_feature unset)", () => 
     assert.equal(
       imports.viewValidatorRel("card_payment"),
       "types/generated/views/validators/cardPayment.ts",
+    );
+    assert.equal(
+      imports.viewTestRel("card_payment"),
+      "types/generated/views/cardPayment.test.ts",
+    );
+    assert.equal(
+      imports.viewValidatorTestRel("card_payment"),
+      "types/generated/views/validators/cardPayment.test.ts",
+    );
+    assert.equal(
+      imports.validatorTestRel("view", "card_payment"),
+      "types/generated/views/validators/cardPayment.test.ts",
     );
     assert.equal(imports.service("user"), "userService.ts");
     assert.equal(imports.serviceRel("user"), "services/generated/userService.ts");
@@ -52,6 +76,10 @@ describe("TypeScriptImportGenerator layered (organize_by_feature unset)", () => 
     assert.equal(imports.route("user"), "user.ts");
     assert.equal(imports.routeRel("user"), "routes/generated/user.ts");
     assert.equal(imports.routeTest("user"), "user.integration.test.ts");
+    assert.equal(
+      imports.routeTestRel("user"),
+      "routes/generated/__tests__/user.integration.test.ts",
+    );
     assert.equal(imports.routeModule("user"), "user");
     assert.equal(imports.index("user.ts"), "index.ts");
     assert.equal(imports.index("types/user.ts"), "types/index.ts");
@@ -184,6 +212,14 @@ describe("TypeScriptImportGenerator by-feature", () => {
       imports.datasourceValidatorRel("user"),
       "features/user/user.datasource.validator.ts",
     );
+    assert.equal(
+      imports.datasourceTestRel("user"),
+      "features/user/__tests__/user.datasource.test.ts",
+    );
+    assert.equal(
+      imports.datasourceValidatorTestRel("user"),
+      "features/user/__tests__/user.datasource.validator.test.ts",
+    );
     assert.equal(imports.view("card_payment"), "features/cardPayment/cardPayment.ts");
     assert.equal(
       imports.view("create_card_payment"),
@@ -199,6 +235,14 @@ describe("TypeScriptImportGenerator by-feature", () => {
     );
     assert.equal(imports.viewValidatorRel("user"), "features/user/user.validator.ts");
     assert.equal(imports.viewRel("user"), "features/user/user.ts");
+    assert.equal(
+      imports.viewTestRel("user"),
+      "features/user/__tests__/user.test.ts",
+    );
+    assert.equal(
+      imports.viewValidatorTestRel("user"),
+      "features/user/__tests__/user.validator.test.ts",
+    );
     assert.equal(imports.service("user"), "features/user/userService.ts");
     assert.equal(imports.serviceRel("user"), "features/user/userService.ts");
     assert.equal(
@@ -225,6 +269,10 @@ describe("TypeScriptImportGenerator by-feature", () => {
     assert.equal(imports.routeRel("user"), "features/user/user.route.ts");
     assert.equal(
       imports.routeTest("user"),
+      "features/user/__tests__/user.integration.test.ts",
+    );
+    assert.equal(
+      imports.routeTestRel("user"),
       "features/user/__tests__/user.integration.test.ts",
     );
     assert.equal(imports.index("features/user/user.ts"), "");

@@ -8,7 +8,6 @@ import {
   TYPES_YAML,
   typeHasTag,
   typesWithTag,
-  unionMembers,
   viewTypesOf,
 } from "@deterministic-code/generators-common/spec-types";
 import {
@@ -24,7 +23,7 @@ import {
   type OwnedDictionary,
 } from "./common/owned-dictionaries.ts";
 import { fieldRefKind, isAlias } from "./common/view-shape.ts";
-import { Emit } from "./emit.ts";
+import { bag, Emit } from "./emit.ts";
 import {
   indexTmpl as defaultIndexTmpl,
   typeTmpl as defaultTypeTmpl,
@@ -49,7 +48,7 @@ export type ShapedEmitMode = {
 
 export type ViewEmitMode = Omit<ShapedEmitMode, "kind">;
 
-const BUILTIN_PARENTS = new Set(["set", "dictionary"]);
+const BUILTIN_PARENTS = new Set(["set", "dictionary", "file"]);
 
 const groupImports = (
   entries: Array<{ original: string; alias?: string; fromPath: string }>,
@@ -121,6 +120,13 @@ class Generator extends Emit {
       : this.imports.viewRel(name);
   }
 
+  private relKey(to: { entity: string; kind: "view" | "datasource" }): string {
+    if (to.kind === "view") return this.imports.viewRel(to.entity);
+    return this.kind === "datasource"
+      ? this.imports.datasourceRel(to.entity)
+      : this.datasourceImports.datasourceRel(to.entity);
+  }
+
   private typeImport(
     from: string,
     to: { entity: string; kind: "view" | "datasource" },
@@ -172,10 +178,6 @@ class Generator extends Emit {
     type: Type,
     expanded: Type | undefined,
   ): Array<{ entity: string; kind: "view" | "datasource" }> {
-    const members = unionMembers(type);
-    if (members !== undefined) {
-      return members.map((entity) => ({ entity, kind: this.kind }));
-    }
     if (this.kind === "datasource") {
       return this.extendsType(type, new Map()) !== undefined &&
         type.inherits !== undefined &&
@@ -190,7 +192,7 @@ class Generator extends Emit {
     if (
       this.referenceBackendType &&
       parentName !== undefined &&
-      !BUILTIN_PARENTS.has(parentName) &&
+      (isAlias(type) || !BUILTIN_PARENTS.has(parentName)) &&
       (isAlias(type) ||
         (parentType !== undefined && typeHasTag(parentType, "datasource_type")))
     ) {
@@ -230,7 +232,11 @@ class Generator extends Emit {
     if (this.kind === "view" && !this.referenceBackendType) return undefined;
     const parentName =
       this.kind === "view" && isAlias(type) ? type.name : type.inherits;
-    if (parentName === undefined || BUILTIN_PARENTS.has(parentName)) {
+    if (
+      parentName === undefined ||
+      (!(this.kind === "view" && isAlias(type)) &&
+        BUILTIN_PARENTS.has(parentName))
+    ) {
       return undefined;
     }
     if (this.kind === "view") {
@@ -251,7 +257,6 @@ class Generator extends Emit {
   }
 
   private emitFields(type: Type, expanded: Type | undefined): TypeField[] {
-    if (unionMembers(type) !== undefined) return [];
     if (this.kind === "view" && this.referenceBackendType && isAlias(type)) {
       return [];
     }
@@ -278,11 +283,9 @@ class Generator extends Emit {
     const { schemaVersion, simpleDoc, descriptionDoc } = this.settings;
     const className = this.casing.convertTypes(type.name);
     const { imports, aliasByClass } = this.collectImports(type, expanded);
-    const members = unionMembers(type);
-    const isUnion = members !== undefined;
-    const parent = isUnion ? undefined : this.extendsType(type, aliasByClass);
+    const parent = this.extendsType(type, aliasByClass);
     const fields = this.emitFields(type, expanded);
-    const dictionaryFields = isUnion ? [] : this.ownedDictionaryFields(type);
+    const dictionaryFields = this.ownedDictionaryFields(type);
     const fieldTokens = [
       ...fields.map((f) => ({
         ident: this.casing.fieldIdent(f.name),
@@ -291,6 +294,7 @@ class Generator extends Emit {
       })),
       ...dictionaryFields,
     ];
+    const refs = this.refs(type, expanded);
     return content(
       this.file(type.name),
       fill(this.templates.typeTmpl, {
@@ -301,27 +305,24 @@ class Generator extends Emit {
         descriptionDoc,
         docNoun: this.kind === "datasource" ? "Type" : "View",
         className,
-        datasourceType: isUnion ? "standard" : tableKind(type),
-        target: isUnion
-          ? this.kind === "datasource"
-            ? "UnionType"
-            : "UnionView"
-          : this.kind === "datasource"
-            ? "ShapedType"
-            : "ShapedView",
-        fieldCount: String(isUnion ? members.length : fieldTokens.length),
-        isUnion,
-        isShaped: !isUnion,
+        datasourceType: tableKind(type),
+        target: this.kind === "datasource" ? "ShapedType" : "ShapedView",
+        fieldCount: String(fieldTokens.length),
+        isUnion: false,
+        isShaped: true,
         hasExtends: parent !== undefined,
         extendsType: parent ?? "",
         hasFields: fieldTokens.length > 0,
         hasDictionary: dictionaryFields.length > 0,
         fields: fieldTokens,
-        unionMembers: isUnion
-          ? members.map((m) => this.casing.convertTypes(m)).join(" | ")
-          : "",
+        unionMembers: "",
       }),
-      { module: this.rel(type.name), exports: className },
+      bag({
+        module: this.rel(type.name),
+        exports: className,
+        imports: refs.map((r) => this.relKey(r)),
+        uses: refs.map((r) => this.casing.convertTypes(r.entity)),
+      }),
     );
   }
 
@@ -336,12 +337,12 @@ class Generator extends Emit {
           fileBase: this.casing.fileBase(t.name),
         })),
       }),
-      {
+      bag({
         module: this.rel(types[0]?.name ?? "index").replace(/[^/]+$/, "index.ts"),
         exports,
-        imports: modules.join(", "),
+        imports: modules,
         uses: exports,
-      },
+      }),
     );
   }
 }

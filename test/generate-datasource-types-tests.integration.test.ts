@@ -109,6 +109,23 @@ describe("generate datasource types tests", () => {
     });
   });
 
+  it("declares Rel bag keys for the type under test", async () => {
+    const entries = await generateWith({});
+    const user = entries.find(
+      (entry) =>
+        entry.kind === "content" &&
+        entry.attributes?.module ===
+          "types/generated/datasource/user.test.ts",
+    );
+    assert.ok(user);
+    assert.equal(user.kind, "content");
+    assert.equal(
+      user.attributes?.imports,
+      "types/generated/datasource/user.ts",
+    );
+    assert.equal(user.attributes?.uses, "User");
+  });
+
   it("imports the generated type from the sibling module", async () => {
     const user = await userBody();
     assert.match(user, /import type \{ User \} from "\.\.\/user";/);
