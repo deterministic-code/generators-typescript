@@ -114,15 +114,31 @@ const contentEntries = (entries: Awaited<ReturnType<typeof generateLanes>>) =>
   entries.filter((entry) => entry.kind === "content");
 
 describe("reference verifier aggregate", () => {
-  it("throws when contact_source inherits an untagged base", async () => {
-    await assert.rejects(
-      () =>
-        generateDatasourceTypes({
-          reader: memoryReader({ "types.yaml": CONTACTS_TYPES }),
-          settings: {},
-        }),
+  it("flattens contact_source when it inherits an untagged base", async () => {
+    const entries = await generateDatasourceTypes({
+      reader: memoryReader({ "types.yaml": CONTACTS_TYPES }),
+      settings: {},
+    });
+    const modules = contentEntries(entries).map(
+      (entry) => entry.attributes?.module,
+    );
+    assert.equal(
+      modules.includes("types/generated/datasource/base.ts"),
+      false,
+    );
+    const source = entries.find(
+      (entry) =>
+        entry.kind === "content" &&
+        entry.attributes?.module ===
+          "types/generated/datasource/contactSource.ts",
+    );
+    assert.ok(source);
+    assert.equal(source.kind, "content");
+    assert.doesNotMatch(
+      source.attributes?.imports ?? "",
       /types\/generated\/datasource\/base\.ts/,
     );
+    assert.doesNotThrow(() => verifyEntries(entries));
   });
 
   it("fails view types when a view inherits a parent this lane does not emit", async () => {
