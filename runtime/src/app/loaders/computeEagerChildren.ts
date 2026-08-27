@@ -102,7 +102,12 @@ export function computeEagerChildren(
     const refMatch = parseReference(fieldDef.references);
 
     if (!refMatch) {
-      const auto = autoDetectM2MJunction(parentTable, typeMatch.elementType, datasourceDoc);
+      const auto = autoDetectM2MJunction(
+        parentTable,
+        typeMatch.elementType,
+        viewTypesDoc,
+        datasourceDoc,
+      );
       if (!auto) continue;
       result.push(
         withArrayFlag(
@@ -139,6 +144,7 @@ export function computeEagerChildren(
     const joinChildColumn = findJoinChildColumn(
       refMatch.table,
       typeMatch.elementType,
+      viewTypesDoc,
       datasourceDoc,
     );
     if (!joinChildColumn) continue;
@@ -183,12 +189,33 @@ function typeHasField(
   return parent !== null && typeHasField(parent, fieldName, datasourceDoc, walking);
 }
 
+function inheritNames(
+  typeName: string,
+  viewTypesDoc: ViewTypesDoc | null | undefined,
+  datasourceDoc: DatasourceDoc | null | undefined,
+): Set<string> {
+  const names = new Set<string>();
+  const walk = (name: string): void => {
+    if (names.has(name)) return;
+    names.add(name);
+    const body =
+      findViewType(name, viewTypesDoc) ?? findDatasourceType(name, datasourceDoc);
+    const parent = parseInheritsTable(body?.inherits);
+    if (parent !== null) walk(parent);
+  };
+  walk(typeName);
+  return names;
+}
+
 function autoDetectM2MJunction(
   parentTable: string,
   childTable: string,
+  viewTypesDoc: ViewTypesDoc | null | undefined,
   datasourceDoc: DatasourceDoc | null | undefined,
 ): { joinTable: string; parentFkColumn: string; childFkColumn: string } | null {
   if (!datasourceDoc?.types) return null;
+  const parentNames = inheritNames(parentTable, viewTypesDoc, datasourceDoc);
+  const childNames = inheritNames(childTable, viewTypesDoc, datasourceDoc);
   const candidates: Array<{ joinTable: string; parentFkColumn: string; childFkColumn: string }> =
     [];
   for (const entry of datasourceDoc.types) {
@@ -200,8 +227,8 @@ function autoDetectM2MJunction(
       const [columnName, fieldDef] = Object.entries(fieldObj)[0];
       const refs = parseReferences(fieldDef.references);
       if (!refs) continue;
-      if (refs.table === parentTable && parentFkColumn === null) parentFkColumn = columnName;
-      else if (refs.table === childTable && childFkColumn === null) childFkColumn = columnName;
+      if (parentNames.has(refs.table) && parentFkColumn === null) parentFkColumn = columnName;
+      else if (childNames.has(refs.table) && childFkColumn === null) childFkColumn = columnName;
     }
     if (parentFkColumn && childFkColumn) {
       candidates.push({ joinTable, parentFkColumn, childFkColumn });
@@ -236,16 +263,18 @@ function findDatasourceType(
 function findJoinChildColumn(
   joinTable: string,
   childTable: string,
+  viewTypesDoc: ViewTypesDoc | null | undefined,
   datasourceDoc: DatasourceDoc | null | undefined,
 ): string | null {
   const junction = findDatasourceType(joinTable, datasourceDoc);
   if (!junction) return null;
+  const childNames = inheritNames(childTable, viewTypesDoc, datasourceDoc);
 
   for (const fieldObj of junction.fields ?? []) {
     const [columnName, fieldDef] = Object.entries(fieldObj)[0];
     const refsMatch = parseReferences(fieldDef.references);
     if (!refsMatch) continue;
-    if (refsMatch.table === childTable) {
+    if (childNames.has(refsMatch.table)) {
       return columnName;
     }
   }

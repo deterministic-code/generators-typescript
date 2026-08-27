@@ -56,6 +56,64 @@ describe('computeEagerChildren', () => {
     expect(computeEagerChildren('user', doc, '*')).toEqual([]);
   });
 
+  it('matches M2M when the view field names a view type and the junction FKs name the inherited datasource', () => {
+    const typesYaml: DatasourceDoc = {
+      types: [
+        {
+          contacts_base: {
+            tags: ['datasource_type'],
+            fields: [{ first_name: { type: 'string' } }],
+          },
+        },
+        {
+          contact_groups_base: {
+            tags: ['datasource_type'],
+            fields: [{ name: { type: 'string' } }],
+          },
+        },
+        {
+          contact: {
+            tags: ['view_type'],
+            inherits: 'contacts_base',
+            fields: [],
+          },
+        },
+        {
+          contact_group: {
+            tags: ['view_type'],
+            inherits: 'contact_groups_base',
+            fields: [
+              {
+                members: {
+                  type: 'contact[]',
+                  references: 'contact_group_member.contact_group_id',
+                },
+              },
+            ],
+          },
+        },
+        {
+          contact_group_member: {
+            tags: ['datasource_type', 'many_to_many'],
+            fields: [
+              { contact_id: { type: 'integer', references: 'contacts_base.id' } },
+              { contact_group_id: { type: 'integer', references: 'contact_groups_base.id' } },
+            ],
+          },
+        },
+      ],
+    };
+    expect(computeEagerChildren('contact_group', typesYaml, '*', typesYaml)).toEqual([
+      {
+        fieldName: 'members',
+        childTable: 'contact',
+        refColumn: 'contact_group_id',
+        joinTable: 'contact_group_member',
+        joinChildColumn: 'contact_id',
+      },
+    ]);
+  });
+
   it('emits M2M spec with joinTable + joinChildColumn when junction is in datasource doc', () => {
     const doc: ViewTypesDoc = {
       types: [
