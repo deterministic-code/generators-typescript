@@ -248,6 +248,57 @@ describe("generate view type validators tests", () => {
     assert.match(card, /paid_at: faker\.date\.recent\(\)/);
   });
 
+  it("does not require a missing defaulted version field", async () => {
+    const group = await bodyOf(
+      "contactGroup.test.ts",
+      {},
+      `types:
+  - groups_base:
+      tags: [datasource_type]
+      fields:
+        - name:
+            type: string
+        - version:
+            type: binary
+            default_value: Hex('')
+  - members_base:
+      tags: [datasource_type]
+      fields:
+        - label:
+            type: string
+        - version:
+            type: binary
+            default_value: Hex('')
+  - contact_group:
+      tags: [view_type]
+      inherits: groups_base
+      fields:
+        - members:
+            type: member[]
+  - member:
+      tags: [view_type]
+      inherits: members_base
+      fields: []
+`,
+    );
+    assert.doesNotMatch(
+      group,
+      /it\("rejects when missing required field \\"version\\""/,
+    );
+    assert.doesNotMatch(
+      group,
+      /it\("rejects when missing required field \\"members.version\\""/,
+    );
+    assert.match(
+      group,
+      /it\("rejects when missing required field \\"name\\""/,
+    );
+    assert.match(
+      group,
+      /it\("rejects when missing required field \\"members.label\\""/,
+    );
+  });
+
   it("requires union-mapped enrichment on nested view members", async () => {
     const group = await bodyOf(
       "contactGroup.test.ts",
