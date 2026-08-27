@@ -310,7 +310,7 @@ export abstract class AbstractStandardRepository<
     }
     return this.findIn(
       this.primaryKey.column,
-      matched.map((r) => this.primaryKey.valueOf(r as Record<string, unknown>)),
+      matched.map((r) => this.primaryKey.fromRow(r as Record<string, unknown>)),
     );
   }
 }

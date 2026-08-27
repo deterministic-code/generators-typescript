@@ -6,7 +6,33 @@ export interface SettingsConfig {
   pluralizeTableNames: boolean;
   /** When true, PUT/PATCH/DELETE require `If-Match` (428 without it, 412 on a stale token). Lookup and M2M skip this even when the flag is on. Omitted/false keeps current non-OCC behavior. */
   useOptimisticConcurrency?: boolean;
+  /** Flattened `datasource.casing.*` leaves for {@link createDatasourceNaming}. */
+  datasourceCasing?: Record<string, string>;
 }
+
+const CASING_LEAVES = ['file_names', 'types', 'fields', 'directories'] as const;
+
+export const namingSettingsOf = (cfg: SettingsConfig): Record<string, string> => ({
+  'datasource.pluralize_datatable_names': cfg.pluralizeTableNames ? 'true' : 'false',
+  ...cfg.datasourceCasing,
+});
+
+const casingFromDatasource = (
+  ds: Record<string, unknown>,
+): Record<string, string> | undefined => {
+  const raw = ds.casing;
+  if (raw === undefined || raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
+    return undefined;
+  }
+  const out: Record<string, string> = {};
+  for (const leaf of CASING_LEAVES) {
+    const value = (raw as Record<string, unknown>)[leaf];
+    if (typeof value === 'string' && value.length > 0) {
+      out[`datasource.casing.${leaf}`] = value;
+    }
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+};
 
 function readOptionalBoolean(
   datasource: Record<string, unknown>,
@@ -55,16 +81,18 @@ export function parseSettingsConfig(raw: unknown): SettingsConfig {
     'use_optimistic_concurrency',
     false,
   );
+  const datasourceCasing = casingFromDatasource(ds);
+  const withCasing = datasourceCasing === undefined ? {} : { datasourceCasing };
   const flag = ds.pluralize_datatable_names;
   if (flag === undefined) {
-    return { pluralizeTableNames: true, useOptimisticConcurrency };
+    return { pluralizeTableNames: true, useOptimisticConcurrency, ...withCasing };
   }
   if (typeof flag !== 'boolean') {
     throw new Error(
       `settings.yaml: 'settings.datasource.pluralize_datatable_names' must be a boolean, got ${typeof flag} (${JSON.stringify(flag)})`,
     );
   }
-  return { pluralizeTableNames: flag, useOptimisticConcurrency };
+  return { pluralizeTableNames: flag, useOptimisticConcurrency, ...withCasing };
 }
 
 export async function loadSettingsConfig(yamlPath: string): Promise<SettingsConfig> {

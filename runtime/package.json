@@ -81,6 +81,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
+    "@deterministic-code/generators-common": "github:deterministic-code/generators-common#main",
     "better-sqlite3": "^13.0.3",
     "cors": "^2.8.5",
     "express": "^4.21.0",

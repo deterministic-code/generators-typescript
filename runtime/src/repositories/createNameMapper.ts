@@ -1,5 +1,7 @@
+import type { IDatasourceNaming } from '@deterministic-code/generators-common/datasource-naming';
 import type { ITypeFieldConverter } from '../converters/ITypeFieldConverter';
-import { getMappedTableName, inheritOf } from './getMappedTableName';
+import type { DatasourceData } from '../routes/iterateCombinedRoutes';
+import { getMappedTableName } from './getMappedTableName';
 import {
   parseAllMappings,
   getEntityFieldMap,
@@ -14,25 +16,29 @@ export interface NameMapper {
 }
 
 export function createNameMapper(
-  spec: unknown,
-  pluralizeTableNames = false,
-  typesDoc?: unknown,
+  spec: DatasourceData,
+  naming: IDatasourceNaming,
+  typesDoc?: DatasourceData,
 ): NameMapper {
   const { renames, converters } = parseAllMappings(spec);
   return {
-    tableFor: (entityName) =>
-      getMappedTableName(spec, entityName, pluralizeTableNames, typesDoc),
-    fieldsFor: (entityName) =>
-      inheritFieldMap(renames, entityName, typesDoc ?? spec),
-    convertersFor: (entityName) =>
-      inheritFieldMap(converters, entityName, typesDoc ?? spec),
+    tableFor: (entityName) => getMappedTableName(spec, entityName, naming, typesDoc),
+    fieldsFor: (entityName) => inheritFieldMap(renames, entityName, typesDoc ?? spec),
+    convertersFor: (entityName) => inheritFieldMap(converters, entityName, typesDoc ?? spec),
   };
 }
+
+const inheritOf = (doc: DatasourceData, name: string): string | undefined => {
+  for (const entry of doc.types ?? []) {
+    const inherits = entry[name]?.inherits;
+    if (inherits !== undefined) return inherits;
+  }
+};
 
 function inheritFieldMap(
   mappings: FieldMappings,
   entityName: string,
-  typesDoc: unknown,
+  typesDoc: DatasourceData,
 ): EntityFieldMap {
   const merged = new Map<string, string>();
   const seen = new Set<string>();

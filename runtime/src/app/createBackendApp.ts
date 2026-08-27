@@ -56,7 +56,8 @@ import type { ZodSchema } from 'zod';
 import { applyEnableMiddleware } from './enableMiddleware';
 import { connectDatabase } from './connectDatabase';
 import { loadBackendAppConfig } from './loaders/loadBackendAppConfig';
-import { loadSettingsConfig, type SettingsConfig } from './loaders/loadSettingsConfig';
+import { createDatasourceNaming } from '@deterministic-code/generators-common/datasource-naming';
+import { loadSettingsConfig, namingSettingsOf, type SettingsConfig } from './loaders/loadSettingsConfig';
 import type { BackendAppConfig, MiddlewareEntry } from './loaders/parseBackendAppConfig';
 import {
   parseGenericRouteSpecs,
@@ -649,10 +650,11 @@ class BackendAppBuilder {
   }
 
   private buildRepos(): void {
+    const naming = createDatasourceNaming(namingSettingsOf(this.settingsConfig));
     const nameMapper = createNameMapper(
-      this.datasourceOverlaysDoc ?? this.datasourceData,
-      this.settingsConfig.pluralizeTableNames,
-      this.datasourceDoc ?? this.datasourceData,
+      (this.datasourceOverlaysDoc ?? this.datasourceData) as DatasourceData,
+      naming,
+      (this.datasourceDoc ?? this.datasourceData) as DatasourceData,
     );
     const converters = this.convertersForConnection();
     const primaryKeys = new PrimaryKeyService(this.crudSpecs);
@@ -667,6 +669,7 @@ class BackendAppBuilder {
           Boolean(spec.columnTypes && 'uuid' in spec.columnTypes),
         columnTypes: spec.columnTypes ?? {},
         fieldMappings: nameMapper.fieldsFor(spec.entityName),
+        naming,
         ...(converters && { converters }),
         fieldConverters: resolveFieldConverters(
           nameMapper.convertersFor(spec.entityName),

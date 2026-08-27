@@ -1,8 +1,11 @@
+import {
+  createDatasourceNaming,
+  type IDatasourceNaming,
+} from "@deterministic-code/generators-common/datasource-naming";
 import { fill } from "@deterministic-code/generators-common/fill";
 import type { GenerateContext } from "@deterministic-code/generators-common/generate-context";
 import { content, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import { datasourceTypeAncestry } from "@deterministic-code/generators-common/datasource-type-tree";
-import pluralize from "pluralize";
 import { toNative } from "./base-type-converter.ts";
 import {
   datasourceTypesOf,
@@ -34,20 +37,6 @@ import {
 import { bag, Emit } from "./emit.ts";
 
 const SYSTEM_COLUMNS = new Set(["id", "uuid", "created", "updated"]);
-const SNAKE_STEM = /^[a-z_][a-z0-9_]*$/;
-
-/** Same physical-name rule as SQL `SqlMapping.tableName` — tests must hit the migrated table. */
-const physicalTableName = (
-  name: string,
-  mapping: string | undefined,
-  pluralizeFlag: boolean,
-): string => {
-  if (mapping !== undefined && !SNAKE_STEM.test(mapping)) return mapping;
-  const stem = mapping ?? name;
-  return pluralizeFlag
-    ? stem.replace(/[^_]+$/, (token) => pluralize(token))
-    : stem;
-};
 
 const hasStampColumns = (table: Type): boolean => {
   const names = new Set(table.fields.map((f) => f.name));
@@ -76,7 +65,7 @@ const serviceVarName = (className: string): string => {
 };
 
 class Generator extends Emit {
-  private readonly pluralizeTableNames: boolean;
+  private readonly naming: IDatasourceNaming;
   private readonly datasources: Type[];
   private readonly byName: Map<string, Type>;
   private readonly overlays: Map<string, DatasourceTable>;
@@ -87,8 +76,7 @@ class Generator extends Emit {
   constructor(raw: Record<string, string>, spec: IDeterministic) {
     super(raw);
     this.spec = spec;
-    this.pluralizeTableNames =
-      String(raw["datasource.pluralize_datatable_names"]) !== "false";
+    this.naming = createDatasourceNaming(raw);
     this.datasources = datasourceTypesOf(spec);
     this.byName = new Map(this.datasources.map((t) => [t.name, t]));
     this.overlays = tableByName(spec);
@@ -116,11 +104,7 @@ class Generator extends Emit {
 
   private tableNameJson(name: string): string {
     return JSON.stringify(
-      physicalTableName(
-        name,
-        this.overlays.get(name)?.mapping,
-        this.pluralizeTableNames,
-      ),
+      this.naming.resolveTable(name, this.overlays.get(name)?.mapping),
     );
   }
 

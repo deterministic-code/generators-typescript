@@ -2,6 +2,7 @@ import type { IDataSourceMiddleware } from '../middleware/IDataSourceMiddleware'
 import type { ITypeFieldConverter, SupportedDatasource } from '../converters/ITypeFieldConverter';
 import { FieldMappingTranslator } from './FieldMappingTranslator';
 import { FieldConverter } from './fieldConverting';
+import type { IDatasourceNaming } from '@deterministic-code/generators-common/datasource-naming';
 import type { EntityFieldMap } from './parseFieldMappings';
 import type { IDatasource } from './IDatasource';
 import { placeholderList } from './sqlPlaceholders';
@@ -18,6 +19,7 @@ export interface SqlCrudRepositoryOptions {
   converters?: ReadonlyMap<string, ITypeFieldConverter>;
   fieldConverters?: ReadonlyMap<string, ITypeFieldConverter>;
   fieldMappings?: EntityFieldMap;
+  naming: IDatasourceNaming;
   /** The entity this repository serves — resolves its {@link PrimaryKey} through {@link primaryKeys}. */
   entityName: string;
   /** The one authority that resolves each entity's primary key (column + id_type), injected from the composition root. */
@@ -70,7 +72,7 @@ export abstract class AbstractSqlCrudRepository<
     this.tableName = quote(tableName);
     this.buildOptions = options;
     this.middlewares = options.middlewares ?? [];
-    this.translator = new FieldMappingTranslator(options.fieldMappings);
+    this.translator = new FieldMappingTranslator(options.fieldMappings, options.naming);
     this.fieldConverter = new FieldConverter(dialect, this.translator, options);
     this.entityName = options.entityName;
     this.primaryKey = options.primaryKeys.forEntity(options.entityName);

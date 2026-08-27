@@ -1,70 +1,53 @@
-import { effectiveTableName } from './effectiveTableName';
+import type { IDatasourceNaming } from '@deterministic-code/generators-common/datasource-naming';
+import type { DatasourceData, DatasourceTypeDef } from '../routes/iterateCombinedRoutes';
 
 const BUILTIN_INHERITS = new Set(['set', 'dictionary', 'file']);
 
-export function getMappedTableName(
-  spec: unknown,
-  entityName: string,
-  pluralizeTableNames = false,
-  typesDoc?: unknown,
-): string {
-  const seen = new Set<string>();
-  let current: string | undefined = entityName;
-  while (current !== undefined && !seen.has(current) && !BUILTIN_INHERITS.has(current)) {
-    seen.add(current);
-    const explicit = readExplicitMapping(spec, current);
-    if (explicit !== null) return explicit;
-    current = inheritOf(typesDoc, current) ?? inheritOf(spec, current);
-  }
-  return effectiveTableName(entityName, pluralizeTableNames);
-}
-
-function readExplicitMapping(spec: unknown, entityName: string): string | null {
-  if (!spec || typeof spec !== 'object') return null;
-  const fromLegacy = readLegacyDatasourceMapping(spec, entityName);
-  if (fromLegacy !== null) return fromLegacy;
-  return readTypesMapping(spec, entityName);
-}
-
-/** Old `datasource_mappings: [{ entity: { source: "…" } }]` shape. */
-function readLegacyDatasourceMapping(spec: unknown, entityName: string): string | null {
-  const mappings = (spec as Record<string, unknown>).datasource_mappings;
-  if (!Array.isArray(mappings) || mappings.length === 0) return null;
-  for (const mapping of mappings) {
-    if (!mapping || typeof mapping !== 'object') continue;
-    const entry = (mapping as Record<string, unknown>)[entityName];
-    if (entry && typeof entry === 'object' && 'source' in entry) {
-      const source = (entry as Record<string, unknown>).source;
-      if (typeof source === 'string') return source;
+const indexTypeDoc = (doc: DatasourceData): Map<string, DatasourceTypeDef> => {
+  const out = new Map<string, DatasourceTypeDef>();
+  for (const entry of doc.types ?? []) {
+    for (const [name, body] of Object.entries(entry)) {
+      out.set(name, body);
     }
   }
-  return null;
-}
-
-/** New `types: [{ entity: { mapping: "…" } }]` shape (datasource.yaml overlays). */
-function readTypesMapping(spec: unknown, entityName: string): string | null {
-  const types = (spec as Record<string, unknown>).types;
-  if (!Array.isArray(types)) return null;
-  for (const entry of types) {
-    if (!entry || typeof entry !== 'object') continue;
-    const body = (entry as Record<string, unknown>)[entityName];
-    if (!body || typeof body !== 'object') continue;
-    const mapping = (body as Record<string, unknown>).mapping;
-    if (typeof mapping === 'string' && mapping.length > 0) return mapping;
+  for (const row of doc.datasource_mappings ?? []) {
+    for (const [name, body] of Object.entries(row)) {
+      if (body.source === undefined) continue;
+      const prev = out.get(name) ?? {};
+      out.set(name, { ...prev, mapping: prev.mapping ?? body.source });
+    }
   }
-  return null;
-}
+  return out;
+};
 
-export function inheritOf(doc: unknown, entityName: string): string | undefined {
-  if (!doc || typeof doc !== 'object') return undefined;
-  const types = (doc as Record<string, unknown>).types;
-  if (!Array.isArray(types)) return undefined;
-  for (const entry of types) {
-    if (!entry || typeof entry !== 'object') continue;
-    const body = (entry as Record<string, unknown>)[entityName];
-    if (!body || typeof body !== 'object') continue;
-    const inherits = (body as Record<string, unknown>).inherits;
-    return typeof inherits === 'string' && inherits.length > 0 ? inherits : undefined;
+const typeIndex = (
+  overlays: DatasourceData,
+  types: DatasourceData = {},
+): Map<string, DatasourceTypeDef> => {
+  const out = indexTypeDoc(types);
+  for (const [name, row] of indexTypeDoc(overlays)) {
+    const prev = out.get(name);
+    out.set(name, {
+      inherits: row.inherits ?? prev?.inherits,
+      mapping: row.mapping ?? prev?.mapping,
+    });
   }
-  return undefined;
-}
+  return out;
+};
+
+export const getMappedTableName = (
+  overlays: DatasourceData,
+  entityName: string,
+  naming: IDatasourceNaming,
+  types?: DatasourceData,
+): string => {
+  const index = typeIndex(overlays, types);
+  const seen = new Set<string>();
+  for (let name: string | undefined = entityName; name && !seen.has(name) && !BUILTIN_INHERITS.has(name); ) {
+    seen.add(name);
+    const mapping = index.get(name)?.mapping;
+    if (mapping !== undefined) return naming.resolveTable(entityName, mapping);
+    name = index.get(name)?.inherits;
+  }
+  return naming.resolveTable(entityName);
+};
