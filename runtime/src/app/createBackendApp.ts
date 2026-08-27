@@ -648,6 +648,7 @@ class BackendAppBuilder {
     const nameMapper = createNameMapper(
       this.datasourceOverlaysDoc ?? this.datasourceData,
       this.settingsConfig.pluralizeTableNames,
+      this.datasourceDoc ?? this.datasourceData,
     );
     const converters = this.convertersForConnection();
     const primaryKeys = new PrimaryKeyService(this.crudSpecs);

@@ -78,4 +78,29 @@ describe('getMappedTableName', () => {
     const result = getMappedTableName(spec, 'notification');
     expect(result).toBe('notification');
   });
+
+  it('follows inherits to a parent overlay mapping (contact → contacts_base → contacts)', () => {
+    const overlays = {
+      types: [{ contacts_base: { mapping: 'contacts' } }, { contact_groups_base: { mapping: 'contact_groups' } }],
+    };
+    const types = {
+      types: [
+        { contacts_base: { tags: ['datasource_type'] } },
+        { contact: { tags: ['view_type'], inherits: 'contacts_base' } },
+        { contact_groups_base: { tags: ['datasource_type'] } },
+        { contact_group: { tags: ['view_type'], inherits: 'contact_groups_base' } },
+      ],
+    };
+    expect(getMappedTableName(overlays, 'contact', false, types)).toBe('contacts');
+    expect(getMappedTableName(overlays, 'contact', true, types)).toBe('contacts');
+    expect(getMappedTableName(overlays, 'contact_group', false, types)).toBe('contact_groups');
+  });
+
+  it('does not invent a mapping when the inherit chain has none', () => {
+    const types = {
+      types: [{ contact: { tags: ['view_type'], inherits: 'contacts_base' } }],
+    };
+    expect(getMappedTableName({}, 'contact', false, types)).toBe('contact');
+    expect(getMappedTableName({}, 'contact', true, types)).toBe('contacts');
+  });
 });

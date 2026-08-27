@@ -54,6 +54,25 @@ describe('createNameMapper', () => {
     expect(mapper.fieldsFor('widget').size).toBe(0);
     expect(mapper.convertersFor('widget').size).toBe(0);
   });
+
+  it('inherits table and field mappings from the parent datasource type', () => {
+    const overlays = {
+      types: [
+        {
+          contacts_base: {
+            mapping: 'contacts',
+            fields: [{ first_name: { mapping: 'FirstNm' } }],
+          },
+        },
+      ],
+    };
+    const types = {
+      types: [{ contact: { inherits: 'contacts_base' } }],
+    };
+    const mapper = createNameMapper(overlays, false, types);
+    expect(mapper.tableFor('contact')).toBe('contacts');
+    expect(mapper.fieldsFor('contact').get('first_name')).toBe('FirstNm');
+  });
 });
 
 describe('resolveFieldConverters', () => {
