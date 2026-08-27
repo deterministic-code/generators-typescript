@@ -172,6 +172,8 @@ export interface CreateAppOptions {
   settingsConfig?: SettingsConfig;
   routeSpecs?: GenericRouteSpec[];
   datasourceData?: DatasourceData;
+  /** Persistence overlays (`datasource.yaml`). Kept when `datasourceData` is the types doc. */
+  overlaysDoc?: unknown;
 
   /**
    * Consumer-supplied converters keyed by the `type_converter` name declared on a
@@ -580,11 +582,13 @@ class BackendAppBuilder {
       : null;
     const datasourceOverlaysPath = this.at('datasource.yaml');
     this.datasourceOverlaysDoc =
-      options.datasourceData !== undefined
-        ? null
-        : (await pathExists(datasourceOverlaysPath))
-          ? await readYaml(datasourceOverlaysPath)
-          : null;
+      options.overlaysDoc !== undefined
+        ? options.overlaysDoc
+        : options.datasourceData !== undefined
+          ? null
+          : (await pathExists(datasourceOverlaysPath))
+            ? await readYaml(datasourceOverlaysPath)
+            : null;
     const viewTypesPath = this.at('view_types.yaml');
     this.viewTypesDoc =
       options.viewTypesDoc !== undefined

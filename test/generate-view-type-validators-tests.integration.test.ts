@@ -248,6 +248,62 @@ describe("generate view type validators tests", () => {
     assert.match(card, /paid_at: faker\.date\.recent\(\)/);
   });
 
+  it("does not require a missing defaulted version field across two inherit hops", async () => {
+    const contact = await bodyOf(
+      "contact.test.ts",
+      {},
+      `types:
+  - base:
+      tags: [datasource_type]
+      fields:
+        - id:
+            type: integer
+            is_id: true
+        - version:
+            type: binary
+            default_value: Hex('')
+  - contacts_base:
+      tags: [datasource_type]
+      inherits: base
+      fields:
+        - first_name:
+            type: string
+  - addresses_base:
+      tags: [datasource_type]
+      inherits: base
+      fields:
+        - line1:
+            type: string
+  - contact:
+      tags: [view_type]
+      inherits: contacts_base
+      fields:
+        - addresses:
+            type: address[]
+  - address:
+      tags: [view_type]
+      inherits: addresses_base
+      fields: []
+`,
+    );
+    assert.doesNotMatch(
+      contact,
+      /it\("rejects when missing required field \\"version\\""/,
+    );
+    assert.doesNotMatch(
+      contact,
+      /it\("rejects when missing required field \\"addresses.version\\""/,
+    );
+    assert.match(
+      contact,
+      /it\("rejects when missing required field \\"first_name\\""/,
+    );
+    assert.match(
+      contact,
+      /it\("rejects when missing required field \\"addresses.line1\\""/,
+    );
+  });
+
   it("does not require a missing defaulted version field", async () => {
     const group = await bodyOf(
       "contactGroup.test.ts",
