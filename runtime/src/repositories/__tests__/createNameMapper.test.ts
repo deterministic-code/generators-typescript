@@ -73,6 +73,24 @@ describe('createNameMapper', () => {
     expect(mapper.tableFor('contact')).toBe('contacts');
     expect(mapper.fieldsFor('contact').get('first_name')).toBe('FirstNm');
   });
+
+  it('walks two inherit hops to the mapped table when pluralize is off', () => {
+    const overlays = {
+      types: [{ contacts_base: { mapping: 'contacts' } }, { contact_groups_base: { mapping: 'contact_groups' } }],
+    };
+    const types = {
+      types: [
+        { base: { tags: ['datasource_type'] } },
+        { contacts_base: { tags: ['datasource_type'], inherits: 'base' } },
+        { contact_groups_base: { tags: ['datasource_type'], inherits: 'base' } },
+        { contact: { tags: ['view_type'], inherits: 'contacts_base' } },
+        { contact_group: { tags: ['view_type'], inherits: 'contact_groups_base' } },
+      ],
+    };
+    const mapper = createNameMapper(overlays, false, types);
+    expect(mapper.tableFor('contact')).toBe('contacts');
+    expect(mapper.tableFor('contact_group')).toBe('contact_groups');
+  });
 });
 
 describe('resolveFieldConverters', () => {

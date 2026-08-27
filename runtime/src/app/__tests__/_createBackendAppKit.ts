@@ -23,6 +23,7 @@ interface BootSettings {
 
 interface BootOptions {
   datasourceData: unknown;
+  overlaysDoc?: unknown;
   routesData: unknown;
   ddl: string | string[];
   settingsConfig: BootSettings;
@@ -40,6 +41,7 @@ interface BootOptions {
  */
 export async function bootCrudApp({
   datasourceData,
+  overlaysDoc,
   routesData,
   ddl,
   settingsConfig,
@@ -55,7 +57,9 @@ export async function bootCrudApp({
     pluralizeTableNames: settingsConfig.pluralizeTableNames ?? true,
     useOptimisticConcurrency: settingsConfig.useOptimisticConcurrency ?? false,
   };
-  const crudSpecs = parseCrudRouteSpecs(datasourceData, routesData);
+  const crudSpecs = parseCrudRouteSpecs(datasourceData, routesData, {
+    overlaysDoc,
+  });
   onCrudSpecs?.(crudSpecs);
   const app = await createBackendApp(conn, {
     backendAppConfig: {
@@ -68,6 +72,7 @@ export async function bootCrudApp({
     routeSpecs: parseGenericRouteSpecs(routesData),
     crudSpecs,
     datasourceData: datasourceData as never,
+    ...(overlaysDoc !== undefined ? { overlaysDoc } : {}),
     routesData: routesData as never,
     viewTypesDoc: { types: [] } as never,
     serviceSpecs: [{ name: 'TerminalHandler', args: [] }],
