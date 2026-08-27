@@ -44,6 +44,20 @@ describe("writeGenerateEntries", () => {
     assert.match(body, /BEGIN HOOK/);
   });
 
+  it("throws when appendIfNotExists is None and the section is missing", async () => {
+    const dir = await scratch();
+    const hook = patch("app.ts", "enableMiddleware: [],\n", "APP_BEFORE_HOOK");
+    Object.assign(hook, { appendIfNotExists: "None" });
+    await assert.rejects(
+      () =>
+        writeGenerateEntries(dir, [
+          content("app.ts", "export const createBackendApp = async () => {};\n"),
+          hook,
+        ]),
+      /section "APP_BEFORE_HOOK" does not exist/,
+    );
+  });
+
   it("composes a seed patch plus a section patch", async () => {
     const dir = await scratch();
     await writeGenerateEntries(dir, [

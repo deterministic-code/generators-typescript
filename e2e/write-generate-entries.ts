@@ -3,14 +3,25 @@ import { dirname, join } from "node:path";
 import { Patch, PatchMerger } from "@deterministic-code/patch-merger";
 import type { GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 
-const asPatch = (entry: Extract<GenerateEntry, { kind: "patch" }>): Patch =>
-  entry.section === undefined
-    ? new Patch({ target: entry.filename, content: entry.content })
-    : new Patch({
-        target: entry.filename,
-        content: entry.content,
-        options: { sections: [entry.section] },
-      });
+type PatchEntry = Extract<GenerateEntry, { kind: "patch" }> & {
+  appendIfNotExists?: "None" | "End" | "Start";
+};
+
+const asPatch = (entry: PatchEntry): Patch => {
+  if (entry.section === undefined) {
+    return new Patch({ target: entry.filename, content: entry.content });
+  }
+  return new Patch({
+    target: entry.filename,
+    content: entry.content,
+    options: {
+      sections: [entry.section],
+      ...(entry.appendIfNotExists === undefined
+        ? {}
+        : { appendIfNotExists: entry.appendIfNotExists }),
+    },
+  });
+};
 
 export const writeGenerateEntries = async (
   rootDir: string,
