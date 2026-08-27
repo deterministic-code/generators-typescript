@@ -1,19 +1,19 @@
+import type { IDatasourceNaming } from '@deterministic-code/generators-common/datasource-naming';
 import type { EntityFieldMap } from './parseFieldMappings';
 
 export class FieldMappingTranslator {
-  private readonly logicalToPhysical: ReadonlyMap<string, string>;
+  private readonly overlays: ReadonlyMap<string, string>;
   private readonly physicalToLogical: ReadonlyMap<string, string>;
+  private readonly naming: IDatasourceNaming;
   readonly hasMappings: boolean;
 
-  constructor(entityMap: EntityFieldMap | undefined) {
-    if (!entityMap || entityMap.size === 0) {
-      this.logicalToPhysical = new Map();
-      this.physicalToLogical = new Map();
-      this.hasMappings = false;
-      return;
-    }
+  constructor(entityMap: EntityFieldMap | undefined, naming: IDatasourceNaming) {
+    this.naming = naming;
+    this.overlays = entityMap ?? new Map();
+    this.hasMappings = this.overlays.size > 0;
     const reverse = new Map<string, string>();
-    for (const [logical, physical] of entityMap) {
+    for (const [logical, overlay] of this.overlays) {
+      const physical = naming.resolveColumn(logical, overlay);
       if (reverse.has(physical)) {
         throw new Error(
           `FieldMappingTranslator: physical column '${physical}' is mapped from multiple logical columns ('${reverse.get(physical)}' and '${logical}')`,
@@ -21,13 +21,11 @@ export class FieldMappingTranslator {
       }
       reverse.set(physical, logical);
     }
-    this.logicalToPhysical = entityMap;
     this.physicalToLogical = reverse;
-    this.hasMappings = true;
   }
 
   toPhysical(logical: string): string {
-    return this.logicalToPhysical.get(logical) ?? logical;
+    return this.naming.resolveColumn(logical, this.overlays.get(logical));
   }
 
   toLogical(physical: string): string {

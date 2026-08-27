@@ -2,6 +2,7 @@ import type { IDataSourceMiddleware } from '../middleware/IDataSourceMiddleware'
 import type { ITypeFieldConverter } from '../converters/ITypeFieldConverter';
 import type { ICrudRepository } from './ICrudRepository';
 import type { IPrimaryKeyService } from './IPrimaryKeyService';
+import type { IDatasourceNaming } from '@deterministic-code/generators-common/datasource-naming';
 import type { EntityFieldMap } from './parseFieldMappings';
 import { InMemoryCrudRepository } from './inmemory/InMemoryCrudRepository';
 import { InMemoryDatasource } from './inmemory/InMemoryDatasource';
@@ -46,6 +47,7 @@ export interface BuildRepoOptions {
   /** The one authority that resolves each entity's primary key (column + id_type), injected from the composition root. */
   primaryKeys: IPrimaryKeyService;
   fieldMappings?: EntityFieldMap;
+  naming: IDatasourceNaming;
   converters?: ReadonlyMap<string, ITypeFieldConverter>;
   fieldConverters?: ReadonlyMap<string, ITypeFieldConverter>;
 }
@@ -63,6 +65,7 @@ export function buildRepoForBackend<T extends { id: number | string } = { id: nu
     entityName: options.entityName,
     primaryKeys: options.primaryKeys,
     fieldMappings: options.fieldMappings,
+    naming: options.naming,
     converters: options.converters,
     fieldConverters: options.fieldConverters,
     ...(options.withUuidColumn !== undefined && {

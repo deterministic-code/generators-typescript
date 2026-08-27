@@ -1,10 +1,11 @@
 import { PrimaryKey } from './PrimaryKey';
 
-export type IdentityScalar = number | string;
-export type IdentityRecord = Record<string, IdentityScalar>;
-export type IdentityValue = IdentityScalar | IdentityRecord;
+type Scalar = number | string;
+type Named = Record<string, Scalar>;
 
-const isRecord = (value: unknown): value is IdentityRecord =>
+export type IdentityValue = Scalar | Named;
+
+const isNamed = (value: unknown): value is Named =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
@@ -47,10 +48,6 @@ export class EntityIdentity {
     return this.keys.map((k) => k.column);
   }
 
-  routeSegment(paramName: string = this.column): string {
-    return this.keys[0]!.routeSegment(paramName);
-  }
-
   routeSegments(): string {
     return this.keys.map((k) => k.routeSegment()).join('');
   }
@@ -59,8 +56,8 @@ export class EntityIdentity {
     return this.keys[0]!.bodyFieldType();
   }
 
-  normalize(id: IdentityValue): IdentityRecord {
-    if (isRecord(id)) {
+  normalize(id: IdentityValue): Named {
+    if (isNamed(id)) {
       const expected = this.columns();
       const extra = Object.keys(id).filter((k) => !expected.includes(k));
       if (extra.length > 0) {
@@ -82,16 +79,12 @@ export class EntityIdentity {
   }
 
   fromRow(row: Record<string, unknown>): IdentityValue {
-    if (!this.isComposite) return this.keys[0]!.valueOf(row) as IdentityScalar;
-    const out: IdentityRecord = {};
+    if (!this.isComposite) return this.keys[0]!.valueOf(row) as Scalar;
+    const out: Named = {};
     for (const key of this.keys) {
-      out[key.column] = key.valueOf(row) as IdentityScalar;
+      out[key.column] = key.valueOf(row) as Scalar;
     }
     return out;
-  }
-
-  valueOf(row: Record<string, unknown>): unknown {
-    return this.fromRow(row);
   }
 
   matches(row: Record<string, unknown>, id: IdentityValue): boolean {
@@ -100,7 +93,7 @@ export class EntityIdentity {
   }
 
   format(id: IdentityValue): string {
-    if (isRecord(id)) {
+    if (isNamed(id)) {
       return this.keys.map((k) => String(id[k.column])).join('/');
     }
     return String(id);

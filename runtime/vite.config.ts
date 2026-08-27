@@ -48,6 +48,7 @@ export default defineConfig({
     rollupOptions: {
       external: [
         /^node:/,
+        /^@deterministic-code\/generators-common/,
         ...runtimeDeps,
         'fs',
         'path',

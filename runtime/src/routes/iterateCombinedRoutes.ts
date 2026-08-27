@@ -7,13 +7,18 @@ interface DatasourceFieldDef {
 export interface DatasourceTypeDef {
   datasource_type?: string;
   inherits?: string;
+  mapping?: string;
   fields?: Array<Record<string, DatasourceFieldDef>>;
   [key: string]: unknown;
 }
 
+export interface DatasourceMappingEntry {
+  source?: string;
+}
+
 export interface DatasourceData {
   types?: Array<Record<string, DatasourceTypeDef>>;
-  datasource_mappings?: readonly unknown[];
+  datasource_mappings?: ReadonlyArray<Record<string, DatasourceMappingEntry>>;
 }
 
 interface CombinedChildRaw {

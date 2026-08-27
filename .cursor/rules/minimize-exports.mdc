@@ -1,0 +1,23 @@
+---
+description: Export the smallest public surface so modules stay loosely coupled.
+alwaysApply: true
+---
+
+# Minimize exports
+
+Export only what another module must call. Keep helpers, indexes, walkers, and intermediate types module-private. Extra exports couple callers to internals and freeze refactors.
+
+```typescript
+// ❌
+export const indexTypeDoc = ...
+export const mergeTypeDocs = ...
+export const inheritOf = ...
+export const getMappedTableName = ...
+
+// ✅
+const indexTypeDoc = ...
+const typeIndex = ...
+export const getMappedTableName = ...
+```
+
+Do not re-export a type that is only the function's parameter. Callers import `DatasourceData` (or the existing public type) instead of an alias invented for the helper. One export per concern; grow a barrel only when a second module needs the name.

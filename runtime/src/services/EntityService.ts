@@ -151,7 +151,7 @@ export class EntityService<T, TId = number | string, TMutate = Partial<T>> imple
   }
 
   private rowKey(row: T): unknown {
-    return this.primaryKey.valueOf(row as Record<string, unknown>);
+    return this.primaryKey.fromRow(row as Record<string, unknown>);
   }
 
   private async findByInternal(whereArgs: NameValue[]): Promise<T[]> {
