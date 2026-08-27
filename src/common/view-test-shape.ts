@@ -143,7 +143,7 @@ const viewFieldNode = (
       testName: escapeTestName(path),
       type: field.base,
       nullable: field.isNullable,
-      hasDefault: false,
+      hasDefault: field.hasDefault === true,
       isArray: field.isArray,
       isObject: false,
       isPrimitive: true,
