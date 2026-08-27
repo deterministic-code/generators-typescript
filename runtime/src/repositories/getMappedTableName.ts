@@ -1,12 +1,21 @@
 import { effectiveTableName } from './effectiveTableName';
 
+const BUILTIN_INHERITS = new Set(['set', 'dictionary', 'file']);
+
 export function getMappedTableName(
   spec: unknown,
   entityName: string,
   pluralizeTableNames = false,
+  typesDoc?: unknown,
 ): string {
-  const explicit = readExplicitMapping(spec, entityName);
-  if (explicit !== null) return explicit;
+  const seen = new Set<string>();
+  let current: string | undefined = entityName;
+  while (current !== undefined && !seen.has(current) && !BUILTIN_INHERITS.has(current)) {
+    seen.add(current);
+    const explicit = readExplicitMapping(spec, current);
+    if (explicit !== null) return explicit;
+    current = inheritOf(typesDoc, current) ?? inheritOf(spec, current);
+  }
   return effectiveTableName(entityName, pluralizeTableNames);
 }
 
@@ -44,4 +53,18 @@ function readTypesMapping(spec: unknown, entityName: string): string | null {
     if (typeof mapping === 'string' && mapping.length > 0) return mapping;
   }
   return null;
+}
+
+export function inheritOf(doc: unknown, entityName: string): string | undefined {
+  if (!doc || typeof doc !== 'object') return undefined;
+  const types = (doc as Record<string, unknown>).types;
+  if (!Array.isArray(types)) return undefined;
+  for (const entry of types) {
+    if (!entry || typeof entry !== 'object') continue;
+    const body = (entry as Record<string, unknown>)[entityName];
+    if (!body || typeof body !== 'object') continue;
+    const inherits = (body as Record<string, unknown>).inherits;
+    return typeof inherits === 'string' && inherits.length > 0 ? inherits : undefined;
+  }
+  return undefined;
 }

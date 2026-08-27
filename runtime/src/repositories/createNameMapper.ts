@@ -1,6 +1,11 @@
 import type { ITypeFieldConverter } from '../converters/ITypeFieldConverter';
-import { getMappedTableName } from './getMappedTableName';
-import { parseAllMappings, getEntityFieldMap, type EntityFieldMap } from './parseFieldMappings';
+import { getMappedTableName, inheritOf } from './getMappedTableName';
+import {
+  parseAllMappings,
+  getEntityFieldMap,
+  type EntityFieldMap,
+  type FieldMappings,
+} from './parseFieldMappings';
 
 export interface NameMapper {
   tableFor(entityName: string): string;
@@ -8,13 +13,42 @@ export interface NameMapper {
   convertersFor(entityName: string): EntityFieldMap;
 }
 
-export function createNameMapper(spec: unknown, pluralizeTableNames = false): NameMapper {
+export function createNameMapper(
+  spec: unknown,
+  pluralizeTableNames = false,
+  typesDoc?: unknown,
+): NameMapper {
   const { renames, converters } = parseAllMappings(spec);
   return {
-    tableFor: (entityName) => getMappedTableName(spec, entityName, pluralizeTableNames),
-    fieldsFor: (entityName) => getEntityFieldMap(renames, entityName),
-    convertersFor: (entityName) => getEntityFieldMap(converters, entityName),
+    tableFor: (entityName) =>
+      getMappedTableName(spec, entityName, pluralizeTableNames, typesDoc),
+    fieldsFor: (entityName) =>
+      inheritFieldMap(renames, entityName, typesDoc ?? spec),
+    convertersFor: (entityName) =>
+      inheritFieldMap(converters, entityName, typesDoc ?? spec),
   };
+}
+
+function inheritFieldMap(
+  mappings: FieldMappings,
+  entityName: string,
+  typesDoc: unknown,
+): EntityFieldMap {
+  const merged = new Map<string, string>();
+  const seen = new Set<string>();
+  let current: string | undefined = entityName;
+  const chain: string[] = [];
+  while (current !== undefined && !seen.has(current)) {
+    seen.add(current);
+    chain.push(current);
+    current = inheritOf(typesDoc, current);
+  }
+  for (const name of chain.reverse()) {
+    for (const [logical, physical] of getEntityFieldMap(mappings, name)) {
+      merged.set(logical, physical);
+    }
+  }
+  return merged;
 }
 
 export function resolveFieldConverters(
