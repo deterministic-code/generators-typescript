@@ -3,9 +3,11 @@ import type { GenerateContext } from "@deterministic-code/generators-common/gene
 import { content, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import {
   authoredViewTypesOf,
-  columnFields,
   datasourceTypesOf,
+  dictionaryEntryFields,
+  dictionaryOfField,
   isCollectionField,
+  persistedColumnFields,
   tableKind,
   TYPES_YAML,
   typeHasTag,
@@ -19,11 +21,6 @@ import {
   type TypeField,
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
 import { toNative } from "./base-type-converter.ts";
-import {
-  dictionariesForView,
-  ownedDictionariesOf,
-  type OwnedDictionary,
-} from "./common/owned-dictionaries.ts";
 import { fieldRefKind, fieldsBeyondParent, isAlias } from "./common/view-shape.ts";
 import { bag, Emit } from "./emit.ts";
 import {
@@ -74,7 +71,6 @@ class Generator extends Emit {
   private readonly referenceBackendType: boolean;
   private readonly templates: ShapedTypeTemplates;
   private typesByName = new Map<string, Type>();
-  private dictionaries: OwnedDictionary[] = [];
 
   constructor(raw: Record<string, string>, mode: ShapedEmitMode) {
     super(raw, mode.basePath ?? ".", mode.datasourceBasePath ?? ".");
@@ -91,7 +87,6 @@ class Generator extends Emit {
     this.typesByName = new Map(
       deterministic.expandedTypes.map((t) => [t.name, t]),
     );
-    this.dictionaries = ownedDictionariesOf(deterministic.expandedTypes);
     const authored =
       this.kind === "datasource"
         ? typesWithTag(deterministic.types, "datasource_type")
@@ -201,10 +196,13 @@ class Generator extends Emit {
       refs.push({ entity: parentName, kind: "datasource" });
     }
     for (const f of this.emitFields(type, expanded)) {
-      const refKind = fieldRefKind(f, this.typesByName);
+      const mapped = dictionaryOfField(f, this.typesByName);
+      const entry = mapped === undefined ? undefined : dictionaryEntryFields(mapped);
+      const target = entry?.value ?? f;
+      const refKind = fieldRefKind(target, this.typesByName);
       if (refKind === "primitive") continue;
       refs.push({
-        entity: f.base,
+        entity: target.base,
         kind:
           !this.referenceBackendType && refKind === "datasource"
             ? "view"
@@ -214,16 +212,27 @@ class Generator extends Emit {
     return refs;
   }
 
+  private partTs(
+    field: TypeField,
+    aliasByClass: Map<string, string>,
+  ): string {
+    const refKind = fieldRefKind(field, this.typesByName);
+    return refKind === "primitive"
+      ? toNative(field.base)
+      : (aliasByClass.get(field.base) ?? this.casing.convertTypes(field.base));
+  }
+
   private fieldTs(
     field: TypeField,
     aliasByClass: Map<string, string>,
   ): string {
     if (this.kind === "datasource") return toNative(field.type);
-    const refKind = fieldRefKind(field, this.typesByName);
-    const base =
-      refKind === "primitive"
-        ? toNative(field.base)
-        : (aliasByClass.get(field.base) ?? this.casing.convertTypes(field.base));
+    const dict = dictionaryOfField(field, this.typesByName);
+    const entry = dict === undefined ? undefined : dictionaryEntryFields(dict);
+    if (entry !== undefined) {
+      return `Dictionary<${this.partTs(entry.key, aliasByClass)}, ${this.partTs(entry.value, aliasByClass)}>`;
+    }
+    const base = this.partTs(field, aliasByClass);
     return field.isArray ? `${base}[]` : base;
   }
 
@@ -272,29 +281,21 @@ class Generator extends Emit {
       return (expanded?.fields ?? type.fields).filter(isCollectionField);
     }
     if (this.extendsType(type, new Map()) !== undefined) {
-      if (this.kind === "datasource") return columnFields(type.fields);
+      if (this.kind === "datasource") {
+        return persistedColumnFields(type, this.typesByName);
+      }
       const parentName = isAlias(type) ? type.name : type.inherits;
       const parent =
         parentName === undefined ? undefined : this.typesByName.get(parentName);
       return fieldsBeyondParent(expanded?.fields ?? type.fields, parent);
     }
     const fields = expanded?.fields ?? type.fields;
-    return this.kind === "datasource" ? columnFields(fields) : fields;
-  }
-
-  private ownedDictionaryFields(type: Type): Array<{
-    ident: string;
-    tsType: string;
-    nullable: boolean;
-  }> {
-    if (this.kind !== "view") return [];
-    return dictionariesForView(type, this.typesByName, this.dictionaries).map(
-      (d) => ({
-        ident: this.casing.fieldIdent(d.name),
-        tsType: `Dictionary<${toNative(d.keyType)}, ${toNative(d.valueType)}>`,
-        nullable: false,
-      }),
-    );
+    return this.kind === "datasource"
+      ? persistedColumnFields(
+          { ...type, fields },
+          this.typesByName,
+        )
+      : fields;
   }
 
   private type(type: Type, expanded: Type | undefined): GenerateEntry {
@@ -303,15 +304,11 @@ class Generator extends Emit {
     const { imports, aliasByClass } = this.collectImports(type, expanded);
     const parent = this.extendsType(type, aliasByClass);
     const fields = this.emitFields(type, expanded);
-    const dictionaryFields = this.ownedDictionaryFields(type);
-    const fieldTokens = [
-      ...fields.map((f) => ({
-        ident: this.casing.fieldIdent(f.name),
-        tsType: this.fieldTs(f, aliasByClass),
-        nullable: f.isNullable,
-      })),
-      ...dictionaryFields,
-    ];
+    const fieldTokens = fields.map((f) => ({
+      ident: this.casing.fieldIdent(f.name),
+      tsType: this.fieldTs(f, aliasByClass),
+      nullable: f.isNullable,
+    }));
     const refs = this.refs(type, expanded);
     return content(
       this.file(type.name),
@@ -331,7 +328,7 @@ class Generator extends Emit {
         hasExtends: parent !== undefined,
         extendsType: parent ?? "",
         hasFields: fieldTokens.length > 0,
-        hasDictionary: dictionaryFields.length > 0,
+        hasDictionary: fields.some((f) => f.isMap === true),
         fields: fieldTokens,
         unionMembers: "",
       }),

@@ -3,8 +3,8 @@ import type { GenerateContext } from "@deterministic-code/generators-common/gene
 import { content, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import { verifyEntries } from "@deterministic-code/generators-common/reference-verifier";
 import {
-  columnFields,
   datasourceTypesOf,
+  persistedColumnFields,
   TYPES_YAML,
 } from "@deterministic-code/generators-common/spec-types";
 import {
@@ -100,8 +100,11 @@ const zodForField = (field: FieldShape, useZodId: boolean): string => {
 
 class Generator extends Emit {
   from(deterministic: IDeterministic): GenerateEntry[] {
+    const typesByName = new Map(
+      deterministic.expandedTypes.map((t) => [t.name, t]),
+    );
     const types = datasourceTypesOf(deterministic);
-    const entries = types.map((table) => this.validator(table));
+    const entries = types.map((table) => this.validator(table, typesByName));
     const index = this.imports.index(
       this.imports.datasourceValidator(types[0]?.name ?? "index"),
     );
@@ -111,8 +114,8 @@ class Generator extends Emit {
     return entries;
   }
 
-  private validator(table: Type): GenerateEntry {
-    const fields = columnFields(table.fields).map((field) => ({
+  private validator(table: Type, typesByName: Map<string, Type>): GenerateEntry {
+    const fields = persistedColumnFields(table, typesByName).map((field) => ({
       ident: this.casing.fieldIdent(field.name),
       zodExpr: zodForField(field, field.name === "id"),
     }));

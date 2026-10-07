@@ -3,8 +3,8 @@ import { fill } from "@deterministic-code/generators-common/fill";
 import type { GenerateContext } from "@deterministic-code/generators-common/generate-context";
 import { content, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import {
-  columnFields,
   datasourceTypesOf,
+  persistedColumnFields,
   TYPES_YAML,
 } from "@deterministic-code/generators-common/spec-types";
 import {
@@ -47,11 +47,16 @@ const fieldTokens = (
 
 class Generator extends Emit {
   from(deterministic: IDeterministic): GenerateEntry[] {
-    return datasourceTypesOf(deterministic).map((table) => this.tests(table));
+    const typesByName = new Map(
+      deterministic.expandedTypes.map((t) => [t.name, t]),
+    );
+    return datasourceTypesOf(deterministic).map((table) =>
+      this.tests(table, typesByName),
+    );
   }
 
-  private tests(table: Type): GenerateEntry {
-    const fields = columnFields(table.fields).map((f) =>
+  private tests(table: Type, typesByName: Map<string, Type>): GenerateEntry {
+    const fields = persistedColumnFields(table, typesByName).map((f) =>
       fieldTokens(f, (name) => this.casing.fieldIdent(name)),
     );
     const src = this.imports.datasource(table.name);

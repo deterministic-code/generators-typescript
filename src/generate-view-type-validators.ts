@@ -4,6 +4,9 @@ import { content, type GenerateEntry } from "@deterministic-code/generators-comm
 import {
   authoredViewTypesOf,
   datasourceTypesOf,
+  dictionaryEntryFields,
+  dictionaryOfField,
+  isCollectionField,
   TYPES_YAML,
   typeHasTag,
   viewTypesOf,
@@ -14,11 +17,6 @@ import {
   type Type,
   type TypeField,
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
-import {
-  dictionariesForView,
-  ownedDictionariesOf,
-  type OwnedDictionary,
-} from "./common/owned-dictionaries.ts";
 import {
   fieldRefKind,
   fieldsBeyondParent,
@@ -111,7 +109,6 @@ class Generator extends Emit {
   private readonly templates: ViewValidatorTemplates;
   private parentFieldsByName = new Map<string, Set<string>>();
   private typesByName = new Map<string, Type>();
-  private dictionaries: OwnedDictionary[] = [];
 
   constructor(raw: Record<string, string>, mode: ViewValidatorEmitMode) {
     super(raw, mode.basePath ?? ".", mode.datasourceBasePath ?? ".");
@@ -129,7 +126,6 @@ class Generator extends Emit {
     this.typesByName = new Map(
       deterministic.expandedTypes.map((t) => [t.name, t]),
     );
-    this.dictionaries = ownedDictionariesOf(deterministic.expandedTypes);
     this.parentFieldsByName = new Map(
       datasourceTypesOf(deterministic).map((table) => [
         table.name,
@@ -208,18 +204,31 @@ class Generator extends Emit {
   }
 
   private zodForField(field: TypeField): string {
+    const dict = dictionaryOfField(field, this.typesByName);
+    const entry = dict === undefined ? undefined : dictionaryEntryFields(dict);
+    if (entry !== undefined) {
+      const part = (f: TypeField): string =>
+        fieldRefKind(f, this.typesByName) === "primitive"
+          ? toZod(f.base)
+          : this.zodPart(f);
+      let expr = `z.record(${part(entry.key)}, ${part(entry.value)})`;
+      if (field.isNullable) expr += ".nullable()";
+      return expr;
+    }
+    let expr = this.zodPart(field);
+    if (field.isArray) expr = `z.array(${expr})`;
+    if (field.isNullable) expr += ".nullable()";
+    return expr;
+  }
+
+  private zodPart(field: TypeField): string {
     const refKind = fieldRefKind(field, this.typesByName);
+    if (refKind === "primitive") return tighten(field);
     const nested =
       refKind === "datasource" && this.referenceBackendType
         ? this.casing.schemaName(`datasource_${field.base}`)
         : this.casing.schemaName(field.base);
-    let expr =
-      refKind === "primitive"
-        ? tighten(field)
-        : `z.lazy(() => ${nested})`;
-    if (field.isArray) expr = `z.array(${expr})`;
-    if (field.isNullable) expr += ".nullable()";
-    return expr;
+    return `z.lazy(() => ${nested})`;
   }
 
   private collectImports(view: Type, expanded: Type | undefined) {
@@ -238,10 +247,13 @@ class Generator extends Emit {
     }
     const fields = expanded?.fields ?? view.fields;
     for (const f of fields) {
-      const refKind = fieldRefKind(f, this.typesByName);
+      const mapped = dictionaryOfField(f, this.typesByName);
+      const entry = mapped === undefined ? undefined : dictionaryEntryFields(mapped);
+      const target = entry?.value ?? f;
+      const refKind = fieldRefKind(target, this.typesByName);
       if (refKind === "primitive") continue;
       refs.push({
-        entity: f.base,
+        entity: target.base,
         kind:
           !this.referenceBackendType && refKind === "datasource"
             ? "view"
@@ -333,17 +345,11 @@ class Generator extends Emit {
       parentName === undefined ? undefined : this.typesByName.get(parentName);
     const fields = [
       ...this.fieldTokens(
-        inheritBackend && !isAlias(view)
-          ? fieldsBeyondParent(inlineFields, parentType)
+        inheritBackend && isAlias(view)
+          ? inlineFields.filter(isCollectionField)
           : inheritBackend
-            ? []
+            ? fieldsBeyondParent(inlineFields, parentType)
             : inlineFields,
-      ),
-      ...dictionariesForView(view, this.typesByName, this.dictionaries).map(
-        (d) => ({
-          ident: this.casing.fieldIdent(d.name),
-          zodExpr: `z.record(${toZod(d.keyType)}, ${toZod(d.valueType)})`,
-        }),
       ),
     ];
     if (!inheritBackend || parentName === undefined) {
