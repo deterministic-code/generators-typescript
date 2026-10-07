@@ -111,6 +111,7 @@ const mutationCases = (
 class Generator extends Emit implements ShapeOpts {
   readonly tables: ShapeOpts["tables"];
   readonly views: ShapeOpts["views"];
+  readonly typesByName: ShapeOpts["typesByName"];
   readonly referenceBackendType: boolean;
 
   constructor(
@@ -125,6 +126,9 @@ class Generator extends Emit implements ShapeOpts {
     );
     this.views = new Map(
       viewTypesOf(deterministic).map((v) => [v.name, v]),
+    );
+    this.typesByName = new Map(
+      deterministic.expandedTypes.map((t) => [t.name, t]),
     );
     this.referenceBackendType = referenceBackendType;
   }

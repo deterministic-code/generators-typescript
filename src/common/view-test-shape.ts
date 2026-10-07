@@ -3,7 +3,11 @@ import {
   type Type,
   type TypeField,
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
-import { columnFields } from "@deterministic-code/generators-common/spec-types";
+import {
+  dictionaryEntryFields,
+  dictionaryOfField,
+  persistedColumnFields,
+} from "@deterministic-code/generators-common/spec-types";
 import { toNative } from "../base-type-converter.ts";
 import { valueTmpl } from "../resources/view-types-tests.ts";
 import { fakeTestData, fieldExpr } from "./fake-test-data.ts";
@@ -13,6 +17,7 @@ import { fieldSize } from "./view-shape.ts";
 export type ShapeOpts = {
   tables: Map<string, Type>;
   views: Map<string, Type>;
+  typesByName: Map<string, Type>;
   referenceBackendType: boolean;
   casing: PackCasing;
 };
@@ -119,7 +124,7 @@ const dsNodes = (
 ): ShapeNode[] => {
   const table = opts.tables.get(name);
   if (table === undefined) return [];
-  return columnFields(table.fields).map((f) =>
+  return persistedColumnFields(table, opts.typesByName).map((f) =>
     scalarNode(f, accessPrefix, pathPrefix, false, opts.casing),
   );
 };
@@ -132,6 +137,36 @@ const viewFieldNode = (
   pathPrefix: string,
   isRoot: boolean,
 ): ShapeNode => {
+  const dict = dictionaryOfField(field, opts.typesByName);
+  const entry = dict === undefined ? undefined : dictionaryEntryFields(dict);
+  if (entry !== undefined) {
+    const ident = opts.casing.fieldIdent(field.name);
+    const path = pathPrefix === "" ? field.name : `${pathPrefix}.${field.name}`;
+    const valueNode = viewFieldNode(
+      { ...entry.value, name: "k", isArray: false, isMap: false },
+      opts,
+      visited,
+      `${accessPrefix}${fieldAccess(ident)}["k"]`,
+      `${path}.k`,
+      false,
+    );
+    return {
+      name: field.name,
+      ident,
+      access: `${accessPrefix}${fieldAccess(ident)}`,
+      path,
+      testName: escapeTestName(path),
+      type: field.type,
+      nullable: field.isNullable,
+      hasDefault: false,
+      isArray: false,
+      isObject: true,
+      isPrimitive: false,
+      isRoot,
+      expr: "",
+      nested: [valueNode],
+    };
+  }
   if (field.kind === "primitive") {
     const ident = opts.casing.fieldIdent(field.name);
     const path = pathPrefix === "" ? field.name : `${pathPrefix}.${field.name}`;

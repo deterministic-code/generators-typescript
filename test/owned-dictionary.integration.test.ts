@@ -22,6 +22,9 @@ const KITCHEN_SINK = `types:
             is_nullable: true
         - size:
             type: integer
+        - settings:
+            type: settings{}
+            references: settings.key
   - settings:
       tags: [datasource_type]
       inherits: dictionary
@@ -63,6 +66,60 @@ const KITCHEN_SINK = `types:
             type: string
             size: unlimited
             is_nullable: true
+  - card_labels:
+      tags: [view_type]
+      inherits: dictionary
+      fields:
+        - key:
+            type: string
+            size: 64
+        - value:
+            type: string
+            size: 128
+  - contact_card:
+      tags: [view_type]
+      fields:
+        - display_name:
+            type: string
+            size: 256
+        - labels:
+            type: card_labels{}
+            references: card_labels.key
+  - locale_pref:
+      tags: [view_type]
+      fields:
+        - locale:
+            type: string
+            size: 16
+        - timezone:
+            type: string
+            size: 64
+  - contact_prefs:
+      tags: [datasource_type]
+      inherits: dictionary
+      fields:
+        - contact_id:
+            type: integer
+            references: contacts_ds.id
+        - key:
+            type: string
+            size: 64
+        - value:
+            type: locale_pref
+  - contacts_ds:
+      tags: [datasource_type]
+      inherits: set
+      fields:
+        - email:
+            type: string
+            size: 256
+  - contact:
+      tags: [view_type]
+      inherits: contacts_ds
+      fields:
+        - prefs:
+            type: contact_prefs{}
+            references: contact_prefs.key
   - contacts_base:
       tags: [view_type]
       inherits: set
@@ -120,7 +177,13 @@ describe("owned dictionary codegen", () => {
     const names = (name: string) =>
       spec.expandedTypes.find((t) => t.name === name)?.fields.map((f) => f.name);
     assert.deepEqual(names("settings"), ["setting_id", "key", "value"]);
-    assert.deepEqual(names("file"), ["id", "name", "description", "size"]);
+    assert.deepEqual(names("file"), [
+      "id",
+      "name",
+      "description",
+      "size",
+      "settings",
+    ]);
     assert.deepEqual(names("typed_contact"), [
       "id",
       "email",
@@ -159,15 +222,23 @@ describe("owned dictionary codegen", () => {
     assert.doesNotMatch(file, /\bkey:/);
     assert.doesNotMatch(file, /\bvalue:/);
     assert.doesNotMatch(file, /setting_id/);
-    const contact = entryBody(requireEntry(entries, "typedContact.ts"));
-    assert.match(contact, /export interface TypedContact \{/);
-    assert.match(contact, /id: number;/);
-    assert.match(contact, /email: string;/);
-    assert.match(contact, /contact_source_name: string;/);
-    assert.match(contact, /contact_type_name: string;/);
-    assert.doesNotMatch(contact, /Dictionary/);
+    const typed = entryBody(requireEntry(entries, "typedContact.ts"));
+    assert.match(typed, /export interface TypedContact \{/);
+    assert.match(typed, /id: number;/);
+    assert.match(typed, /email: string;/);
+    assert.match(typed, /contact_source_name: string;/);
+    assert.match(typed, /contact_type_name: string;/);
+    assert.doesNotMatch(typed, /Dictionary/);
     const role = entryBody(requireEntry(entries, "role.ts"));
     assert.doesNotMatch(role, /Dictionary/);
+    assert.equal(entries.has("cardLabels.ts"), false);
+    const card = entryBody(requireEntry(entries, "contactCard.ts"));
+    assert.match(card, /labels: Dictionary<string, string>;/);
+    assert.equal(entries.has("contactPrefs.ts"), false);
+    const contactView = entryBody(requireEntry(entries, "contact.ts"));
+    assert.match(contactView, /prefs: Dictionary<string, LocalePref>;/);
+    const locale = entryBody(requireEntry(entries, "localePref.ts"));
+    assert.match(locale, /export interface LocalePref \{/);
   });
 
   it("validates File view settings as z.record, not a Settings schema", async () => {
@@ -176,5 +247,12 @@ describe("owned dictionary codegen", () => {
     const file = entryBody(requireEntry(entries, "file.ts"));
     assert.match(file, /settings: z\.record\(z\.string\(\), z\.string\(\)\)/);
     assert.doesNotMatch(file, /SettingsSchema/);
+    const contact = entryBody(requireEntry(entries, "contact.ts"));
+    assert.match(contact, /prefs: z\.record\(z\.string\(\), z\.lazy\(\(\) => LocalePrefSchema\)\)/);
+    const prefsRow = indexEntries(await generateDatasourceTypes(ctx));
+    const row = entryBody(requireEntry(prefsRow, "contactPrefs.ts"));
+    assert.match(row, /locale: string;/);
+    assert.match(row, /timezone: string;/);
+    assert.doesNotMatch(row, /\bvalue:/);
   });
 });
