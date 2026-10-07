@@ -85,7 +85,7 @@ const KITCHEN_SINK = `types:
         - labels:
             type: card_labels{}
             references: card_labels.key
-  - locale_pref:
+  - locale_preferences:
       tags: [view_type]
       fields:
         - locale:
@@ -94,7 +94,7 @@ const KITCHEN_SINK = `types:
         - timezone:
             type: string
             size: 64
-  - contact_prefs:
+  - contact_preferences:
       tags: [datasource_type]
       inherits: dictionary
       fields:
@@ -105,7 +105,7 @@ const KITCHEN_SINK = `types:
             type: string
             size: 64
         - value:
-            type: locale_pref
+            type: locale_preferences
   - contacts_ds:
       tags: [datasource_type]
       inherits: set
@@ -118,8 +118,8 @@ const KITCHEN_SINK = `types:
       inherits: contacts_ds
       fields:
         - prefs:
-            type: contact_prefs{}
-            references: contact_prefs.key
+            type: contact_preferences{}
+            references: contact_preferences.key
   - contacts_base:
       tags: [view_type]
       inherits: set
@@ -234,11 +234,11 @@ describe("owned dictionary codegen", () => {
     assert.equal(entries.has("cardLabels.ts"), false);
     const card = entryBody(requireEntry(entries, "contactCard.ts"));
     assert.match(card, /labels: Dictionary<string, string>;/);
-    assert.equal(entries.has("contactPrefs.ts"), false);
+    assert.equal(entries.has("contactPreferences.ts"), false);
     const contactView = entryBody(requireEntry(entries, "contact.ts"));
-    assert.match(contactView, /prefs: Dictionary<string, LocalePref>;/);
-    const locale = entryBody(requireEntry(entries, "localePref.ts"));
-    assert.match(locale, /export interface LocalePref \{/);
+    assert.match(contactView, /prefs: Dictionary<string, LocalePreferences>;/);
+    const locale = entryBody(requireEntry(entries, "localePreferences.ts"));
+    assert.match(locale, /export interface LocalePreferences \{/);
   });
 
   it("validates File view settings as z.record, not a Settings schema", async () => {
@@ -248,9 +248,9 @@ describe("owned dictionary codegen", () => {
     assert.match(file, /settings: z\.record\(z\.string\(\), z\.string\(\)\)/);
     assert.doesNotMatch(file, /SettingsSchema/);
     const contact = entryBody(requireEntry(entries, "contact.ts"));
-    assert.match(contact, /prefs: z\.record\(z\.string\(\), z\.lazy\(\(\) => LocalePrefSchema\)\)/);
+    assert.match(contact, /prefs: z\.record\(z\.string\(\), z\.lazy\(\(\) => LocalePreferencesSchema\)\)/);
     const prefsRow = indexEntries(await generateDatasourceTypes(ctx));
-    const row = entryBody(requireEntry(prefsRow, "contactPrefs.ts"));
+    const row = entryBody(requireEntry(prefsRow, "contactPreferences.ts"));
     assert.match(row, /locale: string;/);
     assert.match(row, /timezone: string;/);
     assert.doesNotMatch(row, /\bvalue:/);
