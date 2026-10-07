@@ -47,8 +47,8 @@ types:
           type: string
           size: unlimited
           is_nullable: true
-  - addresses_base:
-      tags: [datasource_type]
+  - address:
+      tags: [datasource_type, view_type]
       inherits: base
       fields:
       - contact_id:
@@ -111,7 +111,7 @@ types:
       fields:
       - addresses:
           type: address[]
-          references: addresses_base.contact_id
+          references: address.contact_id
       - phones:
           type: phone[]
           references: phones_base.contact_id
@@ -119,8 +119,8 @@ types:
           type: contact_settings{}
           references: contact_settings.key
       - prefs:
-          type: contact_prefs{}
-          references: contact_prefs.key
+          type: contact_preferences{}
+          references: contact_preferences.key
   - contact_settings:
       tags: [datasource_type]
       inherits: dictionary
@@ -133,7 +133,7 @@ types:
       - value:
           type: string
           size: unlimited
-  - locale_pref:
+  - locale_preferences:
       tags: [view_type]
       fields:
       - locale:
@@ -142,7 +142,7 @@ types:
       - timezone:
           type: string
           size: 64
-  - contact_prefs:
+  - contact_preferences:
       tags: [datasource_type]
       inherits: dictionary
       fields:
@@ -152,7 +152,7 @@ types:
           type: string
           size: 64
       - value:
-          type: locale_pref
+          type: locale_preferences
   - card_labels:
       tags: [view_type]
       inherits: dictionary
@@ -172,11 +172,6 @@ types:
       - labels:
           type: card_labels{}
           references: card_labels.key
-  - address:
-      tags: [view_type]
-      inherits: addresses_base
-      fields:
-        []
   - phone:
       tags: [view_type]
       inherits: phones_base

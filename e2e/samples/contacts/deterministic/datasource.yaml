@@ -13,7 +13,7 @@ types:
         - version:
             is_optimistic_concurrency: true
             use_native_row_version: true
-  - addresses_base:
+  - address:
       mapping: addresses
       fields:
         - version:
