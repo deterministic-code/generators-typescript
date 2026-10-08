@@ -13,13 +13,21 @@ types:
         - version:
             is_optimistic_concurrency: true
             use_native_row_version: true
-  - address:
+  - address_type:
+      fields:
+        - name:
+            is_unique: true
+  - phone_type:
+      fields:
+        - name:
+            is_unique: true
+  - address_base:
       mapping: addresses
       fields:
         - version:
             is_optimistic_concurrency: true
             use_native_row_version: true
-  - phone:
+  - phone_base:
       mapping: phones
       fields:
         - version:

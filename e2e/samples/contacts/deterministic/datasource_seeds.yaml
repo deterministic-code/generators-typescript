@@ -9,3 +9,21 @@ seeds:
       - id3:
           name: OAuth
           description: Synced from a third-party provider.
+  - address_type:
+      - id1:
+          name: Home
+      - id2:
+          name: Work
+      - id3:
+          name: Other
+          description: A mailing or temporary address.
+  - phone_type:
+      - id1:
+          name: Mobile
+      - id2:
+          name: Home
+      - id3:
+          name: Work
+      - id4:
+          name: Fax
+          description: Dedicated fax line.

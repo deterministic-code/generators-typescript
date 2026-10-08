@@ -26,6 +26,28 @@ types:
           type: string
           size: unlimited
           is_nullable: true
+  - address_type:
+      tags: [datasource_type, view_type, readonly_lookup]
+      inherits: base
+      fields:
+      - name:
+          type: string
+          size: 64
+      - description:
+          type: string
+          size: unlimited
+          is_nullable: true
+  - phone_type:
+      tags: [datasource_type, view_type, readonly_lookup]
+      inherits: base
+      fields:
+      - name:
+          type: string
+          size: 64
+      - description:
+          type: string
+          size: unlimited
+          is_nullable: true
   - contacts_base:
       tags: [datasource_type]
       inherits: base
@@ -47,13 +69,16 @@ types:
           type: string
           size: unlimited
           is_nullable: true
-  - address:
-      tags: [datasource_type, view_type]
+  - address_base:
+      tags: [datasource_type]
       inherits: base
       fields:
       - contact_id:
           type: integer
           references: contacts_base.id
+      - address_type_id:
+          type: integer
+          references: address_type.id
       - line1:
           type: string
           size: 256
@@ -76,13 +101,16 @@ types:
           type: string
           size: 64
           is_nullable: true
-  - phone:
-      tags: [datasource_type, view_type]
+  - phone_base:
+      tags: [datasource_type]
       inherits: base
       fields:
       - contact_id:
           type: integer
           references: contacts_base.id
+      - phone_type_id:
+          type: integer
+          references: phone_type.id
       - number:
           type: string
           size: 32
@@ -172,6 +200,24 @@ types:
       - labels:
           type: card_labels{}
           references: card_labels.key
+  - address:
+      tags: [view_type]
+      inherits: address_base
+      union: [address_type]
+      mapping:
+        name: address_type_name
+      remove_fields: [address_type.id, address_type.uuid, address_type.created, address_type.updated, address_type.version]
+      fields:
+        []
+  - phone:
+      tags: [view_type]
+      inherits: phone_base
+      union: [phone_type]
+      mapping:
+        name: phone_type_name
+      remove_fields: [phone_type.id, phone_type.uuid, phone_type.created, phone_type.updated, phone_type.version]
+      fields:
+        []
   - contact_group:
       tags: [view_type]
       inherits: contact_groups_base
