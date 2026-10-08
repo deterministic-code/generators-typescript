@@ -18,6 +18,7 @@ import {
   type ServiceCandidate,
   type Type,
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
+import { isDictionaryCandidate } from "./common/dictionary-candidate.ts";
 import { libraryImportSpecifier } from "./library-import.ts";
 import { bag, customRelKey, Emit } from "./emit.ts";
 import {
@@ -36,7 +37,10 @@ class Generator extends Emit {
     );
     this.tables = tableByName(deterministic);
     this.viewNames = new Set(viewTypesOf(deterministic).map((view) => view.name));
-    const { generics, customs } = deterministic.services;
+    const customs = deterministic.services.customs;
+    const generics = deterministic.services.generics.filter(
+      (c) => !isDictionaryCandidate(c),
+    );
     const entries: GenerateEntry[] = [
       ...generics.map((c) => this.generic(c, typesByName.get(c.name))),
       ...customs.map((c) => this.custom(c)),

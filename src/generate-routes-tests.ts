@@ -33,6 +33,7 @@ import {
   mockFactoryTmpl,
   readonlyTmpl,
 } from "./resources/routes-tests.ts";
+import { isDictionaryCandidate } from "./common/dictionary-candidate.ts";
 import { bag, Emit } from "./emit.ts";
 
 const byFieldTokens = (
@@ -101,7 +102,9 @@ class Generator extends Emit {
   }
 
   from(deterministic: IDeterministic): GenerateEntry[] {
-    return deterministic.routes.candidates.map((c) => this.test(c));
+    return deterministic.routes.candidates
+      .filter((c) => !isDictionaryCandidate(c))
+      .map((c) => this.test(c));
   }
 
   private test(candidate: RouteCandidate): GenerateEntry {
