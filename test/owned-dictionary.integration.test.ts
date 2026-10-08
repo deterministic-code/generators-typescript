@@ -1,12 +1,20 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { memoryReader } from "@deterministic-code/generators-common/deterministic-reader";
-import { TYPES_YAML } from "@deterministic-code/generators-common/spec-types";
+import {
+  ROUTES_YAML,
+  SERVICES_YAML,
+  TYPES_YAML,
+} from "@deterministic-code/generators-common/spec-types";
 import type { GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import { DeterministicParser } from "@deterministic-code/deterministic-specifications-typescript/parser";
 import { generate as generateDatasourceTypes } from "../src/generate-datasource-types.ts";
 import { generate as generateViewTypes } from "../src/generate-view-types.ts";
 import { generate as generateViewTypeValidators } from "../src/generate-view-type-validators.ts";
+import { generate as generateServices } from "../src/generate-services.ts";
+import { generate as generateServiceTests } from "../src/generate-service-tests.ts";
+import { generate as generateRoutes } from "../src/generate-routes.ts";
+import { generate as generateRouteTests } from "../src/generate-routes-tests.ts";
 
 const KITCHEN_SINK = `types:
   - file:
@@ -254,5 +262,31 @@ describe("owned dictionary codegen", () => {
     assert.match(row, /locale: string;/);
     assert.match(row, /timezone: string;/);
     assert.doesNotMatch(row, /\bvalue:/);
+  });
+
+  it("does not emit a service or route for a dictionary", async () => {
+    const reader = memoryReader({
+      [TYPES_YAML]: KITCHEN_SINK,
+      [SERVICES_YAML]: `includes:\n  - types:\n      filter: tag == "datasource_type" || tag == "view_type"\nservices: []\n`,
+      [ROUTES_YAML]: `includes:\n  - types:\n      filter: tag == "datasource_type" || tag == "view_type"\nroutes: []\n`,
+    });
+    const crud = { reader, settings: {} };
+    const names = [
+      ...(await generateServices(crud)),
+      ...(await generateServiceTests(crud)),
+      ...(await generateRoutes(crud)),
+      ...(await generateRouteTests(crud)),
+    ].map((entry) => entry.filename);
+    for (const banned of ["cardlabel", "settings", "contactpreference"]) {
+      assert.equal(
+        names.some((name) => name.toLowerCase().includes(banned)),
+        false,
+        `dictionary leaked into ${names.filter((name) => name.toLowerCase().includes(banned)).join(", ")}`,
+      );
+    }
+    assert.equal(
+      names.some((name) => name.toLowerCase().includes("file")),
+      true,
+    );
   });
 });

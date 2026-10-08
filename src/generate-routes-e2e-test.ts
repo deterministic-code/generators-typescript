@@ -7,6 +7,7 @@ import {
   type IDeterministic,
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
 import { fromSettings } from "@deterministic-code/generators-common/settings";
+import { isDictionaryCandidate } from "./common/dictionary-candidate.ts";
 import { ROUTES_YAML } from "@deterministic-code/generators-common/spec-types";
 import { createImportGenerator } from "./import-generator.ts";
 import { libraryImportSpecifier } from "./library-import.ts";
@@ -48,7 +49,9 @@ const generateFrom = (
           "__tests__/app.integration.test.ts",
         ),
         entitiesJson: JSON.stringify(
-          deterministic.routes.candidates.map((c) => c.name),
+          deterministic.routes.candidates
+            .filter((c) => !isDictionaryCandidate(c))
+            .map((c) => c.name),
         ),
         hasCustomModulePaths,
         customModulePathsJson: JSON.stringify(customModulePaths, null, 2),

@@ -23,6 +23,7 @@ import {
 import { libraryImportSpecifier } from "./library-import.ts";
 import { genericTmpl } from "./resources/service-tests.ts";
 import { createCasing } from "./common/default-casing.ts";
+import { isDictionaryCandidate } from "./common/dictionary-candidate.ts";
 import { bag, Emit } from "./emit.ts";
 
 class Generator extends Emit {
@@ -40,7 +41,9 @@ class Generator extends Emit {
   }
 
   from(deterministic: IDeterministic): GenerateEntry[] {
-    return deterministic.services.generics.map((c) => this.test(c));
+    return deterministic.services.generics
+      .filter((c) => !isDictionaryCandidate(c))
+      .map((c) => this.test(c));
   }
 
   private test(candidate: ServiceCandidate): GenerateEntry {

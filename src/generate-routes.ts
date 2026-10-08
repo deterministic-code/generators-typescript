@@ -17,6 +17,7 @@ import {
   type Type,
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
 import type { PackCasing } from "./common/default-casing.ts";
+import { isDictionaryCandidate } from "./common/dictionary-candidate.ts";
 import { libraryImportSpecifier } from "./library-import.ts";
 import { bag, customRelKey, Emit } from "./emit.ts";
 import {
@@ -77,15 +78,18 @@ class Generator extends Emit {
     );
     this.tables = tableByName(deterministic);
     const parsed = deterministic.routes;
+    const candidates = parsed.candidates.filter(
+      (c) => !isDictionaryCandidate(c),
+    );
     const customServices = new Set(
       deterministic.services.customs.map((entry) => entry.name),
     );
     const entries: GenerateEntry[] = [
-      ...parsed.candidates.map((c) => this.entityRouter(c, customServices)),
+      ...candidates.map((c) => this.entityRouter(c, customServices)),
       ...parsed.customs.map((c) => this.custom(c)),
     ];
     if (this.settings.createIndex) {
-      entries.push(...this.indexes(parsed.candidates, parsed.customs));
+      entries.push(...this.indexes(candidates, parsed.customs));
     }
     return entries;
   }

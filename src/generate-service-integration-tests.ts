@@ -26,6 +26,7 @@ import {
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
 import { fieldSize, refParent } from "./common/view-shape.ts";
 import { libraryImportSpecifier } from "./library-import.ts";
+import { isDictionaryCandidate } from "./common/dictionary-candidate.ts";
 import { genericTmpl } from "./resources/service-integration-tests.ts";
 import { createCasing } from "./common/default-casing.ts";
 import {
@@ -86,13 +87,15 @@ class Generator extends Emit {
 
   from(): GenerateEntry[] {
     return withFakerPackagePatch(
-      this.spec.services.generics.flatMap((c) => {
-        const table = this.byName.get(c.name);
-        if (table === undefined || hasFieldMappings(this.overlays.get(c.name))) {
-          return [];
-        }
-        return [this.test(table)];
-      }),
+      this.spec.services.generics
+        .filter((c) => !isDictionaryCandidate(c))
+        .flatMap((c) => {
+          const table = this.byName.get(c.name);
+          if (table === undefined || hasFieldMappings(this.overlays.get(c.name))) {
+            return [];
+          }
+          return [this.test(table)];
+        }),
     );
   }
 
