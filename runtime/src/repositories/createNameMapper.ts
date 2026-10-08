@@ -33,6 +33,7 @@ const inheritOf = (doc: DatasourceData, name: string): string | undefined => {
     const inherits = entry[name]?.inherits;
     if (inherits !== undefined) return inherits;
   }
+  return undefined;
 };
 
 function inheritFieldMap(
