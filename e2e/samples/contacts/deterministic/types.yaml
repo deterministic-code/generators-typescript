@@ -133,9 +133,9 @@ types:
       tags: [view_type]
       inherits: contacts_base
       union: [contact_source]
+      extract: [contact_source.name, contact_source.description]
       mapping:
         name: contact_source_name
-      remove_fields: [contact_source.id, contact_source.uuid, contact_source.created, contact_source.updated, contact_source.version]
       fields:
       - addresses:
           type: address[]
@@ -204,18 +204,18 @@ types:
       tags: [view_type]
       inherits: address_base
       union: [address_type]
+      extract: [address_type.name, address_type.description]
       mapping:
         name: address_type_name
-      remove_fields: [address_type.id, address_type.uuid, address_type.created, address_type.updated, address_type.version]
       fields:
         []
   - phone:
       tags: [view_type]
       inherits: phone_base
       union: [phone_type]
+      extract: [phone_type.name, phone_type.description]
       mapping:
         name: phone_type_name
-      remove_fields: [phone_type.id, phone_type.uuid, phone_type.created, phone_type.updated, phone_type.version]
       fields:
         []
   - contact_group:
