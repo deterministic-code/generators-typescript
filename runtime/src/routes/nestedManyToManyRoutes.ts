@@ -5,8 +5,7 @@ import { handleZodError } from '../errors/handleZodError';
 import { handleBusinessError } from '../errors/handleBusinessError';
 import { sendItem, sendItems, sendError } from '../responses/sendResponse';
 import { idOr400, parseIdField } from './routeParamUtils';
-import type { IdentityValue } from '../repositories/EntityIdentity';
-import type { PrimaryKey } from '../repositories/PrimaryKey';
+import type { EntityIdentity, IdentityValue } from '../repositories/EntityIdentity';
 
 export interface NestedManyToManyConfig<_TParent = unknown, _TJunction = unknown> {
   parentService: IEntityService<any, any>;
@@ -33,9 +32,9 @@ type Id = IdentityValue;
 type Row = Record<string, unknown>;
 type Ctx = Cfg & {
   bodySchema: z.ZodTypeAny;
-  parentPrimaryKey: PrimaryKey;
-  childPrimaryKey: PrimaryKey;
-  junctionPrimaryKey: PrimaryKey;
+  parentPrimaryKey: EntityIdentity;
+  childPrimaryKey: EntityIdentity;
+  junctionPrimaryKey: EntityIdentity;
 };
 
 const BODY_ZOD = {
@@ -45,7 +44,7 @@ const BODY_ZOD = {
   number: () => z.number().int().positive(),
 } as const;
 
-const buildBodySchema = (config: Cfg, childPk: PrimaryKey) => {
+const buildBodySchema = (config: Cfg, childPk: EntityIdentity) => {
   const shape: Record<string, ZodTypeAny> = {};
   for (const field of config.bodyFields) {
     const kind =
@@ -61,7 +60,7 @@ const notFound = (res: Response, message: string): false => {
   return false;
 };
 
-const param = (pk: PrimaryKey, req: Request, name: string) =>
+const param = (pk: EntityIdentity, req: Request, name: string) =>
   parseIdField(pk.routeIdType, name, req.params[name]);
 
 const requireParent = async (cfg: Ctx, parentId: Id, res: Response): Promise<boolean> =>
@@ -152,7 +151,7 @@ const list = (cfg: Ctx) =>
     }
     const children = (await cfg.childService.findAll()) as Row[];
     const byId = new Map(children.map((c) => [cfg.childPrimaryKey.fromRow(c), c]));
-    sendItems(res, rows.map((j) => byId.get(j[cfg.childFkField])).filter(Boolean));
+    sendItems(res, rows.map((j) => byId.get(j[cfg.childFkField] as Id)).filter(Boolean));
   });
 
 const post = (cfg: Ctx) =>
