@@ -4,6 +4,7 @@ import { content, type GenerateEntry } from "@deterministic-code/generators-comm
 import { verifyEntries } from "@deterministic-code/generators-common/reference-verifier";
 import {
   datasourceTypesOf,
+  fieldTypeOf,
   persistedColumnFields,
   TYPES_YAML,
 } from "@deterministic-code/generators-common/spec-types";
@@ -115,10 +116,13 @@ class Generator extends Emit {
   }
 
   private validator(table: Type, typesByName: Map<string, Type>): GenerateEntry {
-    const fields = persistedColumnFields(table, typesByName).map((field) => ({
-      ident: this.casing.fieldIdent(field.name),
-      zodExpr: zodForField(field, field.name === "id"),
-    }));
+    const fields = persistedColumnFields(table, typesByName).map((field) => {
+      const resolved = { ...field, type: fieldTypeOf(field, typesByName) };
+      return {
+        ident: this.casing.fieldIdent(field.name),
+        zodExpr: zodForField(resolved, field.name === "id"),
+      };
+    });
     const className = this.casing.convertTypes(table.name);
     const schemaName = this.casing.schemaName(table.name);
     const validatedTypeName = this.casing.validatedTypeName(table.name);
