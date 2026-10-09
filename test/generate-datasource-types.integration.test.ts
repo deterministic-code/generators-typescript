@@ -388,4 +388,27 @@ describe("generate", () => {
     assert.match(address, /city: string;/);
   });
 
+  it("infers FK type from the referenced parent field", async () => {
+    const entries = await generate({
+      reader: memoryReader({
+        [TYPES_YAML]: `types:
+  - parent:
+      tags: [datasource_type]
+      inherits: set
+      fields: []
+  - child:
+      tags: [datasource_type]
+      inherits: set
+      fields:
+        - owner_id:
+            references: parent.id
+`,
+      }),
+      settings: { application_name: "catalog-api" },
+    });
+    const child = entryBody(requireEntry(indexEntries(entries), "child.ts"));
+    assert.match(child, /owner_id: number;/);
+    assert.doesNotMatch(child, /owner_id: string/);
+  });
+
 });

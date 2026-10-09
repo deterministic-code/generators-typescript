@@ -6,6 +6,7 @@ import {
   datasourceTypesOf,
   dictionaryEntryFields,
   dictionaryOfField,
+  fieldTypeOf,
   isCollectionField,
   persistedColumnFields,
   tableKind,
@@ -226,7 +227,9 @@ class Generator extends Emit {
     field: TypeField,
     aliasByClass: Map<string, string>,
   ): string {
-    if (this.kind === "datasource") return toNative(field.type);
+    if (this.kind === "datasource") {
+      return toNative(fieldTypeOf(field, this.typesByName));
+    }
     const dict = dictionaryOfField(field, this.typesByName);
     const entry = dict === undefined ? undefined : dictionaryEntryFields(dict);
     if (entry !== undefined) {
