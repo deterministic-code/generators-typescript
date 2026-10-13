@@ -179,17 +179,43 @@ export const withSqlRoot = (entries: GenerateEntry[]): GenerateEntry[] =>
       : entry,
   );
 
-export const generateBundledMigrate = (
+const RUNTIME_APP_HOOK_SECTIONS = new Set([
+  "APP_DB_IMPORTS",
+  "APP_BEFORE_HOOK",
+]);
+
+/**
+ * `enableMiddleware` is applied inside the runtime `createBackendApp`.
+ * This skeleton's hook markers sit in the health-handler function body, so the
+ * migrate pack's `createBackendApp({ beforeCreateBackendApp, enableMiddleware })`
+ * fields are not legal there. Keep the section patches (casing still targets
+ * app.ts) and replace the bodies with a comment.
+ */
+const withoutRuntimeAppHooks = (entries: GenerateEntry[]): GenerateEntry[] =>
+  entries.map((entry) => {
+    if (entry.kind !== "patch") return entry;
+    if (
+      entry.section === undefined ||
+      !RUNTIME_APP_HOOK_SECTIONS.has(entry.section)
+    ) {
+      return entry;
+    }
+    return { ...entry, content: "//\n" };
+  });
+
+export const generateBundledMigrate = async (
   settings: GenerateContext["settings"],
   reader: IDeterministicReader = memoryReader({}),
 ): Promise<GenerateEntry[]> =>
-  generateMigrate({
-    reader,
-    settings: {
-      ...settings,
-      "languages.typescript.migrate_mode": "bundled",
-    },
-  });
+  withoutRuntimeAppHooks(
+    await generateMigrate({
+      reader,
+      settings: {
+        ...settings,
+        "languages.typescript.migrate_mode": "bundled",
+      },
+    }),
+  );
 
 export const sqliteAppEnv = (appDir: string): Record<string, string> => ({
   DATABASE_BACKEND: "sqlite",

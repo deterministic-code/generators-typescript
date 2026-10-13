@@ -398,4 +398,105 @@ describe("generate view type validators tests", () => {
     );
     assert.match(card, /schema-version: 9.9/);
   });
+
+  it("rejects dictionary value types without requiring the sample key", async () => {
+    const contact = await bodyOf(
+      "contact.test.ts",
+      {},
+      `types:
+  - contacts_ds:
+      tags: [datasource_type]
+      inherits: set
+      fields:
+        - email:
+            type: string
+            size: 256
+  - locale_preferences:
+      tags: [view_type]
+      fields:
+        - locale:
+            type: string
+            size: 16
+        - timezone:
+            type: string
+            size: 64
+  - contact_settings:
+      tags: [datasource_type]
+      inherits: dictionary
+      fields:
+        - contact_id:
+            type: integer
+            references: contacts_ds.id
+        - key:
+            type: string
+            size: 64
+        - value:
+            type: string
+            size: unlimited
+  - contact_preferences:
+      tags: [datasource_type]
+      inherits: dictionary
+      fields:
+        - contact_id:
+            type: integer
+            references: contacts_ds.id
+        - key:
+            type: string
+            size: 64
+        - value:
+            type: locale_preferences
+  - contact:
+      tags: [view_type]
+      inherits: contacts_ds
+      fields:
+        - settings:
+            type: contact_settings{}
+            references: contact_settings.key
+        - prefs:
+            type: contact_preferences{}
+            references: contact_preferences.key
+`,
+    );
+    assert.match(contact, /settings: \{ k: faker\.string\.alphanumeric\(\{ length: 12 \}\) \}/);
+    assert.match(contact, /prefs: \{ k: \{ locale: /);
+    assert.match(
+      contact,
+      /it\("rejects when missing required field \\"settings\\""/,
+    );
+    assert.match(
+      contact,
+      /it\("rejects when wrong type on field \\"settings\.k\\""/,
+    );
+    assert.match(contact, /settings: \{ k: 123 \}/);
+    assert.match(
+      contact,
+      /it\("rejects when missing required field \\"prefs\.k\.locale\\""/,
+    );
+    assert.match(
+      contact,
+      /it\("rejects when missing required field \\"prefs\.k\.timezone\\""/,
+    );
+    assert.match(
+      contact,
+      /it\("rejects when null for non-nullable field \\"prefs\.k\.locale\\""/,
+    );
+    assert.doesNotMatch(
+      contact,
+      /it\("rejects when missing required field \\"settings\.k\\""/,
+    );
+    assert.doesNotMatch(
+      contact,
+      /it\("rejects when null for non-nullable field \\"settings\.k\\""/,
+    );
+    assert.doesNotMatch(
+      contact,
+      /it\("rejects when missing required field \\"prefs\.k\\""/,
+    );
+    assert.doesNotMatch(
+      contact,
+      /it\("rejects when null for non-nullable field \\"prefs\.k\\""/,
+    );
+    assert.doesNotMatch(contact, /settings\.k\.k/);
+    assert.doesNotMatch(contact, /prefs\.k\.k/);
+  });
 });

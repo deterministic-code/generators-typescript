@@ -74,7 +74,8 @@ const mutationCases = (
     const nullPrefix = inherited
       ? "null for non-nullable inherited field"
       : "null for non-nullable field";
-    if (!field.nullable && !field.hasDefault) {
+    // A sample map key is not a required property; an empty record is valid.
+    if (!field.mapEntry && !field.nullable && !field.hasDefault) {
       cases.push({
         name: escapeTestName(
           `rejects when ${missingPrefix} "${field.path}"`,

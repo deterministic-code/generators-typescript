@@ -310,4 +310,79 @@ describe("generate view types tests", () => {
     );
     assert.doesNotMatch(union, /it\("accepts a /);
   });
+
+  it("addresses dictionary entries at the sample key without a second .k", async () => {
+    const contact = await bodyOf(
+      "contact.test.ts",
+      {},
+      `types:
+  - contacts_ds:
+      tags: [datasource_type]
+      inherits: set
+      fields:
+        - email:
+            type: string
+            size: 256
+  - locale_preferences:
+      tags: [view_type]
+      fields:
+        - locale:
+            type: string
+            size: 16
+        - timezone:
+            type: string
+            size: 64
+  - contact_settings:
+      tags: [datasource_type]
+      inherits: dictionary
+      fields:
+        - contact_id:
+            type: integer
+            references: contacts_ds.id
+        - key:
+            type: string
+            size: 64
+        - value:
+            type: string
+            size: unlimited
+  - contact_preferences:
+      tags: [datasource_type]
+      inherits: dictionary
+      fields:
+        - contact_id:
+            type: integer
+            references: contacts_ds.id
+        - key:
+            type: string
+            size: 64
+        - value:
+            type: locale_preferences
+  - contact:
+      tags: [view_type]
+      inherits: contacts_ds
+      fields:
+        - settings:
+            type: contact_settings{}
+            references: contact_settings.key
+        - prefs:
+            type: contact_preferences{}
+            references: contact_preferences.key
+`,
+      undefined,
+    );
+    assert.match(contact, /settings: \{ k: faker\.string\.alphanumeric\(\{ length: 12 \}\) \}/);
+    assert.match(contact, /prefs: \{ k: \{ locale: /);
+    assert.match(contact, /it\("gets settings\.k"/);
+    assert.match(contact, /value\.settings\["k"\] = initial;/);
+    assert.match(contact, /it\("gets prefs\.k"/);
+    assert.match(contact, /value\.prefs\["k"\] = initial;/);
+    assert.match(contact, /it\("gets prefs\.k\.locale"/);
+    assert.match(contact, /value\.prefs\["k"\]\.locale = initial;/);
+    assert.match(contact, /it\("gets prefs\.k\.timezone"/);
+    assert.match(contact, /value\.prefs\["k"\]\.timezone = initial;/);
+    assert.doesNotMatch(contact, /settings\["k"\]\.k/);
+    assert.doesNotMatch(contact, /prefs\["k"\]\.k/);
+    assert.doesNotMatch(contact, /settings\.k\.k/);
+    assert.doesNotMatch(contact, /prefs\.k\.k/);
+  });
 });
