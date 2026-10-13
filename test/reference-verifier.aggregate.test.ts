@@ -208,7 +208,7 @@ describe("reference verifier aggregate", () => {
     );
     assert.ok(route);
     assert.equal(route.kind, "content");
-    assert.match(route.contents, /i_user_service/);
+    assert.match(route.contents, /export function user_router/);
     assert.doesNotMatch(route.contents, /IuserService/);
     assert.doesNotThrow(() => finalizeEntries(entries));
   });
@@ -226,14 +226,14 @@ describe("reference verifier aggregate", () => {
     assert.equal(route.kind, "content");
     const glued = {
       ...route,
-      contents: route.contents.replaceAll("i_user_service", "IuserService"),
+      contents: route.contents.replaceAll("user_router", "UserRouter"),
     };
     assert.throws(
       () =>
         new ReferenceVerifier().verifyContents(
           entries.map((entry) => (entry === route ? glued : entry)),
         ),
-      /missingUse "i_user_service"/,
+      /missingExport "user_router"/,
     );
   });
 

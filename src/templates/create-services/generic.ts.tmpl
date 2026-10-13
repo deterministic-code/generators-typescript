@@ -1,7 +1,9 @@
 {{#typeImport}}import { {{typeName}} } from "{{typeImportPath}}";
 {{/typeImport}}{{#mutateImport}}import { {{mutateTypeName}} } from "{{mutateImportPath}}";
 {{/mutateImport}}import type { ICrudRepository } from "@datasources/core";
-import { type IEntityService, type NameValue } from "{{servicesImport}}";
+
+type NameValue = { name: string; value: unknown };
+type Mutate = {{#mutateTypeName}}{{mutateTypeName}}{{/mutateTypeName}}{{^mutateTypeName}}Omit<{{typeName}}, {{pkOmit}}>{{/mutateTypeName}};
 
 {{#simpleDoc}}/** Service {{interfaceName}}. */
 {{/simpleDoc}}{{#descriptionDoc}}/**
@@ -9,7 +11,7 @@ import { type IEntityService, type NameValue } from "{{servicesImport}}";
  * Datasource type: {{datasourceType}}.
  * Fields: 0.
  */
-{{/descriptionDoc}}export type {{interfaceName}} = IEntityService<{{typeName}}, {{idTsType}}, {{#mutateTypeName}}{{mutateTypeName}}{{/mutateTypeName}}{{^mutateTypeName}}Omit<{{typeName}}, {{pkOmit}}>{{/mutateTypeName}}>;
+{{/descriptionDoc}}export type {{interfaceName}} = {{className}};
 
 {{#simpleDoc}}/** Service {{className}}. */
 {{/simpleDoc}}{{#descriptionDoc}}/**
@@ -17,7 +19,7 @@ import { type IEntityService, type NameValue } from "{{servicesImport}}";
  * Datasource type: {{datasourceType}}.
  * Fields: 0.
  */
-{{/descriptionDoc}}export class {{className}} implements IEntityService<{{typeName}}, {{idTsType}}, {{#mutateTypeName}}{{mutateTypeName}}{{/mutateTypeName}}{{^mutateTypeName}}Omit<{{typeName}}, {{pkOmit}}>{{/mutateTypeName}}> {
+{{/descriptionDoc}}export class {{className}} {
   readonly primaryKey;
 
   constructor(
@@ -34,9 +36,7 @@ import { type IEntityService, type NameValue } from "{{servicesImport}}";
     return this.repository.findAll();
   }
 
-  create(
-    data: {{#mutateTypeName}}{{mutateTypeName}}{{/mutateTypeName}}{{^mutateTypeName}}Omit<{{typeName}}, {{pkOmit}}>{{/mutateTypeName}},
-  ): Promise<{{typeName}}> {
+  create(data: Mutate): Promise<{{typeName}}> {
     return this.repository.add(data);
   }
 
@@ -61,7 +61,7 @@ import { type IEntityService, type NameValue } from "{{servicesImport}}";
 
   update(
     id: {{idTsType}},
-    data: Partial<{{#mutateTypeName}}{{mutateTypeName}}{{/mutateTypeName}}{{^mutateTypeName}}Omit<{{typeName}}, {{pkOmit}}>{{/mutateTypeName}}>,
+    data: Partial<Mutate>,
     opts?: { expectedUpdated?: string },
   ): Promise<{{typeName}} | null> {
     return opts === undefined
@@ -71,7 +71,7 @@ import { type IEntityService, type NameValue } from "{{servicesImport}}";
 
   patch(
     id: {{idTsType}},
-    data: Partial<{{#mutateTypeName}}{{mutateTypeName}}{{/mutateTypeName}}{{^mutateTypeName}}Omit<{{typeName}}, {{pkOmit}}>{{/mutateTypeName}}>,
+    data: Partial<Mutate>,
     opts?: { expectedUpdated?: string },
   ): Promise<{{typeName}} | null> {
     return this.update(id, data, opts);
@@ -85,7 +85,7 @@ import { type IEntityService, type NameValue } from "{{servicesImport}}";
 
   async updateBy(
     whereArgs: NameValue[],
-    data: Partial<{{#mutateTypeName}}{{mutateTypeName}}{{/mutateTypeName}}{{^mutateTypeName}}Omit<{{typeName}}, {{pkOmit}}>{{/mutateTypeName}}>,
+    data: Partial<Mutate>,
   ): Promise<number> {
     const rows = await this.findBy(whereArgs);
     let count = 0;

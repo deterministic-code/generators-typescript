@@ -100,17 +100,18 @@ describe("generate-services", () => {
     );
 
     const user = textOf(entries, "userService.ts");
-    assert.match(
-      user,
-      /export class UserService implements IEntityService<User, number, Omit<User, "id">>/,
-    );
+    assert.match(user, /export class UserService \{/);
+    assert.match(user, /export type IUserService = UserService/);
+    assert.doesNotMatch(user, /IEntityService/);
+    assert.doesNotMatch(user, /@deterministic-code\/deterministic/);
     assert.match(user, /async find_by_email\(email: string\)/);
     assert.match(
       user,
       /from "\.\.\/\.\.\/types\/generated\/datasource\/user"/,
     );
     const role = textOf(entries, "roleService.ts");
-    assert.match(role, /export class RoleService implements IEntityService<Role, number, Omit<Role, "id">>/);
+    assert.match(role, /export class RoleService \{/);
+    assert.doesNotMatch(role, /IEntityService/);
     assert.doesNotMatch(role, /UpdateRole/);
 
     const report = textOf(entries, "../custom/reportService.ts");
@@ -163,7 +164,8 @@ services: []
     });
     const user = textOf(entries, "userService.ts");
     assert.match(user, /Datasource type: standard/);
-    assert.match(user, /IEntityService<User, number, Omit<User, "id">>/);
+    assert.match(user, /export class UserService \{/);
+    assert.doesNotMatch(user, /IEntityService/);
   });
 
   it("emits no doc comments when comments=none", async () => {
@@ -183,7 +185,7 @@ services: []
     assert.ok(!user.includes("/**"));
   });
 
-  it("patches app.ts customModulePaths when by-feature relocates a custom module", async () => {
+  it("does not patch app.ts for custom service modules", async () => {
     const entries = await generate({
       reader: fixtureReader({
         "types.yaml": TYPES,
@@ -199,22 +201,8 @@ services:
       }),
       settings: { "other.organize_by_feature": "true" },
     });
-    const remap = entries.find(
-      (e) =>
-        e.kind === "patch" &&
-        e.filename === "app.ts" &&
-        e.section === "APP_CUSTOM_MODULE_PATHS",
-    );
-    assert.ok(remap, "missing APP_CUSTOM_MODULE_PATHS patch");
-    assert.equal(remap.kind, "patch");
-    assert.match(remap.content, /customModulePaths:/);
-    assert.match(
-      remap.content,
-      /"\.\/services\/contact-import-service"/,
-    );
-    assert.match(remap.content, /features\//);
     assert.equal(
-      entries.some((e) => e.kind === "patch" && e.filename === "tsconfig.json"),
+      entries.some((e) => e.kind === "patch" && e.filename === "app.ts"),
       false,
     );
   });
@@ -248,9 +236,8 @@ services: []
       settings: {},
     });
     const link = textOf(entries, "linkService.ts");
-    assert.match(
-      link,
-      /IEntityService<Link, \{ left_id: number; right_id: number \}, Omit<Link, "left_id" \| "right_id">>/,
-    );
+    assert.match(link, /export class LinkService \{/);
+    assert.match(link, /ICrudRepository<Link, \{ left_id: number; right_id: number \}>/);
+    assert.doesNotMatch(link, /IEntityService/);
   });
 });

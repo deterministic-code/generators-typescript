@@ -1,54 +1,22 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import request from "supertest";
-import { copyFile, mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { createBackendApp, connectDatabase, type DatabaseConnection } from "{{detRoot}}";
-
-const ENTITIES = {{&entitiesJson}} as const;
-{{#hasCustomModulePaths}}
-const CUSTOM_MODULE_PATHS = {{&customModulePathsJson}} as Record<string, string>;
-{{/hasCustomModulePaths}}
-
-let app: Awaited<ReturnType<typeof createBackendApp>>;
-let conn: DatabaseConnection;
-let tmpDir: string;
-
-beforeAll(async () => {
-  const prebuilt = process.env.npm_package_config_test_db;
-  if (!prebuilt) {
-    throw new Error(
-      "npm_package_config_test_db is unset — run via `npm test` so the pretest hook materializes the prebuilt sqlite via migrate-setup --and-up.",
-    );
-  }
-  tmpDir = await mkdtemp(join(tmpdir(), "app-routes-e2e-"));
-  const dbPath = join(tmpDir, "test.db");
-  await copyFile(prebuilt, dbPath);
-  conn = await connectDatabase({ backend: "sqlite", sqliteFile: dbPath });
-  // Custom service `module:` paths are project-root relative (e.g. ./services/…),
-  // not under deterministic/../src — match generated app.ts (SRC_ROOT ?? cwd).
-  app = await createBackendApp(conn, {
-    srcRoot: process.cwd(),
-{{#hasCustomModulePaths}}    customModulePaths: CUSTOM_MODULE_PATHS,
-{{/hasCustomModulePaths}}  });
-});
-
-afterAll(async () => {
-  await conn.close();
-  await rm(tmpDir, { recursive: true, force: true });
-});
+import { describe, it, expect } from "vitest";
+import { once } from "node:events";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
+import { {{appFnName}} } from "../{{appFileBase}}.js";
 
 describe("app routes e2e", () => {
   it("serves GET /api/health", async () => {
-    const res = await request(app).get("/api/health");
-    expect(res.status).toBeLessThan(500);
+    const app = await {{appFnName}}();
+    const server = createServer(app);
+    server.listen(0);
+    await once(server, "listening");
+    try {
+      const { port } = server.address() as AddressInfo;
+      const res = await fetch(`http://127.0.0.1:${port}/api/health`);
+      expect(res.status).toBeLessThan(500);
+    } finally {
+      server.close();
+      await once(server, "close");
+    }
   });
-
-  for (const entity of ENTITIES) {
-    it(`lists ${entity}`, async () => {
-      const segment = entity.replace(/_/g, "-");
-      const res = await request(app).get(`/api/${segment}`);
-      expect([200, 404]).toContain(res.status);
-    });
-  }
 });

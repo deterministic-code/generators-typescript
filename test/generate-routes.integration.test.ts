@@ -100,12 +100,12 @@ describe("generate-routes", () => {
 
     const users = textOf(entries, "user.ts");
     assert.match(users, /export function UserRouter/);
-    assert.match(users, /IUserService/);
-    assert.match(users, /createCrudRouter/);
-    assert.match(users, /router\.get\("\/email\/:email"/);
+    assert.doesNotMatch(users, /createCrudRouter/);
+    assert.doesNotMatch(users, /@deterministic-code\/deterministic/);
 
     const roles = textOf(entries, "role.ts");
-    assert.match(roles, /createReadOnlyRouter/);
+    assert.match(roles, /export function RoleRouter/);
+    assert.doesNotMatch(roles, /createReadOnlyRouter/);
 
     const index = textOf(entries, "index.ts");
     assert.match(index, /export \{ UserRouter \} from "\.\/user"/);
@@ -126,7 +126,8 @@ routes: []
       settings: { "datasource.use_optimistic_concurrency": "true" },
     });
     const orders = textOf(entries, "order.ts");
-    assert.match(orders, /useOptimisticConcurrency: true/);
+    assert.match(orders, /export function OrderRouter/);
+    assert.doesNotMatch(orders, /useOptimisticConcurrency/);
   });
 
   it("omits index when codegen.create_index is false", async () => {

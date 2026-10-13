@@ -1,29 +1,13 @@
-import { Router } from "express";
-
 {{#simpleDoc}}/** Route {{interfaceName}}. */
 {{/simpleDoc}}{{#descriptionDoc}}/**
  * Route {{interfaceName}}.
  * Datasource type: standard.
- * Target: CustomRoute.
- * Fields: 0.
  */
-{{/descriptionDoc}}export interface {{interfaceName}} {
-  router(): Router;
-}
+{{/descriptionDoc}}export interface {{interfaceName}} {}
 
 {{#simpleDoc}}/** Route {{className}}. */
 {{/simpleDoc}}{{#descriptionDoc}}/**
  * Route {{className}}.
  * Datasource type: standard.
- * Target: CustomRoute.
- * Fields: 0.
  */
-{{/descriptionDoc}}export class {{className}} implements {{interfaceName}} {
-  static readonly dependencies = [] as const;
-  constructor(..._args: unknown[]) {}
-  router(): Router {
-    const r = Router();
-    r.use((_req, res) => res.status(501).json({ error: "stub route {{className}}" }));
-    return r;
-  }
-}
+{{/descriptionDoc}}export class {{className}} implements {{interfaceName}} {}

@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 {{&prelude}}import type { ICrudRepository } from "@datasources/core";
-import { EntityIdentity, PrimaryKey } from "{{identityImport}}";
 import { {{className}} } from "{{importPath}}";
 
 type Repo = ICrudRepository<any>;
@@ -8,7 +7,7 @@ type Repo = ICrudRepository<any>;
 function createMockRepository(): Repo {
   return {
     entityName: {{&entityNameJson}},
-    primaryKey: {{&pkExpr}},
+    primaryKey: { fromRow: vi.fn() },
     query: vi.fn().mockResolvedValue([]),
     findAll: vi.fn().mockResolvedValue([]),
     find: vi.fn().mockResolvedValue(null),

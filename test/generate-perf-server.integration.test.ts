@@ -33,14 +33,15 @@ describe("generate-perf-server", () => {
     const server = entries.find((e) => e.filename === "perf-server.ts");
     assert.equal(server?.kind, "content");
     if (server?.kind === "content") {
-      assert.match(
+      assert.doesNotMatch(
         server.contents,
-        /from "@deterministic-code\/deterministic\/app"/,
+        /@deterministic-code\/deterministic/,
       );
+      assert.match(server.contents, /CreateBackendApp/);
     }
   });
 
-  it("uses a bundled app import when requested", async () => {
+  it("does not emit a bundled runtime import", async () => {
     const entries = await generate({
       reader: memoryReader({ "types.yaml": DS }),
       settings: {
@@ -50,7 +51,7 @@ describe("generate-perf-server", () => {
     const server = entries.find((e) => e.filename === "perf-server.ts");
     assert.equal(server?.kind, "content");
     if (server?.kind === "content") {
-      assert.match(server.contents, /_deterministic\/app\.js/);
+      assert.doesNotMatch(server.contents, /_deterministic/);
     }
   });
 });

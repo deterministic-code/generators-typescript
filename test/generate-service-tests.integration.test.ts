@@ -92,18 +92,16 @@ describe("generate-service-tests", () => {
 
     const user = textOf(entries, "userService.test.ts");
     assert.match(user, /import \{ faker \} from "@faker-js\/faker"/);
-    assert.match(
-      user,
-      /from "@deterministic-code\/deterministic\/identity"/,
-    );
+    assert.doesNotMatch(user, /@deterministic-code\/deterministic/);
+    assert.match(user, /from "@datasources\/core"/);
     assert.match(user, /import \{ UserService \} from "\.\.\/userService"/);
     assert.match(user, /entityName: "user"/);
-    assert.match(user, /new PrimaryKey\("id", "integer"\)/);
+    assert.match(user, /primaryKey: \{ fromRow: vi\.fn\(\) \}/);
     assert.match(user, /faker\.number\.int\(\{ min: 1 \}\)/);
     assert.match(user, /findAll delegates to the repository/);
 
     const sku = textOf(entries, "skuService.test.ts");
-    assert.match(sku, /new PrimaryKey\("code", "string"\)/);
+    assert.doesNotMatch(sku, /PrimaryKey/);
     assert.match(sku, /faker\.string\.alphanumeric/);
 
     const userBag = entries.find(
@@ -132,7 +130,7 @@ describe("generate-service-tests", () => {
     assert.deepEqual(entries, []);
   });
 
-  it("points repository imports at bundled _deterministic when requested", async () => {
+  it("does not emit bundled runtime identity imports", async () => {
     const entries = await generate({
       reader: fixtureReader(yaml),
       settings: {
@@ -140,6 +138,7 @@ describe("generate-service-tests", () => {
       },
     });
     const user = textOf(entries, "userService.test.ts");
-    assert.match(user, /from "\.\.\/\.\.\/\.\.\/_deterministic\/identity\.js"/);
+    assert.doesNotMatch(user, /_deterministic/);
+    assert.match(user, /from "@datasources\/core"/);
   });
 });
