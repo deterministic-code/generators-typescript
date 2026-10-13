@@ -35,6 +35,8 @@ export type ShapeNode = {
   isObject: boolean;
   isPrimitive: boolean;
   isRoot: boolean;
+  /** Sample dictionary key. An empty record is valid, so presence checks do not apply. */
+  mapEntry: boolean;
   expr: string;
   nested: ShapeNode[];
 };
@@ -111,6 +113,7 @@ const scalarNode = (
     isObject: false,
     isPrimitive: true,
     isRoot,
+    mapEntry: false,
     expr: primitiveExpr(field.type, fieldSize(field)),
     nested: [],
   };
@@ -129,6 +132,65 @@ const dsNodes = (
   );
 };
 
+const childNodes = (
+  base: string,
+  opts: ShapeOpts,
+  visited: Set<string>,
+  accessPrefix: string,
+  pathPrefix: string,
+): ShapeNode[] => {
+  const isView = opts.views.has(base);
+  return isView && !(opts.referenceBackendType && opts.tables.has(base))
+    ? viewNodes(base, opts, visited, accessPrefix, pathPrefix)
+    : dsNodes(base, opts, accessPrefix, pathPrefix);
+};
+
+const mapValueNode = (
+  value: TypeField,
+  opts: ShapeOpts,
+  visited: Set<string>,
+  access: string,
+  path: string,
+): ShapeNode => {
+  const ident = opts.casing.fieldIdent("k");
+  if (value.kind === "primitive") {
+    return {
+      name: "k",
+      ident,
+      access,
+      path,
+      testName: escapeTestName(path),
+      type: value.base,
+      nullable: value.isNullable,
+      hasDefault: value.hasDefault === true,
+      isArray: false,
+      isObject: false,
+      isPrimitive: true,
+      isRoot: false,
+      mapEntry: true,
+      expr: primitiveExpr(value.base, fieldSize(value)),
+      nested: [],
+    };
+  }
+  return {
+    name: "k",
+    ident,
+    access,
+    path,
+    testName: escapeTestName(path),
+    type: value.type,
+    nullable: value.isNullable,
+    hasDefault: false,
+    isArray: false,
+    isObject: true,
+    isPrimitive: false,
+    isRoot: false,
+    mapEntry: true,
+    expr: "",
+    nested: childNodes(value.base, opts, visited, access, path),
+  };
+};
+
 const viewFieldNode = (
   field: TypeField,
   opts: ShapeOpts,
@@ -142,18 +204,11 @@ const viewFieldNode = (
   if (entry !== undefined) {
     const ident = opts.casing.fieldIdent(field.name);
     const path = pathPrefix === "" ? field.name : `${pathPrefix}.${field.name}`;
-    const valueNode = viewFieldNode(
-      { ...entry.value, name: "k", isArray: false, isMap: false },
-      opts,
-      visited,
-      `${accessPrefix}${fieldAccess(ident)}["k"]`,
-      `${path}.k`,
-      false,
-    );
+    const access = `${accessPrefix}${fieldAccess(ident)}`;
     return {
       name: field.name,
       ident,
-      access: `${accessPrefix}${fieldAccess(ident)}`,
+      access,
       path,
       testName: escapeTestName(path),
       type: field.type,
@@ -163,8 +218,17 @@ const viewFieldNode = (
       isObject: true,
       isPrimitive: false,
       isRoot,
+      mapEntry: false,
       expr: "",
-      nested: [valueNode],
+      nested: [
+        mapValueNode(
+          entry.value,
+          opts,
+          visited,
+          `${access}["k"]`,
+          `${path}.k`,
+        ),
+      ],
     };
   }
   if (field.kind === "primitive") {
@@ -183,6 +247,7 @@ const viewFieldNode = (
       isObject: false,
       isPrimitive: true,
       isRoot,
+      mapEntry: false,
       expr: primitiveExpr(field.base, fieldSize(field)),
       nested: [],
     };
@@ -191,11 +256,6 @@ const viewFieldNode = (
   const path = pathPrefix === "" ? field.name : `${pathPrefix}.${field.name}`;
   const access = `${accessPrefix}${fieldAccess(ident)}`;
   const childPrefix = field.isArray ? `${access}[0]` : access;
-  const isView = opts.views.has(field.base);
-  const nested =
-    isView && !(opts.referenceBackendType && opts.tables.has(field.base))
-      ? viewNodes(field.base, opts, visited, childPrefix, path)
-      : dsNodes(field.base, opts, childPrefix, path);
   return {
     name: field.name,
     ident,
@@ -209,8 +269,9 @@ const viewFieldNode = (
     isObject: true,
     isPrimitive: false,
     isRoot,
+    mapEntry: false,
     expr: "",
-    nested,
+    nested: childNodes(field.base, opts, visited, childPrefix, path),
   };
 };
 
