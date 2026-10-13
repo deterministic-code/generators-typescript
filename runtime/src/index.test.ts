@@ -55,7 +55,6 @@ describe('deterministic entry', () => {
   });
 
   it('exports services and validators', () => {
-    expect(lib.DelegatingEntityService).toBeDefined();
     expect(lib.AuthenticationService).toBeDefined();
     expect(typeof lib.parseBasicAuth).toBe('function');
   });

@@ -102,7 +102,7 @@ describe("generate-services", () => {
     const user = textOf(entries, "userService.ts");
     assert.match(
       user,
-      /export class UserService extends DelegatingEntityService<User, number, Omit<User, "id">>/,
+      /export class UserService implements IEntityService<User, number, Omit<User, "id">>/,
     );
     assert.match(user, /async find_by_email\(email: string\)/);
     assert.match(
@@ -110,7 +110,7 @@ describe("generate-services", () => {
       /from "\.\.\/\.\.\/types\/generated\/datasource\/user"/,
     );
     const role = textOf(entries, "roleService.ts");
-    assert.match(role, /export class RoleService extends DelegatingEntityService<Role, number, Omit<Role, "id">>/);
+    assert.match(role, /export class RoleService implements IEntityService<Role, number, Omit<Role, "id">>/);
     assert.doesNotMatch(role, /UpdateRole/);
 
     const report = textOf(entries, "../custom/reportService.ts");
@@ -250,7 +250,7 @@ services: []
     const link = textOf(entries, "linkService.ts");
     assert.match(
       link,
-      /DelegatingEntityService<Link, \{ left_id: number; right_id: number \}, Omit<Link, "left_id" \| "right_id">>/,
+      /IEntityService<Link, \{ left_id: number; right_id: number \}, Omit<Link, "left_id" \| "right_id">>/,
     );
   });
 });

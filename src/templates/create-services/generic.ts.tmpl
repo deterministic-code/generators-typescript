@@ -1,6 +1,7 @@
 {{#typeImport}}import { {{typeName}} } from "{{typeImportPath}}";
 {{/typeImport}}{{#mutateImport}}import { {{mutateTypeName}} } from "{{mutateImportPath}}";
-{{/mutateImport}}import { DelegatingEntityService, type IEntityService } from "{{servicesImport}}";
+{{/mutateImport}}import type { ICrudRepository } from "@datasources/core";
+import { type IEntityService, type NameValue } from "{{servicesImport}}";
 
 {{#simpleDoc}}/** Service {{interfaceName}}. */
 {{/simpleDoc}}{{#descriptionDoc}}/**
@@ -16,7 +17,94 @@
  * Datasource type: {{datasourceType}}.
  * Fields: 0.
  */
-{{/descriptionDoc}}export class {{className}} extends DelegatingEntityService<{{typeName}}, {{idTsType}}, {{#mutateTypeName}}{{mutateTypeName}}{{/mutateTypeName}}{{^mutateTypeName}}Omit<{{typeName}}, {{pkOmit}}>{{/mutateTypeName}}> {
+{{/descriptionDoc}}export class {{className}} implements IEntityService<{{typeName}}, {{idTsType}}, {{#mutateTypeName}}{{mutateTypeName}}{{/mutateTypeName}}{{^mutateTypeName}}Omit<{{typeName}}, {{pkOmit}}>{{/mutateTypeName}}> {
+  readonly primaryKey;
+
+  constructor(
+    private readonly repository: ICrudRepository<{{typeName}}, {{idTsType}}>,
+  ) {
+    this.primaryKey = repository.primaryKey;
+  }
+
+  query(command: string, args: NameValue[]): Promise<{{typeName}}[]> {
+    return this.repository.query(command, args.map((a) => a.value));
+  }
+
+  findAll(): Promise<{{typeName}}[]> {
+    return this.repository.findAll();
+  }
+
+  create(
+    data: {{#mutateTypeName}}{{mutateTypeName}}{{/mutateTypeName}}{{^mutateTypeName}}Omit<{{typeName}}, {{pkOmit}}>{{/mutateTypeName}},
+  ): Promise<{{typeName}}> {
+    return this.repository.add(data);
+  }
+
+  find(query: string, args: NameValue[]): Promise<{{typeName}}[]> {
+    return this.repository.query(query, args.map((a) => a.value));
+  }
+
+  findById(id: {{idTsType}}): Promise<{{typeName}} | null> {
+    return this.repository.find(id);
+  }
+
+  findBy(whereArgs: NameValue[]): Promise<{{typeName}}[]> {
+    if (whereArgs.length === 0) return this.repository.findAll();
+    if (whereArgs.length === 1) {
+      return this.repository.findBy(whereArgs[0].name, whereArgs[0].value);
+    }
+    return this.repository.query(
+      whereArgs.map((a) => a.name).join(" AND "),
+      whereArgs.map((a) => a.value),
+    );
+  }
+
+  update(
+    id: {{idTsType}},
+    data: Partial<{{#mutateTypeName}}{{mutateTypeName}}{{/mutateTypeName}}{{^mutateTypeName}}Omit<{{typeName}}, {{pkOmit}}>{{/mutateTypeName}}>,
+    opts?: { expectedUpdated?: string },
+  ): Promise<{{typeName}} | null> {
+    return opts === undefined
+      ? this.repository.update(id, data)
+      : this.repository.update(id, data, opts);
+  }
+
+  patch(
+    id: {{idTsType}},
+    data: Partial<{{#mutateTypeName}}{{mutateTypeName}}{{/mutateTypeName}}{{^mutateTypeName}}Omit<{{typeName}}, {{pkOmit}}>{{/mutateTypeName}}>,
+    opts?: { expectedUpdated?: string },
+  ): Promise<{{typeName}} | null> {
+    return this.update(id, data, opts);
+  }
+
+  delete(id: {{idTsType}}, opts?: { expectedUpdated?: string }): Promise<boolean> {
+    return opts === undefined
+      ? this.repository.delete(id)
+      : this.repository.delete(id, opts);
+  }
+
+  async updateBy(
+    whereArgs: NameValue[],
+    data: Partial<{{#mutateTypeName}}{{mutateTypeName}}{{/mutateTypeName}}{{^mutateTypeName}}Omit<{{typeName}}, {{pkOmit}}>{{/mutateTypeName}}>,
+  ): Promise<number> {
+    const rows = await this.findBy(whereArgs);
+    let count = 0;
+    for (const row of rows) {
+      const id = this.primaryKey.fromRow(row as Record<string, unknown>) as {{idTsType}};
+      if ((await this.repository.update(id, data)) !== null) count++;
+    }
+    return count;
+  }
+
+  async deleteBy(whereArgs: NameValue[]): Promise<number> {
+    const rows = await this.findBy(whereArgs);
+    let count = 0;
+    for (const row of rows) {
+      const id = this.primaryKey.fromRow(row as Record<string, unknown>) as {{idTsType}};
+      if (await this.repository.delete(id)) count++;
+    }
+    return count;
+  }
 {{#finders}}
   async {{method}}({{param}}: {{paramType}}): Promise<{{typeName}} | null> {
     const rows = await this.findBy([{ name: "{{field}}", value: {{param}} }]);
