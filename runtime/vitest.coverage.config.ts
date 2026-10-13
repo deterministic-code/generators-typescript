@@ -25,7 +25,6 @@ export default defineConfig({
         'src/services/ISigninService.ts',
         'src/services/AuthCallbackResult.ts',
         'src/services/EntityMeta.ts',
-        'src/repositories/IRepository.ts',
       ],
       thresholds: {
         lines: 84,
@@ -33,8 +32,6 @@ export default defineConfig({
         functions: 81,
         statements: 84,
         '**/routes/iterateCombinedRoutes.ts': FULL,
-        '**/services/EagerChildWritingService.ts': FULL,
-        '**/services/EntityService.ts': FULL,
       },
     },
   },

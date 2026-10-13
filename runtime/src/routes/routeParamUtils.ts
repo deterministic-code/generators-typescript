@@ -1,5 +1,5 @@
 import type { Response } from 'express';
-import type { EntityIdentity, IdentityValue } from '../repositories/EntityIdentity';
+import type { EntityIdentity, IdentityValue } from '../identity/EntityIdentity';
 import { sendError } from '../responses/sendResponse';
 
 /**

@@ -43,21 +43,10 @@ describe('deterministic entry', () => {
     expect(lib.MiddlewareLookup).toBeDefined();
   });
 
-  it('exports repositories and routes', () => {
-    expect(lib.InMemoryCrudRepository).toBeDefined();
-    expect(lib.SqliteSetup).toBeDefined();
-    expect(lib.SqliteDatasource).toBeDefined();
-    expect(lib.SqliteCrudRepository).toBeDefined();
-    expect(lib.SqliteStandardRepository).toBeDefined();
-    expect(lib.PostgresSetup).toBeDefined();
-    expect(lib.PostgresDatasource).toBeDefined();
-    expect(lib.PostgresCrudRepository).toBeDefined();
-    expect(lib.PostgresStandardRepository).toBeDefined();
-    expect(lib.MysqlSetup).toBeDefined();
-    expect(lib.MysqlDatasource).toBeDefined();
-    expect(lib.MysqlCrudRepository).toBeDefined();
-    expect(lib.MysqlStandardRepository).toBeDefined();
-    expect(lib.buildRepoForBackend).toBeDefined();
+  it('exports identity, routes, and SQL identifier helpers', () => {
+    expect(lib.EntityIdentity).toBeDefined();
+    expect(lib.PrimaryKey).toBeDefined();
+    expect(typeof lib.quoteIdentifier).toBe('function');
     expect(typeof lib.createCrudRouter).toBe('function');
     expect(typeof lib.createReadOnlyRouter).toBe('function');
     expect(typeof lib.addNestedManyToManyRoutes).toBe('function');
@@ -66,9 +55,7 @@ describe('deterministic entry', () => {
   });
 
   it('exports services and validators', () => {
-    expect(lib.EntityService).toBeDefined();
     expect(lib.AuthenticationService).toBeDefined();
-    expect(lib.LookupEnrichedService).toBeDefined();
     expect(typeof lib.parseBasicAuth).toBe('function');
   });
 });

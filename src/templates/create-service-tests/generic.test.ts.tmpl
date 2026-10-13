@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-{{&prelude}}import type { ICrudRepository } from "{{repositoriesImport}}";
-import { EntityIdentity, PrimaryKey } from "{{repositoriesImport}}";
+{{&prelude}}import type { ICrudRepository } from "@datasources/core";
+import { EntityIdentity, PrimaryKey } from "{{identityImport}}";
 import { {{className}} } from "{{importPath}}";
 
 type Repo = ICrudRepository<any>;

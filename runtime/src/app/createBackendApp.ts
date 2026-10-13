@@ -9,10 +9,7 @@ import express, {
   type Response,
 } from 'express';
 
-import { buildRepoForBackend, PrimaryKeyService, type DatabaseConnection } from '../repositories';
-import { createNameMapper, resolveFieldConverters } from '../repositories/createNameMapper';
-import type { ITypeFieldConverter, SupportedDatasource } from '../converters/ITypeFieldConverter';
-import { getDefaultConverters } from '../converters/registry';
+import type { DatabaseConnection } from './database';
 import {
   DataSourceMiddlewareLookup,
   errorHandler,
@@ -39,25 +36,17 @@ import {
   type RoutesData,
 } from '../routes';
 import type { IEntityService } from '../services/interfaces/IEntityService';
-import { EntityService } from '../services/EntityService';
-import { LookupEnrichedService, type LookupMapping } from '../services/LookupEnrichedService';
-import { EagerChildLoadingService } from '../services/EagerChildLoadingService';
-import {
-  EagerChildWritingService,
-  type EagerWriteChildBinding,
-} from '../services/EagerChildWritingService';
 
 import { readFile } from 'node:fs/promises';
 import yaml from 'js-yaml';
 
-import { pathExists } from '../repositories/pathExists';
+import { pathExists } from '../fs/pathExists';
 import type { ZodSchema } from 'zod';
 
 import { applyEnableMiddleware } from './enableMiddleware';
 import { connectDatabase } from './connectDatabase';
 import { loadBackendAppConfig } from './loaders/loadBackendAppConfig';
-import { createDatasourceNaming } from '@deterministic-code/generators-common/datasource-naming';
-import { loadSettingsConfig, namingSettingsOf, type SettingsConfig } from './loaders/loadSettingsConfig';
+import { loadSettingsConfig, type SettingsConfig } from './loaders/loadSettingsConfig';
 import type { BackendAppConfig, MiddlewareEntry } from './loaders/parseBackendAppConfig';
 import {
   parseGenericRouteSpecs,
@@ -71,18 +60,6 @@ import {
   serviceKeyFor,
   type CrudRouteSpec,
 } from './loaders/parseCrudRouteSpecs';
-import {
-  computeEnrichments,
-  enrichmentsFromCrudSpec,
-} from './loaders/computeEnrichments';
-import {
-  computeEagerChildren,
-  subtreeFor,
-  type EagerChildSpec,
-  type EagerLoadGate,
-  type EagerLoadTree,
-} from './loaders/computeEagerChildren';
-import { parseEagerPaths, parseMemberOnlyReadPaths } from './loaders/parseEagerPaths';
 import { parseServiceSpecs } from './loaders/parseServiceSpecs';
 import {
   applyClassStaticDependencies,
@@ -175,13 +152,6 @@ export interface CreateAppOptions {
   datasourceData?: DatasourceData;
   /** Persistence overlays (`datasource.yaml`). Kept when `datasourceData` is the types doc. */
   overlaysDoc?: unknown;
-
-  /**
-   * Consumer-supplied converters keyed by the `type_converter` name declared on a
-   * field in `datasource_mappings`. A field naming a converter not present here
-   * throws at repo build — never a silent fallthrough.
-   */
-  customConverters?: ReadonlyMap<string, ITypeFieldConverter>;
   routesData?: RoutesData;
   crudSpecs?: CrudRouteSpec[];
   serviceSpecs?: ServiceSpec[];
@@ -493,16 +463,6 @@ function isDatabaseConnection(arg: unknown): arg is DatabaseConnection {
   );
 }
 
-function datasourceDirectiveOf(doc: unknown): { auto_enrich?: boolean } | null {
-  const includes = (doc as { includes?: unknown } | null)?.includes;
-  if (!Array.isArray(includes)) return null;
-  const entry = includes.find(
-    (e): e is { datasource_types?: { auto_enrich?: boolean } } =>
-      typeof e === 'object' && e !== null && 'datasource_types' in e,
-  );
-  return entry?.datasource_types ?? null;
-}
-
 async function createBackendAppWithHooks(options: CreateBackendAppOptions): Promise<Express> {
   const deterministicRoot = resolveDeterministicRoot(options.deterministicRoot);
   const srcRoot = options.srcRoot ?? path.resolve(deterministicRoot, '..', 'src');
@@ -528,9 +488,6 @@ class BackendAppBuilder {
   private datasourceDoc: unknown;
   private datasourceOverlaysDoc: unknown = null;
   private viewTypesDoc: unknown;
-  private autoEnrich = false;
-  private eagerPathTrees!: ReturnType<typeof parseEagerPaths>;
-  private memberOnlyReadPaths!: ReturnType<typeof parseMemberOnlyReadPaths>;
   private routeSpecs!: GenericRouteSpec[];
   private customRouteSpecs!: CustomRouteSpec[];
   private crudSpecs!: CrudRouteSpec[];
@@ -540,7 +497,6 @@ class BackendAppBuilder {
   private declaredOrder!: MiddlewareEntry[];
   private deferMiddlewareLookup = false;
   private middlewareLookup: MiddlewareLookup | undefined;
-  private rawRepos: Record<string, unknown> = {};
   private repos: Record<string, unknown> = {};
   private serviceMiddlewares: IServiceMiddleware[] = [];
   private ctx!: CreateAppContext;
@@ -599,16 +555,10 @@ class BackendAppBuilder {
           : (await pathExists(viewTypesPath))
             ? await readYaml(viewTypesPath)
             : null;
-    this.autoEnrich =
-      options.viewTypesAutoEnrich ?? Boolean(datasourceDirectiveOf(this.viewTypesDoc)?.auto_enrich);
   }
 
   private async resolveSpecs(): Promise<void> {
     const { options } = this;
-    this.eagerPathTrees = parseEagerPaths(this.routesDoc as Parameters<typeof parseEagerPaths>[0]);
-    this.memberOnlyReadPaths = parseMemberOnlyReadPaths(
-      this.routesDoc as Parameters<typeof parseMemberOnlyReadPaths>[0],
-    );
     this.routeSpecs = options.routeSpecs ?? parseGenericRouteSpecs(this.routesDoc);
     this.customRouteSpecs = parseCustomRouteSpecs(this.routesDoc);
     this.crudSpecs =
@@ -650,45 +600,7 @@ class BackendAppBuilder {
   }
 
   private buildRepos(): void {
-    const naming = createDatasourceNaming(namingSettingsOf(this.settingsConfig));
-    const nameMapper = createNameMapper(
-      (this.datasourceOverlaysDoc ?? this.datasourceData) as DatasourceData,
-      naming,
-      (this.datasourceDoc ?? this.datasourceData) as DatasourceData,
-    );
-    const converters = this.convertersForConnection();
-    const primaryKeys = new PrimaryKeyService(this.crudSpecs);
-    for (const spec of this.crudSpecs) {
-      const mappedTableName = nameMapper.tableFor(spec.entityName);
-      const repo = buildRepoForBackend(this.conn, mappedTableName, {
-        hasStandardColumns: !spec.readonly,
-        entityName: spec.entityName,
-        primaryKeys,
-        withUuidColumn:
-          spec.primaryKeyIdType !== 'uuid' &&
-          Boolean(spec.columnTypes && 'uuid' in spec.columnTypes),
-        columnTypes: spec.columnTypes ?? {},
-        fieldMappings: nameMapper.fieldsFor(spec.entityName),
-        naming,
-        ...(converters && { converters }),
-        fieldConverters: resolveFieldConverters(
-          nameMapper.convertersFor(spec.entityName),
-          this.options.customConverters,
-          spec.entityName,
-        ),
-      });
-      this.rawRepos[serviceKeyFor(spec.entityName)] = repo;
-      this.repos[serviceKeyFor(spec.entityName)] = new EntityService(
-        repo as unknown as ConstructorParameters<typeof EntityService>[0],
-      );
-    }
-  }
-
-  // memory/sqlserver/oracle repos don't consume a converter map — omit so their behavior is unchanged.
-  private convertersForConnection(): ReadonlyMap<string, ITypeFieldConverter> | undefined {
-    const dialect = this.conn.type;
-    if (dialect !== 'sqlite' && dialect !== 'mysql' && dialect !== 'postgres') return undefined;
-    return getDefaultConverters(dialect satisfies SupportedDatasource, 'typescript');
+    // Persistence moved to @datasources/core. Callers inject composed services via onBeforeCreateApp.
   }
 
   private buildContext(): void {
@@ -764,26 +676,15 @@ class BackendAppBuilder {
 
   private mountCrudRoutes(): void {
     const { app, ctx } = this;
-    const enrichedReadServices = buildEnrichedReadServices(
-      this.crudSpecs,
-      ctx.repos,
-      this.datasourceData,
-      this.autoEnrich,
-    );
-    const fullReadServices = buildFullReadServices({
-      crudSpecs: this.crudSpecs,
-      repos: ctx.repos,
-      enrichedReadServices,
-      eagerPathTrees: this.eagerPathTrees,
-      datasourceDoc: this.datasourceData,
-      viewTypesDoc: this.viewTypesDoc,
-      memberOnlyReadPaths: this.memberOnlyReadPaths,
-    });
-    const fullWriteServices = buildFullWriteServices(
-      this.crudSpecs,
-      { rawRepos: this.rawRepos, fullReadServices, enrichedReadServices },
-      this.conn,
-    );
+    const fullReadServices = new Map<string, IEntityService<any, any>>();
+    const fullWriteServices = new Map<string, IEntityService<any, any>>();
+    for (const spec of this.crudSpecs) {
+      const svc = ctx.repos[serviceKeyFor(spec.entityName)] as IEntityService<any, any> | undefined;
+      if (svc) {
+        fullReadServices.set(spec.entityName, svc);
+        fullWriteServices.set(spec.entityName, svc);
+      }
+    }
     wrapCrudServiceMap(fullReadServices, this.serviceMiddlewares);
     wrapCrudServiceMap(fullWriteServices, this.serviceMiddlewares);
     this.mountEntityCrudRoutes(fullReadServices, fullWriteServices);
@@ -957,342 +858,6 @@ function applyRouteGate(handler: MiddlewareHandler, entry: MiddlewareEntry): Mid
   };
 }
 
-function buildEnrichedReadServices(
-  crudSpecs: CrudRouteSpec[],
-  repos: Record<string, unknown>,
-  datasourceDoc: unknown,
-  autoEnrich: boolean,
-): Map<string, IEntityService<any, any>> {
-  const out = new Map<string, IEntityService<any, any>>();
-  for (const spec of crudSpecs) {
-    const baseService = repos[serviceKeyFor(spec.entityName)] as
-      | IEntityService<any, any>
-      | undefined;
-    if (!baseService) continue;
-    const enrichments =
-      (spec.enrichmentColumns?.length ?? 0) > 0
-        ? enrichmentsFromCrudSpec(spec)
-        : computeEnrichments(
-            spec.entityName,
-            datasourceDoc as Parameters<typeof computeEnrichments>[1],
-          );
-    const mappings: LookupMapping[] = [];
-    for (const e of enrichments) {
-      const lookupService = repos[serviceKeyFor(e.targetTable)];
-      if (!lookupService) continue;
-      mappings.push({
-        fkField: e.fkColumn,
-        nameField: e.newField,
-        replaceFk: autoEnrich || spec.replaceLookupFks === true,
-        lookupService: lookupService as LookupMapping['lookupService'],
-      });
-    }
-    out.set(
-      spec.entityName,
-      mappings.length === 0 ? baseService : new LookupEnrichedService(baseService, mappings),
-    );
-  }
-  return out;
-}
-
-type EagerServiceMap = Map<string, IEntityService<any, any>>;
-
-interface ChildServiceResolver {
-  repos: Record<string, unknown>;
-  wrap: (entityName: string, gate: EagerLoadGate) => IEntityService<any, any> | undefined;
-}
-
-function markMemberOnly(
-  children: EagerChildSpec[],
-  entityName: string,
-  memberOnlyReadPaths: ReadonlySet<string>,
-): void {
-  for (const child of children) {
-    if (memberOnlyReadPaths.has(`${entityName}.${child.fieldName}`)) child.memberOnly = true;
-  }
-}
-
-function collectEagerChildServices(
-  eagerChildren: EagerChildSpec[],
-  gate: EagerLoadGate,
-  resolver: ChildServiceResolver,
-): {
-  childServiceMap: EagerServiceMap;
-  joinServiceMap: EagerServiceMap;
-  rawChildServiceMap: EagerServiceMap;
-} {
-  const { repos, wrap } = resolver;
-  const childServiceMap: EagerServiceMap = new Map();
-  const joinServiceMap: EagerServiceMap = new Map();
-  const rawChildServiceMap: EagerServiceMap = new Map();
-  for (const child of eagerChildren) {
-    const childService = wrap(child.childTable, subtreeFor(gate, child.fieldName));
-    if (childService) childServiceMap.set(child.childTable, childService);
-    // why raw-repo alongside enriched: attachChildrenBatched groups by FK (application_id), but LookupEnrichedService(replaceFk=true) strips it — raw repo keeps FK for grouping; enriched service then re-queried by id for the per-parent eager-load attach.
-    const rawRepo = repos[serviceKeyFor(child.childTable)];
-    if (rawRepo)
-      rawChildServiceMap.set(child.childTable, rawRepo as IEntityService<any, any>);
-    if (child.joinTable) {
-      const joinService = repos[serviceKeyFor(child.joinTable)];
-      if (joinService)
-        joinServiceMap.set(child.joinTable, joinService as IEntityService<any, any>);
-    }
-  }
-  return { childServiceMap, joinServiceMap, rawChildServiceMap };
-}
-
-interface FullReadServicesArgs {
-  crudSpecs: CrudRouteSpec[];
-  repos: Record<string, unknown>;
-  enrichedReadServices: EagerServiceMap;
-  eagerPathTrees: Map<string, EagerLoadTree>;
-  datasourceDoc: unknown;
-  viewTypesDoc: unknown;
-  memberOnlyReadPaths: ReadonlySet<string>;
-}
-
-/** Each table's eager-write child field names (keyed by the parent table at every nesting level), so a write-embed child can be added to that table's eager-read set. */
-function buildEagerWriteFieldMap(crudSpecs: CrudRouteSpec[]): Map<string, Set<string>> {
-  const map = new Map<string, Set<string>>();
-  const walk = (
-    parentTable: string,
-    children: import('./loaders/parseCrudRouteSpecs').EagerWriteChildSpec[] | undefined,
-  ): void => {
-    if (!children) return;
-    for (const child of children) {
-      const fields = map.get(parentTable) ?? new Set<string>();
-      fields.add(child.fieldName);
-      map.set(parentTable, fields);
-      walk(child.childTable, child.children);
-    }
-  };
-  for (const spec of crudSpecs) walk(spec.entityName, spec.eagerWriteChildren);
-  return map;
-}
-
-function gateIncludesField(gate: EagerLoadGate, fieldName: string): boolean {
-  if (gate === '*') return true;
-  if (gate instanceof Map) return gate.has(fieldName);
-  return false;
-}
-
-/** Union the eager-write field names into the eager-read gate so a write-embed child eager-loads even when eager_path doesn't list it. */
-function mergeWriteFieldsIntoGate(
-  gate: EagerLoadGate,
-  writeFields: Set<string> | undefined,
-): EagerLoadGate {
-  if (!writeFields || writeFields.size === 0) return gate;
-  if (gate === '*') return gate;
-  const merged: EagerLoadTree = gate instanceof Map ? new Map(gate) : new Map();
-  for (const field of writeFields) {
-    if (!merged.has(field)) merged.set(field, new Map());
-  }
-  return merged;
-}
-
-/** A child pulled into the read set purely because it's eager-written (absent from eager_path) attaches on member reads only, never on the collection list. */
-function markWriteOnlyMemberOnly(
-  children: EagerChildSpec[],
-  gate: EagerLoadGate,
-  writeFields: Set<string> | undefined,
-): void {
-  if (!writeFields) return;
-  for (const child of children) {
-    if (writeFields.has(child.fieldName) && !gateIncludesField(gate, child.fieldName)) {
-      child.memberOnly = true;
-    }
-  }
-}
-
-function buildFullReadServices(args: FullReadServicesArgs): EagerServiceMap {
-  const { crudSpecs, repos, enrichedReadServices, eagerPathTrees } = args;
-  const { datasourceDoc, viewTypesDoc, memberOnlyReadPaths } = args;
-  const out: EagerServiceMap = new Map();
-  const inProgress = new Set<string>();
-  const eagerWriteFields = buildEagerWriteFieldMap(crudSpecs);
-
-  const baseFor = (entityName: string): IEntityService<any, any> | undefined =>
-    enrichedReadServices.get(entityName) ??
-    (repos[serviceKeyFor(entityName)] as IEntityService<any, any> | undefined);
-
-  const wrap = (
-    entityName: string,
-    gate: EagerLoadGate,
-  ): IEntityService<any, any> | undefined => {
-    const base = baseFor(entityName);
-    if (!base) return undefined;
-    if (inProgress.has(entityName)) return base;
-
-    // Eager-write ⟹ eager-read: a write-embed child must round-trip on a member read, so its field joins the read gate even when eager_path omits it.
-    const writeFields = eagerWriteFields.get(entityName);
-    const readGate = mergeWriteFieldsIntoGate(gate, writeFields);
-
-    const eagerChildren = computeEagerChildren(
-      entityName,
-      viewTypesDoc as Parameters<typeof computeEagerChildren>[1],
-      readGate,
-      datasourceDoc as Parameters<typeof computeEagerChildren>[3],
-    );
-    if (eagerChildren.length === 0) return base;
-    markMemberOnly(eagerChildren, entityName, memberOnlyReadPaths);
-    markWriteOnlyMemberOnly(eagerChildren, gate, writeFields);
-
-    inProgress.add(entityName);
-    const { childServiceMap, joinServiceMap, rawChildServiceMap } = collectEagerChildServices(
-      eagerChildren,
-      readGate,
-      { repos, wrap },
-    );
-    inProgress.delete(entityName);
-
-    if (childServiceMap.size === 0) return base;
-    return new EagerChildLoadingService(
-      base,
-      eagerChildren,
-      childServiceMap,
-      joinServiceMap,
-      rawChildServiceMap,
-    );
-  };
-
-  for (const spec of crudSpecs) {
-    const service = wrap(spec.entityName, eagerPathTrees.get(spec.entityName));
-    if (service) out.set(spec.entityName, service);
-  }
-  return out;
-}
-
-// Every backend repository (SQL dialects + in-memory) rebuilds itself on a transaction-scoped datasource via `cloneOnto`, preserving its id_type / primary key / converters — so this is dialect-agnostic.
-function withTxnRepo(repo: any, txn: any): any {
-  return repo.cloneOnto(txn);
-}
-
-function buildEagerWriteBindings(
-  childSpecs: import('./loaders/parseCrudRouteSpecs').EagerWriteChildSpec[] | undefined,
-  rawRepos: Record<string, unknown>,
-  fullReadServices: Map<string, IEntityService<any, any>>,
-  enrichedReadServices: Map<string, IEntityService<any, any>>,
-  withTxnRepoFn: (repo: any, txn: any) => any,
-): EagerWriteChildBinding[] {
-  if (!childSpecs) return [];
-  const bindings: EagerWriteChildBinding[] = [];
-  for (const childSpec of childSpecs) {
-    const childService =
-      fullReadServices.get(childSpec.childTable) ?? enrichedReadServices.get(childSpec.childTable);
-    const childRepo = rawRepos[serviceKeyFor(childSpec.childTable)] as any;
-    if (!childService || !childRepo) continue;
-
-    const nested = buildEagerWriteBindings(
-      childSpec.children,
-      rawRepos,
-      fullReadServices,
-      enrichedReadServices,
-      withTxnRepoFn,
-    );
-
-    if (childSpec.kind === 'm2m') {
-      if (!childSpec.junctionTable || !childSpec.parentFkColumn || !childSpec.targetFkColumn) {
-        continue;
-      }
-      const junctionRepo = rawRepos[serviceKeyFor(childSpec.junctionTable)] as any;
-      if (!junctionRepo) continue;
-      bindings.push({
-        kind: 'm2m',
-        fieldName: childSpec.fieldName,
-        childTable: childSpec.childTable,
-        junctionTable: childSpec.junctionTable,
-        parentFkColumn: childSpec.parentFkColumn,
-        targetFkColumn: childSpec.targetFkColumn,
-        service: childService,
-        repository: childRepo,
-        junctionRepository: junctionRepo,
-        withTxnRepoFn,
-        ...(nested.length > 0 && { children: nested }),
-        ...(childSpec.isArray === false && { isArray: false }),
-      });
-      continue;
-    }
-
-    if (!childSpec.fkColumn) continue;
-    bindings.push({
-      kind: 'direct-fk',
-      fieldName: childSpec.fieldName,
-      childTable: childSpec.childTable,
-      fkColumn: childSpec.fkColumn,
-      service: childService,
-      repository: childRepo,
-      withTxnRepoFn,
-      ...(nested.length > 0 && { children: nested }),
-      ...(childSpec.isArray === false && { isArray: false }),
-    });
-  }
-  return bindings;
-}
-
-interface WriteServiceContext {
-  rawRepos: Record<string, unknown>;
-  fullReadServices: Map<string, IEntityService<any, any>>;
-  enrichedReadServices: Map<string, IEntityService<any, any>>;
-}
-
-interface WriteServiceDeps extends WriteServiceContext {
-  datasource: any;
-  withTxnRepoFn: ((repo: any, txn: any) => any) | null;
-}
-
-// The service that handles writes for one entity: an EagerChildWritingService when the entity has resolvable eager-write children, otherwise its plain read service (null → skip the entity).
-function writeServiceForSpec(
-  spec: CrudRouteSpec,
-  deps: WriteServiceDeps,
-): IEntityService<any, any> | null {
-  const readService =
-    deps.fullReadServices.get(spec.entityName) ?? deps.enrichedReadServices.get(spec.entityName);
-  if (!spec.eagerWriteChildren || spec.eagerWriteChildren.length === 0) return readService ?? null;
-  if (!deps.withTxnRepoFn || !readService) return readService ?? null;
-
-  const parentRepo = deps.rawRepos[serviceKeyFor(spec.entityName)] as any;
-  if (!parentRepo) return readService;
-
-  const childBindings = buildEagerWriteBindings(
-    spec.eagerWriteChildren,
-    deps.rawRepos,
-    deps.fullReadServices,
-    deps.enrichedReadServices,
-    deps.withTxnRepoFn,
-  );
-  if (childBindings.length === 0) return readService;
-
-  return new EagerChildWritingService({
-    base: readService,
-    datasource: deps.datasource,
-    parentRepository: parentRepo,
-    parentWithTxnRepoFn: deps.withTxnRepoFn,
-    children: childBindings,
-  });
-}
-
-function buildFullWriteServices(
-  crudSpecs: CrudRouteSpec[],
-  context: WriteServiceContext,
-  conn: DatabaseConnection,
-): Map<string, IEntityService<any, any>> {
-  const hasEagerWrite = crudSpecs.some(
-    (s) => s.eagerWriteChildren && s.eagerWriteChildren.length > 0,
-  );
-  const deps: WriteServiceDeps = {
-    ...context,
-    datasource: conn.datasource as any,
-    withTxnRepoFn: hasEagerWrite ? withTxnRepo : null,
-  };
-
-  const out = new Map<string, IEntityService<any, any>>();
-  for (const spec of crudSpecs) {
-    const service = writeServiceForSpec(spec, deps);
-    if (service) out.set(spec.entityName, service);
-  }
-  return out;
-}
-
 function mountByFieldRoutes(
   app: Express,
   spec: CrudRouteSpec,
@@ -1300,14 +865,9 @@ function mountByFieldRoutes(
   fullWriteServices: Map<string, IEntityService<any, any>>,
 ): void {
   const serviceKey = serviceKeyFor(spec.entityName);
-  if (!repos[serviceKey]) {
-    throw new Error(
-      `createBackendApp: no repository found for ${serviceKey} (entity "${spec.entityName}")`,
-    );
-  }
-
   const service =
-    fullWriteServices.get(spec.entityName) ?? (repos[serviceKey] as IEntityService<any, any>);
+    fullWriteServices.get(spec.entityName) ?? (repos[serviceKey] as IEntityService<any, any> | undefined);
+  if (!service) return;
 
   const basePath = `/api/${spec.pathSegment}`;
   const partialUpdateSchema = buildBodySchema(spec, 'update').partial();
@@ -1344,14 +904,9 @@ function mountCrudRouter(
   { repos, fullWriteServices, useOptimisticConcurrency }: MountCrudRouterDeps,
 ): void {
   const serviceKey = serviceKeyFor(spec.entityName);
-  if (!repos[serviceKey]) {
-    throw new Error(
-      `createBackendApp: no repository found for ${serviceKey} (entity "${spec.entityName}")`,
-    );
-  }
-
   const service =
-    fullWriteServices.get(spec.entityName) ?? (repos[serviceKey] as IEntityService<any, any>);
+    fullWriteServices.get(spec.entityName) ?? (repos[serviceKey] as IEntityService<any, any> | undefined);
+  if (!service) return;
 
   const basePath = `/api/${spec.pathSegment}`;
 

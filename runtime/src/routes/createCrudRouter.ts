@@ -6,7 +6,7 @@ import { handleConstraintError } from '../errors/handleConstraintError';
 import { sendItem, sendItems, sendError } from '../responses/sendResponse';
 import { idOr400, parseIdentityField } from './routeParamUtils';
 import { wrapRouteHandler as wrapHandler } from './wrapRouteHandler';
-import type { EntityIdentity, IdentityValue } from '../repositories/EntityIdentity';
+import type { EntityIdentity, IdentityValue } from '../identity/EntityIdentity';
 
 export interface CrudRouterOptions<T, TId = number | string, TMutate = T> {
   service: IEntityService<T, TId, TMutate>;

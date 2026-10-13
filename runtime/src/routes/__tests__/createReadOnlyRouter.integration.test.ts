@@ -1,7 +1,7 @@
 import request from 'supertest';
 import express, { Application } from 'express';
 import { createReadOnlyRouter } from '../createReadOnlyRouter';
-import { PrimaryKey } from '../../repositories/PrimaryKey';
+import { EntityIdentity } from '../../identity/EntityIdentity';
 import type { RouteIdType } from '../routeParamUtils';
 import { IEntityService } from '../../services/interfaces/IEntityService';
 import { createMockCrudService } from '../../services/__tests__/mockCrudService';
@@ -18,10 +18,8 @@ function buildApp(
   mockService: jest.Mocked<IEntityService<TestEntity>>,
   { idType, primaryKeyParam = 'id' }: { idType: RouteIdType; primaryKeyParam?: string },
 ): Application {
-  (mockService as unknown as { primaryKey: PrimaryKey }).primaryKey = new PrimaryKey(
-    primaryKeyParam,
-    idType,
-  );
+  (mockService as unknown as { primaryKey: EntityIdentity }).primaryKey =
+    EntityIdentity.scalar(primaryKeyParam, idType);
   const app = express();
   app.use(express.json());
   app.use(

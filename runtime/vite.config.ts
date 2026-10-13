@@ -23,14 +23,12 @@ const entries: Record<string, string> = {
   errors: 'src/errors/index.ts',
   responses: 'src/responses/index.ts',
   middleware: 'src/middleware/index.ts',
-  repositories: 'src/repositories/index.ts',
-  'repositories/sqlserver': 'src/repositories/sqlserver/index.ts',
-  'repositories/oracle': 'src/repositories/oracle/index.ts',
+  identity: 'src/identity/index.ts',
+  sqlIdentifier: 'src/sqlIdentifier.ts',
   routes: 'src/routes/index.ts',
   services: 'src/services/index.ts',
   app: 'src/app/index.ts',
   validators: 'src/validators/index.ts',
-  converters: 'src/converters/index.ts',
   migrate: 'src/migrate/index.ts',
 };
 

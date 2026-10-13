@@ -94,7 +94,7 @@ describe("generate-service-tests", () => {
     assert.match(user, /import \{ faker \} from "@faker-js\/faker"/);
     assert.match(
       user,
-      /from "@deterministic-code\/deterministic\/repositories"/,
+      /from "@deterministic-code\/deterministic\/identity"/,
     );
     assert.match(user, /import \{ UserService \} from "\.\.\/userService"/);
     assert.match(user, /entityName: "user"/);
@@ -140,6 +140,6 @@ describe("generate-service-tests", () => {
       },
     });
     const user = textOf(entries, "userService.test.ts");
-    assert.match(user, /from "\.\.\/\.\.\/\.\.\/_deterministic\/repositories\.js"/);
+    assert.match(user, /from "\.\.\/\.\.\/\.\.\/_deterministic\/identity\.js"/);
   });
 });

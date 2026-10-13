@@ -26,19 +26,19 @@ describe("runtime-bundle", () => {
 
   it("emits js, maps, and declarations and skips cjs", async () => {
     const root = await mkdtemp(join(tmpdir(), "runtime-bundle-"));
-    await mkdir(join(root, "repositories"));
+    await mkdir(join(root, "identity"));
     await writeFile(join(root, "app.js"), "export const createBackendApp = 1;\n");
     await writeFile(join(root, "app.d.ts"), "export const createBackendApp: number;\n");
     await writeFile(join(root, "app.js.map"), "{}\n");
     await writeFile(join(root, "app.cjs"), "module.exports = {};\n");
-    await writeFile(join(root, "repositories", "sqlserver.js"), "export {};\n");
+    await writeFile(join(root, "identity", "index.js"), "export {};\n");
     const entries = await bundledRuntimeEntries(root);
     const names = entries.map((e) => e.filename).sort();
     assert.deepEqual(names, [
       "_deterministic/app.d.ts",
       "_deterministic/app.js",
       "_deterministic/app.js.map",
-      "_deterministic/repositories/sqlserver.js",
+      "_deterministic/identity/index.js",
     ]);
     const app = entries.find((e) => e.filename === "_deterministic/app.js");
     assert.equal(app?.kind, "content");

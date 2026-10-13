@@ -3,8 +3,8 @@ import { z } from 'zod';
 import { vi } from 'vitest';
 import { createCrudRouter } from '../createCrudRouter';
 import { errorHandler } from '../../middleware/errorHandler';
-import { EntityIdentity } from '../../repositories/EntityIdentity';
-import { PrimaryKey } from '../../repositories/PrimaryKey';
+import { EntityIdentity } from '../../identity/EntityIdentity';
+import { PrimaryKey } from '../../identity/PrimaryKey';
 import type {
   IEntityService,
 } from '../../services/interfaces/IEntityService';
