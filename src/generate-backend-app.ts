@@ -23,13 +23,6 @@ import {
   minimalTsconfigJson,
 } from "./resources/backend-app-minimal.ts";
 import { Emit } from "./emit.ts";
-import { libraryImportSpecifier } from "./library-import.ts";
-import {
-  applyBundledPackageJson,
-  bundledRuntimeEntries,
-  resolveRuntimeBundleDir,
-  runtimePackageVersion,
-} from "./runtime-bundle.ts";
 
 const DEFAULT_APP_NAME = "generated-app";
 const DEFAULT_COMPLEXITY = "deterministic";
@@ -46,17 +39,13 @@ const complexityOf = (settings: Record<string, string>): AppGenerateComplexity =
 };
 
 class Generator extends Emit {
-  async from(
-    appName: string,
-    complexity: AppGenerateComplexity,
-    runtimeVersion: string,
-  ): Promise<GenerateEntry[]> {
+  from(appName: string, complexity: AppGenerateComplexity): GenerateEntry[] {
     return complexity === "minimal"
-      ? this.minimal(appName, runtimeVersion)
-      : this.deterministic(appName, runtimeVersion);
+      ? this.minimal(appName)
+      : this.deterministic(appName);
   }
 
-  private tokens(appName: string, runtimeVersion: string) {
+  private tokens(appName: string) {
     const appFile = this.imports.app();
     const serverFile = this.imports.server();
     return {
@@ -69,12 +58,6 @@ class Generator extends Emit {
       healthTestFile: this.imports.appTest("health"),
       appBootTestFile: this.imports.appTest("app_boot"),
       statusField: this.casing.convertFields("status"),
-      appImport: libraryImportSpecifier(
-        "app",
-        this.settings.libraryReferenceMode,
-        appFile,
-      ),
-      runtimeVersion,
       includeJson: JSON.stringify([
         appFile,
         serverFile,
@@ -84,8 +67,8 @@ class Generator extends Emit {
     };
   }
 
-  private minimal(appName: string, runtimeVersion: string): GenerateEntry[] {
-    const named = this.tokens(appName, runtimeVersion);
+  private minimal(appName: string): GenerateEntry[] {
+    const named = this.tokens(appName);
     return [
       content(named.appFile, fill(minimalAppTs, named)),
       content(named.serverFile, fill(minimalServerTs, named)),
@@ -95,25 +78,18 @@ class Generator extends Emit {
     ];
   }
 
-  private async deterministic(
-    appName: string,
-    runtimeVersion: string,
-  ): Promise<GenerateEntry[]> {
-    const named = this.tokens(appName, runtimeVersion);
+  private deterministic(appName: string): GenerateEntry[] {
+    const named = this.tokens(appName);
     const owned = new Set([
       named.serverFile,
       "tsconfig.json",
       named.healthTestFile,
     ]);
-    const bundled = this.settings.libraryReferenceMode === "bundled";
-    const pkgBody = bundled
-      ? await applyBundledPackageJson(fill(packageJson, named))
-      : fill(packageJson, named);
-    const entries: GenerateEntry[] = [
-      ...this.minimal(appName, runtimeVersion).filter((e) => !owned.has(e.filename)),
+    return [
+      ...this.minimal(appName).filter((e) => !owned.has(e.filename)),
       patch(named.appFile, fill(appTs, named)),
       content(named.serverFile, fill(serverTs, named)),
-      patch("package.json", pkgBody),
+      patch("package.json", fill(packageJson, named)),
       content("tsconfig.json", fill(tsconfigJson, named)),
       patch("Dockerfile", fill(dockerfile, named)),
       patch(".dockerignore", "node_modules"),
@@ -126,12 +102,6 @@ class Generator extends Emit {
       content(named.healthTestFile, fill(healthTestTs, named)),
       content(named.appBootTestFile, fill(appBootTestTs, named)),
     ];
-    if (bundled) {
-      entries.push(
-        ...(await bundledRuntimeEntries(await resolveRuntimeBundleDir())),
-      );
-    }
-    return entries;
   }
 }
 
@@ -142,6 +112,5 @@ export const generate = async (
   return new Generator(ctx.settings).from(
     appName,
     complexityOf(ctx.settings),
-    await runtimePackageVersion(),
   );
 };

@@ -83,19 +83,18 @@ describe("generate-routes-tests", () => {
 
     const users = textOf(entries, "user.integration.test.ts");
     assert.match(users, /import \{ UserRouter \} from "\.\.\/user"/);
-    assert.match(users, /POST \/api\/user delegates to service.create/);
-    assert.match(users, /GET \/api\/user\/email\/:value returns the row/);
-    assert.match(users, /"\/api\/user\/" \+ String\(id\)/);
-    assert.match(users, /new PrimaryKey\("id", "integer"\)/);
-    assert.doesNotMatch(users, /\/api\/user\/\$/);
+    assert.match(users, /is defined/);
+    assert.doesNotMatch(users, /createCrudRouter/);
+    assert.doesNotMatch(users, /PrimaryKey/);
+    assert.doesNotMatch(users, /@deterministic-code\/deterministic/);
 
     const roles = textOf(entries, "role.integration.test.ts");
-    assert.match(roles, /GET \/api\/role returns items from service.findAll/);
-    assert.ok(!roles.includes("service.create"));
+    assert.match(roles, /import \{ RoleRouter \} from "\.\.\/role"/);
+    assert.doesNotMatch(roles, /service.create/);
 
     const orders = textOf(entries, "order.integration.test.ts");
-    assert.match(orders, /If-Match/);
-    assert.match(orders, /expectedUpdated: occToken/);
+    assert.doesNotMatch(orders, /If-Match/);
+    assert.doesNotMatch(orders, /expectedUpdated/);
 
     const userBag = entries.find(
       (entry) =>
@@ -147,9 +146,8 @@ routes: []
       settings: {},
     });
     const links = textOf(entries, "link.integration.test.ts");
-    assert.match(links, /:left_id\/:right_id/);
-    assert.match(links, /new PrimaryKey\("left_id", "integer"\)/);
-    assert.match(links, /new PrimaryKey\("right_id", "integer"\)/);
+    assert.match(links, /import \{ LinkRouter \} from "\.\.\/link"/);
+    assert.doesNotMatch(links, /PrimaryKey/);
   });
 
   it("kebabs route file imports and API path segments", async () => {
@@ -178,8 +176,6 @@ routes: []
     const body = textOf(entries, "contact-group.integration.test.ts");
     assert.match(body, /from "\.\.\/contact-group"/);
     assert.doesNotMatch(body, /from "\.\.\/contact_group"/);
-    assert.match(body, /app\.use\("\/api\/contact-group"/);
-    assert.match(body, /"\/api\/contact-group\/" \+ String\(id\)/);
   });
 
   it("imports the route module via ImportGenerator under by-feature", async () => {

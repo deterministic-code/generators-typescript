@@ -1,10 +1,12 @@
 import { once } from "node:events";
+import { createServer } from "node:http";
 import { {{appFnName}} } from "./{{appFileBase}}.js";
 
 const port = Number(process.env.PORT ?? 4001);
 
 const app = await {{appFnName}}();
-const server = app.listen(port);
+const server = createServer(app);
+server.listen(port);
 await once(server, "listening");
 console.log(`{{appName}} listening on http://localhost:${port}`);
 

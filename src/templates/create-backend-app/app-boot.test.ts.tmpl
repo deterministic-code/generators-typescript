@@ -1,33 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { copyFile, mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { describe, it, expect } from "vitest";
 import { {{appFnName}} } from "../{{appFileBase}}.js";
 
 describe("{{appFnName}}", () => {
-  let tmpDir: string;
-
-  beforeEach(async () => {
-    const prebuilt = process.env.npm_package_config_test_db;
-    if (!prebuilt) {
-      throw new Error(
-        "npm_package_config_test_db is unset — run via `npm test` so the pretest hook materializes the prebuilt sqlite via migrate-setup --and-up.",
-      );
-    }
-    tmpDir = await mkdtemp(join(tmpdir(), "app-boot-itest-"));
-    const dbPath = join(tmpDir, "test.db");
-    await copyFile(prebuilt, dbPath);
-    process.env.DATABASE_BACKEND = "sqlite";
-    process.env.DB_PATH = dbPath;
-  });
-
-  afterEach(async () => {
-    await rm(tmpDir, { recursive: true, force: true });
-  });
-
-  it("resolves an Express app without throwing", async () => {
+  it("resolves a request handler", async () => {
     const app = await {{appFnName}}();
-    expect(app).toBeDefined();
-    expect(typeof (app as { use?: unknown }).use).toBe("function");
+    expect(app).toBeTypeOf("function");
   });
 });

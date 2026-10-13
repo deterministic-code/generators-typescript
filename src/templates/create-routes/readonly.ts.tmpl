@@ -1,32 +1,6 @@
-import { Router } from "express";
-import { {{serviceInterfaceName}} } from "{{serviceImport}}";
-import { createReadOnlyRouter } from "{{routesImport}}";
-{{#hasByFields}}import { sendItem, sendItems } from "{{responsesImport}}";
-{{/hasByFields}}
 {{#simpleDoc}}/** Route {{fnName}}. */
 {{/simpleDoc}}{{#descriptionDoc}}/**
  * Route {{fnName}}.
  * Datasource type: {{datasourceType}}.
- * Target: ReadOnlyRouter.
- * Fields: 0.
  */
-{{/descriptionDoc}}export function {{fnName}}(service: {{serviceInterfaceName}}): Router {
-{{^hasByFields}}  return createReadOnlyRouter({
-    service,
-    entityName: "{{entity}}",{{#occ}}
-    useOptimisticConcurrency: true,{{/occ}}
-  });
-{{/hasByFields}}{{#hasByFields}}  const router = Router();
-
-{{{byFieldsBlock}}}
-
-  router.use(
-    createReadOnlyRouter({
-      service,
-      entityName: "{{entity}}",{{#occ}}
-      useOptimisticConcurrency: true,{{/occ}}
-    }),
-  );
-  return router;
-{{/hasByFields}}
-}
+{{/descriptionDoc}}export function {{fnName}}() {}

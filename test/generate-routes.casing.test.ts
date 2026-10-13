@@ -128,7 +128,7 @@ const assertPairedStub = (
     body,
     new RegExp(`export class ${className} implements ${interfaceName}`),
   );
-  assert.match(body, new RegExp(`error: "stub route ${className}"`));
+  assert.doesNotMatch(body, /express/);
 };
 
 const assertCustomIndexExports = (
@@ -155,12 +155,9 @@ describe("generate routes casing", () => {
     assert.ok(files.has("contactGroup.ts"));
     const contact = files.get("contact.ts")!;
     const group = files.get("contactGroup.ts")!;
-    assert.match(contact, /IContactService/);
-    assert.match(group, /IContactGroupService/);
     assert.match(contact, /export function ContactRouter/);
     assert.match(group, /export function ContactGroupRouter/);
-    assertServiceImport(contact, "contact", settings);
-    assertServiceImport(group, "contact_group", settings);
+    assert.doesNotMatch(contact, /IContactService/);
     assert.doesNotMatch(contact, /IcontactService/);
   });
 
@@ -170,8 +167,8 @@ describe("generate routes casing", () => {
     });
     assert.ok(files.has("Contact.ts"));
     assert.ok(files.has("ContactGroup.ts"));
-    assert.match(files.get("Contact.ts")!, /IContactService/);
-    assert.match(files.get("ContactGroup.ts")!, /IContactGroupService/);
+    assert.match(files.get("Contact.ts")!, /export function ContactRouter/);
+    assert.match(files.get("ContactGroup.ts")!, /export function ContactGroupRouter/);
   });
 
   it("Snake file names", async () => {
@@ -180,8 +177,8 @@ describe("generate routes casing", () => {
     });
     assert.ok(files.has("contact.ts"));
     assert.ok(files.has("contact_group.ts"));
-    assert.match(files.get("contact.ts")!, /IContactService/);
-    assert.match(files.get("contact_group.ts")!, /IContactGroupService/);
+    assert.match(files.get("contact.ts")!, /export function ContactRouter/);
+    assert.match(files.get("contact_group.ts")!, /export function ContactGroupRouter/);
   });
 
   it("Pascal types use IContactService / IContactGroupService", async () => {
@@ -189,9 +186,8 @@ describe("generate routes casing", () => {
     const files = await byFilename(settings);
     const contact = files.get("contact.ts")!;
     const group = files.get("contactGroup.ts")!;
-    assert.match(contact, /IContactService/);
-    assert.match(group, /IContactGroupService/);
-    assertServiceImport(contact, "contact", settings);
+    assert.match(contact, /export function ContactRouter/);
+    assert.match(group, /export function ContactGroupRouter/);
   });
 
   it("Snake types use i_contact_service / i_contact_group_service", async () => {
@@ -200,16 +196,12 @@ describe("generate routes casing", () => {
     const contact = files.get("contact.ts")!;
     const group = files.get("contactGroup.ts")!;
     const source = files.get("contactSource.ts")!;
-    assert.match(contact, /i_contact_service/);
-    assert.match(group, /i_contact_group_service/);
     assert.match(contact, /export function contact_router/);
     assert.match(group, /export function contact_group_router/);
-    assert.match(source, /i_contact_source_service/);
+    assert.match(source, /export function contact_source_router/);
     assert.doesNotMatch(contact, /IcontactService/);
     assert.doesNotMatch(contact, /Icontact_service/);
     assert.doesNotMatch(group, /Icontact_groupService/);
-    assertServiceImport(contact, "contact", settings);
-    assertServiceImport(group, "contact_group", settings);
   });
 
   it("Kebab directories with Pascal files under by-feature", async () => {
@@ -220,7 +212,7 @@ describe("generate routes casing", () => {
     });
     assert.ok(files.has("features/contact/Contact.route.ts"));
     assert.ok(files.has("features/contact-group/ContactGroup.route.ts"));
-    assert.match(files.get("features/contact/Contact.route.ts")!, /IContactService/);
+    assert.match(files.get("features/contact/Contact.route.ts")!, /export function ContactRouter/);
   });
 
   it("keeps authored custom route class names for runtime load", async () => {

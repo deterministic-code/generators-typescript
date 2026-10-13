@@ -1,48 +1,19 @@
+import { once } from "node:events";
+import { createServer } from "node:http";
 import { {{appFnName}} } from "./{{appFileBase}}.js";
-import { type SupportedBackend } from "{{appImport}}";
-import { mkdtemp, rm } from "node:fs/promises";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 
-// Single migration path via createBackendApp's connectDatabase({migrationsDir}); earlier a sibling applyNetworkSchema reapplied the chain and MySQL hit "Table 'MailBoxes' already exists", killing perf-load before health came up.
+const port = Number(process.env.PORT ?? 4000);
 
-async function ensureSqlitePath(): Promise<{ cleanup: () => Promise<void> }> {
-  // Always a fresh temp DB per perf run — never reuse an inherited DB_PATH — so the server migrates from empty and the run is start-to-finish. createBackendApp opens its own better-sqlite3 handle and ":memory:" is per-connection, so we materialize a real path.
-  const dir = await mkdtemp(join(tmpdir(), "perf-sqlite-"));
-  const path = join(dir, "perf.sqlite");
-  process.env.DB_PATH = path;
-  return { cleanup: () => rm(dir, { recursive: true, force: true }) };
-}
+const app = await {{appFnName}}();
+const server = createServer(app);
+server.listen(port);
+await once(server, "listening");
 
-async function bootstrap(): Promise<void> {
-  const backend = (process.env.DATABASE_BACKEND ?? "sqlite") as SupportedBackend;
-  if (backend === "memory") {
-    throw new Error(
-      "perf-server: DATABASE_BACKEND=memory has no migration chain to apply — pick sqlite or a network dialect",
-    );
-  }
-  let cleanup: () => Promise<void> = async () => {};
-  if (backend === "sqlite") {
-    cleanup = (await ensureSqlitePath()).cleanup;
-  } else if (!process.env.DATABASE_URL) {
-    throw new Error(
-      `perf-server: DATABASE_BACKEND=${backend} requires DATABASE_URL to be set`,
-    );
-  }
-  // Self-migrate every dialect via createBackendApp's connectDatabase({migrationsDir}) so perf hits a freshly-built schema — sqlite from an empty temp file, network dialects against their fresh container.
-  process.env.DETERMINISTIC_APP_MIGRATE = "1";
-  const app = await {{appFnName}}();
-  const port = Number(process.env.PORT ?? 4000);
-  app.listen(port);
-  const onSignal = async (): Promise<void> => {
-    await cleanup();
-    process.exit(0);
-  };
-  process.on("SIGTERM", onSignal);
-  process.on("SIGINT", onSignal);
-}
+const shutdown = async () => {
+  server.close();
+  await once(server, "close");
+  process.exit(0);
+};
 
-bootstrap().catch((err) => {
-  process.stderr.write(`perf-server: bootstrap failed: ${err?.stack ?? err}\n`);
-  process.exit(1);
-});
+process.on("SIGTERM", () => void shutdown());
+process.on("SIGINT", () => void shutdown());

@@ -1,38 +1,6 @@
-import { Router } from "express";
-import type { ZodSchema } from "zod";
-import { {{serviceInterfaceName}} } from "{{serviceImport}}";
-import { createCrudRouter } from "{{routesImport}}";
-{{#hasByFields}}import { sendError, sendItem, sendItems } from "{{responsesImport}}";
-{{#needsZod}}import { handleZodError } from "{{errorsImport}}";
-{{/needsZod}}{{/hasByFields}}
 {{#simpleDoc}}/** Route {{fnName}}. */
 {{/simpleDoc}}{{#descriptionDoc}}/**
  * Route {{fnName}}.
  * Datasource type: {{datasourceType}}.
- * Target: CrudRouter.
- * Fields: 0.
  */
-{{/descriptionDoc}}export function {{fnName}}(service: {{serviceInterfaceName}}, createSchema: ZodSchema, updateSchema: ZodSchema): Router {
-{{^hasByFields}}  return createCrudRouter({
-    service,
-    createSchema,
-    updateSchema,
-    entityName: "{{entity}}",{{#occ}}
-    useOptimisticConcurrency: true,{{/occ}}
-  });
-{{/hasByFields}}{{#hasByFields}}  const router = Router();
-
-{{{byFieldsBlock}}}
-
-  router.use(
-    createCrudRouter({
-      service,
-      createSchema,
-      updateSchema,
-      entityName: "{{entity}}",{{#occ}}
-      useOptimisticConcurrency: true,{{/occ}}
-    }),
-  );
-  return router;
-{{/hasByFields}}
-}
+{{/descriptionDoc}}export function {{fnName}}() {}

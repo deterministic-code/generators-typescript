@@ -20,7 +20,6 @@ import {
   preludeSource,
   withFakerPackagePatch,
 } from "./common/fake-test-data.ts";
-import { libraryImportSpecifier } from "./library-import.ts";
 import { genericTmpl } from "./resources/service-tests.ts";
 import { createCasing } from "./common/default-casing.ts";
 import { isDictionaryCandidate } from "./common/dictionary-candidate.ts";
@@ -56,20 +55,9 @@ class Generator extends Emit {
         table?.fields.find((f) => f.name === column)?.type ?? "integer";
       return { column, pkType };
     });
-    const column = keys[0]!.column;
-    const pkType = keys[0]!.pkType;
-    const pkExpr =
-      keys.length === 1
-        ? `new PrimaryKey(${JSON.stringify(column)}, ${JSON.stringify(pkType)})`
-        : `EntityIdentity.of([${keys
-            .map(
-              (k) =>
-                `new PrimaryKey(${JSON.stringify(k.column)}, ${JSON.stringify(k.pkType)})`,
-            )
-            .join(", ")}])`;
     const idExpr =
       keys.length === 1
-        ? fakeTestData.id(asIdType(pkType))
+        ? fakeTestData.id(asIdType(keys[0]!.pkType))
         : `{ ${keys
             .map((k) => `${k.column}: ${fakeTestData.id(asIdType(k.pkType))}`)
             .join(", ")} }`;
@@ -81,18 +69,9 @@ class Generator extends Emit {
       path,
       fill(genericTmpl, {
         prelude: preludeSource(fakeTestData),
-        identityImport: libraryImportSpecifier(
-          "identity",
-          this.settings.libraryReferenceMode,
-          this.imports.serviceTestRel(candidate.name),
-        ),
         className,
         importPath: this.imports.testSpec(src, fileBase),
         entityNameJson: JSON.stringify(candidate.name),
-        pkExpr:
-          keys.length === 1
-            ? `EntityIdentity.of([${pkExpr}])`
-            : pkExpr,
         idExpr,
       }),
       bag({

@@ -87,13 +87,10 @@ describe("generate", () => {
     assert.equal(entryBody(dockerignore), "node_modules");
   });
 
-  it("renders app.ts against the npm library", () => {
+  it("renders app.ts as a health handler", () => {
     const app = entryBody(requireEntry(byName, "app.ts"));
     assert.equal(requireEntry(byName, "app.ts").kind, "patch");
-    assert.match(
-      app,
-      /from "@deterministic-code\/deterministic\/app"/,
-    );
+    assert.doesNotMatch(app, /@deterministic-code\/deterministic/);
     assert.doesNotMatch(app, /app-wiring/);
     assert.doesNotMatch(app, /composeRouter/);
     assert.doesNotMatch(app, /customModulePaths:/);
@@ -103,6 +100,7 @@ describe("generate", () => {
     assert.match(app, /BEGIN APP_BEFORE_HOOK/);
     assert.match(app, /BEGIN APP_AFTER_HOOK/);
     assert.match(app, /export async function CreateBackendApp/);
+    assert.match(app, /\/api\/health/);
   });
 
   it("renders server.ts with the typescript lane port and application name", () => {
@@ -112,27 +110,24 @@ describe("generate", () => {
     assert.match(server, /catalog-api listening on http:\/\/localhost:/);
     assert.match(server, /await CreateBackendApp\(\)/);
     assert.doesNotMatch(server, /\.then\(/);
-    assert.match(server, /app\.listen\(port\)/);
+    assert.match(server, /createServer\(app\)/);
   });
 
-  it("renders package.json for the npm library, not bundled runtime deps", () => {
+  it("renders package.json without the deleted runtime library", () => {
     const pkg = JSON.parse(entryBody(requireEntry(byName, "package.json")));
     assert.equal(pkg.name, "catalog-api");
     assert.equal(pkg.type, "module");
-    assert.equal(
-      pkg.dependencies["@deterministic-code/deterministic"],
-      "^0.0.7",
-    );
+    assert.equal(pkg.dependencies["@deterministic-code/deterministic"], undefined);
     assert.equal(pkg.dependencies.express, undefined);
     assert.equal(pkg.allowScripts.esbuild, true);
     assert.equal(pkg.allowScripts["better-sqlite3"], true);
-    assert.equal(pkg.allowScripts["@deterministic-code/deterministic"], true);
+    assert.equal(pkg.allowScripts["@deterministic-code/deterministic"], undefined);
     assert.equal(pkg.allowScripts["core-js"], true);
     assert.equal(pkg.allowScripts["@scarf/scarf"], true);
     assert.equal(pkg.overrides["better-sqlite3"], "^13.0.3");
     assert.equal(pkg.overrides.glob, "^13.0.6");
-    assert.equal(pkg.devDependencies.supertest, "^7.0.0");
-    assert.equal(pkg.devDependencies["@types/supertest"], "^6.0.2");
+    assert.equal(pkg.devDependencies.supertest, undefined);
+    assert.equal(pkg.devDependencies["@types/supertest"], undefined);
     assert.equal(pkg.devDependencies["@faker-js/faker"], undefined);
   });
 
@@ -279,52 +274,22 @@ describe("generate by-feature", () => {
 });
 
 describe("generate bundled", () => {
-  let entries: GenerateEntry[] = [];
-  let byName = new Map<string, GenerateEntry>();
-
-  before(async () => {
-    entries = await generate({
+  it("does not vendor a runtime under _deterministic", async () => {
+    const entries = await generate({
       reader: memoryReader({}),
       settings: {
         application_name: "catalog-api",
         "languages.typescript.library_reference_mode": "bundled",
       },
     });
-    byName = lastByName(entries);
-  });
-
-  it("vendors the compiled runtime under _deterministic", () => {
     const names = uniqueNames(entries);
-    assert.ok(names.includes("_deterministic/app.js"), names.join("\n"));
-    assert.ok(names.includes("_deterministic/app.d.ts"), names.join("\n"));
-    assert.ok(names.includes("_deterministic/routes.js"), names.join("\n"));
-    assert.ok(names.includes("_deterministic/routes.d.ts"), names.join("\n"));
-    assert.ok(
-      names.includes("_deterministic/services.js"),
+    assert.equal(
+      names.some((name) => name.startsWith("_deterministic/")),
+      false,
       names.join("\n"),
     );
-    const appJs = requireEntry(byName, "_deterministic/app.js");
-    assert.equal(appJs.kind, "content");
-    assert.match(entryBody(appJs), /createBackendApp/);
-  });
-
-  it("points app.ts at the vendored runtime", () => {
-    const app = entryBody(requireEntry(byName, "app.ts"));
-    assert.match(app, /from "\.\/_deterministic\/app\.js"/);
-    assert.doesNotMatch(app, /@deterministic-code\/deterministic\/app/);
-  });
-
-  it("renders package.json with runtime deps instead of the npm library", () => {
-    const pkg = JSON.parse(entryBody(requireEntry(byName, "package.json")));
-    assert.equal(pkg.dependencies["@deterministic-code/deterministic"], undefined);
-    assert.equal(pkg.allowScripts["@deterministic-code/deterministic"], undefined);
-    assert.equal(pkg.dependencies.express, "^4.21.0");
-    assert.equal(pkg.dependencies.zod, "^3.23.8");
-    assert.equal(pkg.dependencies["better-sqlite3"], "^13.0.3");
-    assert.equal(pkg.overrides["better-sqlite3"], undefined);
-    assert.equal(
-      pkg.scripts.build,
-      "tsc && cp -R _deterministic dist/_deterministic",
-    );
+    const app = entryBody(requireEntry(lastByName(entries), "app.ts"));
+    assert.doesNotMatch(app, /_deterministic/);
+    assert.doesNotMatch(app, /@deterministic-code\/deterministic/);
   });
 });
