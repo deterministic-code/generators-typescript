@@ -81,8 +81,8 @@ class Generator extends Emit {
       path,
       fill(genericTmpl, {
         prelude: preludeSource(fakeTestData),
-        repositoriesImport: libraryImportSpecifier(
-          "repositories",
+        identityImport: libraryImportSpecifier(
+          "identity",
           this.settings.libraryReferenceMode,
           this.imports.serviceTestRel(candidate.name),
         ),

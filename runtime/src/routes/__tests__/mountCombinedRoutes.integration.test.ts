@@ -3,7 +3,7 @@ import request from 'supertest';
 import { z } from 'zod';
 import { IEntityService } from '../../services/interfaces/IEntityService';
 import { mountCombinedRoutes } from '../mountCombinedRoutes';
-import { PrimaryKey } from '../../repositories/PrimaryKey';
+import { EntityIdentity } from '../../identity/EntityIdentity';
 import type { DatasourceData, RoutesData } from '../iterateCombinedRoutes';
 import { createMockCrudService as createMockService } from '../../services/__tests__/mockCrudService';
 
@@ -106,9 +106,9 @@ const settingCreateSchema = z.object({
 });
 
 function buildApp(repos: ReturnType<typeof buildRepos>, idType: 'integer' | 'uuid'): Application {
-  const pk = new PrimaryKey('id', idType);
+  const pk = EntityIdentity.scalar('id', idType);
   for (const svc of Object.values(repos)) {
-    (svc as unknown as { primaryKey: PrimaryKey }).primaryKey = pk;
+    (svc as unknown as { primaryKey: EntityIdentity }).primaryKey = pk;
   }
   const app = express();
   app.use(express.json());

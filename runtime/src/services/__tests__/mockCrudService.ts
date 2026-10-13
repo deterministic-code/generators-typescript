@@ -1,6 +1,6 @@
 import { IEntityService } from '../interfaces/IEntityService';
-import { EntityIdentity } from '../../repositories/EntityIdentity';
-import type { StandardIdType } from '../../repositories/standardFieldConverting';
+import { EntityIdentity } from '../../identity/EntityIdentity';
+import type { StandardIdType } from '../../identity/standardIdType';
 
 /** A fully-stubbed {@link IEntityService} mock for router/service tests — every method is a `jest.fn()`, with `findAll`/`findBy` pre-resolved to `[]` so unconfigured list/lookup calls don't reject. `idType` is explicit (no default) so a fixture states the key shape it intends; `column` defaults to the structural `id`. Shared so the stub lives one place. */
 export function createMockCrudService<T>(

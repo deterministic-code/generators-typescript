@@ -1,6 +1,6 @@
 {{#typeImport}}import { {{typeName}} } from "{{typeImportPath}}";
 {{/typeImport}}{{#mutateImport}}import { {{mutateTypeName}} } from "{{mutateImportPath}}";
-{{/mutateImport}}import { EntityService, type IEntityService } from "{{servicesImport}}";
+{{/mutateImport}}import { DelegatingEntityService, type IEntityService } from "{{servicesImport}}";
 
 {{#simpleDoc}}/** Service {{interfaceName}}. */
 {{/simpleDoc}}{{#descriptionDoc}}/**
@@ -16,7 +16,7 @@
  * Datasource type: {{datasourceType}}.
  * Fields: 0.
  */
-{{/descriptionDoc}}export class {{className}} extends EntityService<{{typeName}}, {{idTsType}}, {{#mutateTypeName}}{{mutateTypeName}}{{/mutateTypeName}}{{^mutateTypeName}}Omit<{{typeName}}, {{pkOmit}}>{{/mutateTypeName}}> {
+{{/descriptionDoc}}export class {{className}} extends DelegatingEntityService<{{typeName}}, {{idTsType}}, {{#mutateTypeName}}{{mutateTypeName}}{{/mutateTypeName}}{{^mutateTypeName}}Omit<{{typeName}}, {{pkOmit}}>{{/mutateTypeName}}> {
 {{#finders}}
   async {{method}}({{param}}: {{paramType}}): Promise<{{typeName}} | null> {
     const rows = await this.findBy([{ name: "{{field}}", value: {{param}} }]);

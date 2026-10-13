@@ -3,9 +3,42 @@ import { z } from 'zod';
 import { kebabPlural, singularizeToken } from '../../naming/index';
 import { findForeignKeyTo, type DatasourceTypeDef } from '../../routes/iterateCombinedRoutes';
 import { routeViewTypeDirective } from './routeViewTypeDirective';
-import { collectEntityEagerPaths } from './parseEagerPaths';
-import { parseRelationType, relationIsArray } from './computeEagerChildren';
-import type { StandardIdType } from '../../repositories/standardFieldConverting';
+import type { StandardIdType } from '../../identity/standardIdType';
+
+const relationIsArray = (spec: { isArray?: boolean }): boolean => spec.isArray !== false;
+
+function collectEntityEagerPaths(
+  routesDoc: unknown,
+  field: 'eager_read_path' | 'eager_update_path',
+): string[] {
+  const routes =
+    routesDoc && typeof routesDoc === 'object' && Array.isArray((routesDoc as { routes?: unknown }).routes)
+      ? ((routesDoc as { routes: unknown[] }).routes ?? [])
+      : [];
+  const out: string[] = [];
+  for (const entry of routes) {
+    if (!entry || typeof entry !== 'object') continue;
+    const [entity, body] = Object.entries(entry)[0] ?? [];
+    if (typeof entity !== 'string' || !body || typeof body !== 'object') continue;
+    const list = (body as Record<string, unknown>)[field];
+    if (!Array.isArray(list)) continue;
+    for (const seg of list) {
+      if (typeof seg === 'string' && seg.length > 0) out.push(`${entity}.${seg}`);
+    }
+  }
+  return out;
+}
+
+function parseRelationType(
+  typeStr: string | undefined,
+): { elementType: string; isArray: boolean } | null {
+  if (!typeStr || typeof typeStr !== 'string') return null;
+  const prefixed = typeStr.match(/^datasource_types\.([a-z_][a-z0-9_]*)(\[\])?$/);
+  if (prefixed) return { elementType: prefixed[1], isArray: prefixed[2] === '[]' };
+  const unprefixed = typeStr.match(/^([a-z_][a-z0-9_]*)\[\]$/);
+  if (unprefixed) return { elementType: unprefixed[1], isArray: true };
+  return null;
+}
 
 export interface EagerWriteChildSpec {
   /** Discriminator. Defaults to 'direct-fk' when absent (backward-compat). */
@@ -149,7 +182,7 @@ export function buildBodySchema(
 ): z.ZodObject<z.ZodRawShape> {
   const enrichmentCols = new Set(spec.enrichmentColumns ?? []);
   const bodyColumns = spec.columns.filter((col) => {
-    if (col === spec.primaryKeyColumn) return verb !== 'create';
+    if (col === spec.primaryKeyColumn) return verb !== 'create' || col !== 'id';
     return verb !== 'create' || !STAMP_COLUMNS.has(col);
   });
   const allCols = new Set([...bodyColumns, ...enrichmentCols]);

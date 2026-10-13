@@ -6,7 +6,7 @@ import { handleConstraintError } from '../errors/handleConstraintError';
 import { handleBusinessError } from '../errors/handleBusinessError';
 import { sendItem, sendItems, sendError } from '../responses/sendResponse';
 import { idOr400, parseIdField, parseIdentityField } from './routeParamUtils';
-import type { EntityIdentity, IdentityValue } from '../repositories/EntityIdentity';
+import type { EntityIdentity, IdentityValue } from '../identity/EntityIdentity';
 
 export interface NestedCrudRouterOptions<T> {
   service: IEntityService<any, any>;

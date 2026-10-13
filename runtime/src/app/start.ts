@@ -1,7 +1,7 @@
 import type { Express } from 'express';
 import { connectDatabase, type ConnectDatabaseOptions } from './connectDatabase';
 import { createBackendApp, type CreateAppOptions } from './createBackendApp';
-import type { DatabaseConnection } from '../repositories';
+import type { DatabaseConnection } from './database';
 
 export interface StartOptions<TBuildOpts = CreateAppOptions> {
   port?: number;

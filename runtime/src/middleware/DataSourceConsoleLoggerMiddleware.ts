@@ -1,4 +1,4 @@
-import type { DatabaseBackendType } from '../repositories/buildRepoForBackend';
+import type { DatabaseBackendType } from '../app/database';
 import type { IDataSourceMiddleware } from './IDataSourceMiddleware';
 import { errorMessage, formatElapsedMs, formatTraceLine } from './traceFormat';
 

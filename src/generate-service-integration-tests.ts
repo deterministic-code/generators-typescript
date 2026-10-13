@@ -25,7 +25,6 @@ import {
   type TypeField,
 } from "@deterministic-code/deterministic-specifications-typescript/parser";
 import { fieldSize, refParent } from "./common/view-shape.ts";
-import { libraryImportSpecifier } from "./library-import.ts";
 import { isDictionaryCandidate } from "./common/dictionary-candidate.ts";
 import { genericTmpl } from "./resources/service-integration-tests.ts";
 import { createCasing } from "./common/default-casing.ts";
@@ -204,11 +203,6 @@ class Generator extends Emit {
       path,
       fill(genericTmpl, {
         prelude: hierarchy ? preludeSource(fakeTestData) : "",
-        repositoriesImport: libraryImportSpecifier(
-          "repositories",
-          this.settings.libraryReferenceMode,
-          this.imports.serviceIntegrationTestRel(entity),
-        ),
         className,
         parentImports: hierarchy === false ? [] : hierarchy.parentImports,
         typeImports: this.typeImports(

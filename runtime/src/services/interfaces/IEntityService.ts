@@ -1,4 +1,4 @@
-import type { EntityIdentity } from '../../repositories/EntityIdentity';
+import type { EntityIdentity } from '../../identity/EntityIdentity';
 import { NameValue } from './NameValue';
 
 interface EntityServiceOptimisticConcurrencyOptions {

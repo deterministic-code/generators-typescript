@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import yaml from 'js-yaml';
-import { pathExists } from '../../repositories/pathExists';
+import { pathExists } from '../../fs/pathExists';
 
 export interface SettingsConfig {
   pluralizeTableNames: boolean;

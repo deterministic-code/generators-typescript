@@ -27,10 +27,15 @@
       "import": "./dist/middleware.js",
       "require": "./dist/middleware.cjs"
     },
-    "./repositories": {
-      "types": "./dist/repositories.d.ts",
-      "import": "./dist/repositories.js",
-      "require": "./dist/repositories.cjs"
+    "./identity": {
+      "types": "./dist/identity.d.ts",
+      "import": "./dist/identity.js",
+      "require": "./dist/identity.cjs"
+    },
+    "./sqlIdentifier": {
+      "types": "./dist/sqlIdentifier.d.ts",
+      "import": "./dist/sqlIdentifier.js",
+      "require": "./dist/sqlIdentifier.cjs"
     },
     "./routes": {
       "types": "./dist/routes.d.ts",
@@ -51,11 +56,6 @@
       "types": "./dist/validators.d.ts",
       "import": "./dist/validators.js",
       "require": "./dist/validators.cjs"
-    },
-    "./converters": {
-      "types": "./dist/converters.d.ts",
-      "import": "./dist/converters.js",
-      "require": "./dist/converters.cjs"
     },
     "./migrate": {
       "types": "./dist/migrate.d.ts",

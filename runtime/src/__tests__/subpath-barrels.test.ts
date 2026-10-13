@@ -1,13 +1,11 @@
 import * as errors from '../errors';
 import * as responses from '../responses';
 import * as middleware from '../middleware';
-import * as repositories from '../repositories';
-import * as repositoriesSqlserver from '../repositories/sqlserver';
-import * as repositoriesOracle from '../repositories/oracle';
+import * as identity from '../identity';
 import * as routes from '../routes';
 import * as services from '../services';
 import * as validators from '../validators';
-import * as converters from '../converters';
+import * as sqlIdentifier from '../sqlIdentifier';
 
 describe('subpath barrels', () => {
   it('errors barrel exposes error classes and helpers', () => {
@@ -46,35 +44,9 @@ describe('subpath barrels', () => {
     expect(middleware.MiddlewareLookup).toBeDefined();
   });
 
-  it('repositories barrel exposes the layered classes for every backend', () => {
-    expect(repositories.InMemoryCrudRepository).toBeDefined();
-    expect(repositories.SqliteSetup).toBeDefined();
-    expect(repositories.SqliteDatasource).toBeDefined();
-    expect(repositories.SqliteCrudRepository).toBeDefined();
-    expect(repositories.SqliteStandardRepository).toBeDefined();
-    expect(repositories.PostgresSetup).toBeDefined();
-    expect(repositories.PostgresDatasource).toBeDefined();
-    expect(repositories.PostgresCrudRepository).toBeDefined();
-    expect(repositories.PostgresStandardRepository).toBeDefined();
-    expect(repositories.MysqlSetup).toBeDefined();
-    expect(repositories.MysqlDatasource).toBeDefined();
-    expect(repositories.MysqlCrudRepository).toBeDefined();
-    expect(repositories.MysqlStandardRepository).toBeDefined();
-    expect(repositories.buildRepoForBackend).toBeDefined();
-  });
-
-  it('repositories/sqlserver subpath exposes the sqlserver layered classes', () => {
-    expect(repositoriesSqlserver.SqlserverSetup).toBeDefined();
-    expect(repositoriesSqlserver.SqlserverDatasource).toBeDefined();
-    expect(repositoriesSqlserver.SqlserverCrudRepository).toBeDefined();
-    expect(repositoriesSqlserver.SqlserverStandardRepository).toBeDefined();
-  });
-
-  it('repositories/oracle subpath exposes the oracle layered classes', () => {
-    expect(repositoriesOracle.OracleSetup).toBeDefined();
-    expect(repositoriesOracle.OracleDatasource).toBeDefined();
-    expect(repositoriesOracle.OracleCrudRepository).toBeDefined();
-    expect(repositoriesOracle.OracleStandardRepository).toBeDefined();
+  it('identity barrel exposes EntityIdentity and PrimaryKey', () => {
+    expect(identity.EntityIdentity).toBeDefined();
+    expect(identity.PrimaryKey).toBeDefined();
   });
 
   it('routes barrel exposes router factories and param utils', () => {
@@ -86,20 +58,16 @@ describe('subpath barrels', () => {
   });
 
   it('services barrel exposes service classes', () => {
-    expect(services.EntityService).toBeDefined();
+    expect(services.DelegatingEntityService).toBeDefined();
     expect(services.AuthenticationService).toBeDefined();
-    expect(services.LookupEnrichedService).toBeDefined();
   });
 
   it('validators barrel exposes parseBasicAuth', () => {
     expect(typeof validators.parseBasicAuth).toBe('function');
   });
 
-  it('converters barrel exposes the SQLite -> TypeScript field converters', () => {
-    expect(converters.booleanFieldConverter).toBeDefined();
-    expect(converters.dateTimeFieldConverter).toBeDefined();
-    expect(converters.binaryFieldConverter).toBeDefined();
-    expect(converters.uuidFieldConverter).toBeDefined();
-    expect(typeof converters.getDefaultConverters).toBe('function');
+  it('sqlIdentifier exports quote helpers', () => {
+    expect(typeof sqlIdentifier.quoteIdentifier).toBe('function');
+    expect(typeof sqlIdentifier.assertValidIdentifier).toBe('function');
   });
 });

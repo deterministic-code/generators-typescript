@@ -20,7 +20,7 @@ export {
   type SqliteHandle,
 } from './connectDatabase';
 
-export type { DatabaseConnection, DatabaseBackendType } from '../repositories';
+export type { DatabaseConnection, DatabaseBackendType } from './database';
 
 export { start, type StartOptions, type StartHandle } from './start';
 

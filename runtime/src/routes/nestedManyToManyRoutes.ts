@@ -5,7 +5,7 @@ import { handleZodError } from '../errors/handleZodError';
 import { handleBusinessError } from '../errors/handleBusinessError';
 import { sendItem, sendItems, sendError } from '../responses/sendResponse';
 import { idOr400, parseIdField } from './routeParamUtils';
-import type { EntityIdentity, IdentityValue } from '../repositories/EntityIdentity';
+import type { EntityIdentity, IdentityValue } from '../identity/EntityIdentity';
 
 export interface NestedManyToManyConfig<_TParent = unknown, _TJunction = unknown> {
   parentService: IEntityService<any, any>;

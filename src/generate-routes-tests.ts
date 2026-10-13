@@ -157,7 +157,7 @@ class Generator extends Emit {
     const shared = {
       prelude: preludeSource(fakeTestData),
       pkImport: `import { EntityIdentity, PrimaryKey } from "${libraryImportSpecifier(
-        "repositories",
+        "identity",
         this.settings.libraryReferenceMode,
         path,
       )}";`,
