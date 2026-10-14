@@ -2,7 +2,7 @@ import { typeHasTag } from "@deterministic-code/generators-common/spec-types";
 import type {
   Type,
   TypeField,
-} from "@deterministic-code/deterministic-specifications-typescript/parser";
+} from "@deterministic-code/deterministic-generators-common/parser";
 
 export const isAlias = (view: Type): boolean =>
   typeHasTag(view, "datasource_type") && typeHasTag(view, "view_type");

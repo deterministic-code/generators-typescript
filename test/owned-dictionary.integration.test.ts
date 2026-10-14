@@ -7,7 +7,7 @@ import {
   TYPES_YAML,
 } from "@deterministic-code/generators-common/spec-types";
 import type { GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
-import { DeterministicParser } from "@deterministic-code/deterministic-specifications-typescript/parser";
+import { DeterministicParser } from "@deterministic-code/deterministic-generators-common/parser";
 import { generate as generateDatasourceTypes } from "../src/generate-datasource-types.ts";
 import { generate as generateViewTypes } from "../src/generate-view-types.ts";
 import { generate as generateViewTypeValidators } from "../src/generate-view-type-validators.ts";

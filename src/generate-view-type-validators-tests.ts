@@ -10,7 +10,7 @@ import {
   DeterministicParser,
   type IDeterministic,
   type Type,
-} from "@deterministic-code/deterministic-specifications-typescript/parser";
+} from "@deterministic-code/deterministic-generators-common/parser";
 import {
   fakeTestData,
   preludeSource,

@@ -2,7 +2,7 @@ import { fill } from "@deterministic-code/generators-common/fill";
 import {
   type Type,
   type TypeField,
-} from "@deterministic-code/deterministic-specifications-typescript/parser";
+} from "@deterministic-code/deterministic-generators-common/parser";
 import {
   dictionaryEntryFields,
   dictionaryOfField,
