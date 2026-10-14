@@ -12,12 +12,12 @@ import {
   DeterministicParser,
   type IDeterministic,
   type Type,
-} from "@deterministic-code/deterministic-specifications-typescript/parser";
+} from "@deterministic-code/deterministic-generators-common/parser";
 import { idTypeToZod, toZod, toZodDefault } from "./common/type-converters/native-to-zod.ts";
 import { fieldSize } from "./common/view-shape.ts";
 import { bag, Emit } from "./emit.ts";
 import { indexTmpl, typeTmpl } from "./resources/datasource-type-validators.ts";
-import type { TypeField } from "@deterministic-code/deterministic-specifications-typescript/parser";
+import type { TypeField } from "@deterministic-code/deterministic-generators-common/parser";
 
 type FieldShape = Pick<
   TypeField,

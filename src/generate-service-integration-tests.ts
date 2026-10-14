@@ -23,7 +23,7 @@ import {
   type SeedRow,
   type Type,
   type TypeField,
-} from "@deterministic-code/deterministic-specifications-typescript/parser";
+} from "@deterministic-code/deterministic-generators-common/parser";
 import { fieldSize, refParent } from "./common/view-shape.ts";
 import { isDictionaryCandidate } from "./common/dictionary-candidate.ts";
 import { genericTmpl } from "./resources/service-integration-tests.ts";

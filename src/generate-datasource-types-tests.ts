@@ -13,7 +13,7 @@ import {
   type IDeterministic,
   type Type,
   type TypeField,
-} from "@deterministic-code/deterministic-specifications-typescript/parser";
+} from "@deterministic-code/deterministic-generators-common/parser";
 import { fieldSize } from "./common/view-shape.ts";
 import { typeTestTmpl } from "./resources/datasource-types-tests.ts";
 import {

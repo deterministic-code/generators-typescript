@@ -17,7 +17,7 @@ import {
   type IDeterministic,
   type ServiceCandidate,
   type Type,
-} from "@deterministic-code/deterministic-specifications-typescript/parser";
+} from "@deterministic-code/deterministic-generators-common/parser";
 import { isDictionaryCandidate } from "./common/dictionary-candidate.ts";
 import { bag, customRelKey, Emit } from "./emit.ts";
 import {
