@@ -8,7 +8,7 @@ import {
   dictionaryOfField,
   persistedColumnFields,
 } from "@deterministic-code/generators-common/spec-types";
-import { toNative } from "../base-type-converter.ts";
+import { toNative } from "../deterministic-type-converter.ts";
 import { valueTmpl } from "../resources/view-types-tests.ts";
 import { fakeTestData, fieldExpr } from "./fake-test-data.ts";
 import type { PackCasing } from "./default-casing.ts";
