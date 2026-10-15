@@ -21,7 +21,7 @@ import {
   type Type,
   type TypeField,
 } from "@deterministic-code/deterministic-generators-common/parser";
-import { toNative } from "./base-type-converter.ts";
+import { toNative } from "./deterministic-type-converter.ts";
 import { fieldRefKind, fieldsBeyondParent, isAlias } from "./common/view-shape.ts";
 import { bag, Emit } from "./emit.ts";
 import {

@@ -1,4 +1,4 @@
-import { toNative } from "./base-type-converter.ts";
+import { toNative } from "./deterministic-type-converter.ts";
 import { fill } from "@deterministic-code/generators-common/fill";
 import type { GenerateContext } from "@deterministic-code/generators-common/generate-context";
 import { content, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
