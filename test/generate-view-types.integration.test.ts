@@ -382,4 +382,67 @@ describe("generate view types", () => {
     assert.match(contact, /addresses: Address\[\];/);
   });
 
+  it("emits a class for non-zero defaults and keeps a default-less view as an interface", async () => {
+    const yaml = `types:
+  - flags:
+      tags: [view_type]
+      fields:
+        - is_enabled:
+            type: boolean
+            default_value: true
+        - is_disabled:
+            type: boolean
+            default_value: false
+        - count:
+            type: integer
+            default_value: 0
+        - rank:
+            type: integer
+            default_value: 1
+        - empty_name:
+            type: string
+            default_value: ""
+        - title:
+            type: string
+            default_value: hello
+        - blob:
+            type: binary
+            default_value: Hex('00')
+        - stamped:
+            type: datetime
+            default_value: UtcNow
+        - opted_out:
+            type: boolean
+            is_nullable: true
+            default_value: false
+        - token:
+            type: uuid
+            default_value: NewId
+        - price:
+            type: decimal
+            default_value: "1.50"
+  - user:
+      tags: [datasource_type]
+      inherits: set
+      fields:
+        - is_enabled:
+            type: boolean
+            default_value: true
+  - user_view:
+      tags: [view_type]
+      inherits: user
+`;
+    const flags = await bodyOf("flags.ts", {}, yaml);
+    assert.match(flags, /export class Flags \{/);
+    assert.match(flags, /is_enabled: boolean = true;/);
+    assert.match(flags, /is_disabled!: boolean;/);
+    assert.match(flags, /empty_name!: string;/);
+    assert.match(flags, /rank: number = 1;/);
+    assert.match(flags, /opted_out: boolean \| null = false;/);
+    assert.match(flags, /price: string = "1.50";/);
+    const view = await bodyOf("userView.ts", {}, yaml);
+    assert.match(view, /export interface UserView extends User \{/);
+    assert.doesNotMatch(view, /export class UserView/);
+  });
+
 });

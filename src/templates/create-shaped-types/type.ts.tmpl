@@ -1,5 +1,5 @@
 // schema-version: {{schemaVersion}}
-{{#imports}}import type { {{names}} } from "{{fromPath}}";
+{{#imports}}import{{^isValue}} type{{/isValue}} { {{names}} } from "{{fromPath}}";
 {{/imports}}{{#hasImports}}
 {{/hasImports}}{{#simpleDoc}}/** {{docNoun}} {{className}}. */
 {{/simpleDoc}}{{#descriptionDoc}}/**
@@ -10,10 +10,16 @@
  */
 {{/descriptionDoc}}{{#hasDictionary}}type Dictionary<K extends PropertyKey, V> = Record<K, V>;
 {{/hasDictionary}}{{#isUnion}}export type {{className}} = {{unionMembers}};
-{{/isUnion}}{{#isShaped}}export interface {{className}}{{#hasExtends}} extends {{extendsType}}{{/hasExtends}}{{#hasFields}} {
+{{/isUnion}}{{#isShaped}}{{#isClass}}export class {{className}}{{#hasExtends}} extends {{extendsType}}{{/hasExtends}}{{#hasFields}} {
+{{#fields}}
+  {{ident}}{{#definite}}!{{/definite}}: {{tsType}}{{#nullable}} | null{{/nullable}}{{#hasInitializer}} = {{&initializer}}{{/hasInitializer}};
+{{/fields}}
+}
+{{/hasFields}}{{^hasFields}} {}
+{{/hasFields}}{{/isClass}}{{^isClass}}export interface {{className}}{{#hasExtends}} extends {{extendsType}}{{/hasExtends}}{{#hasFields}} {
 {{#fields}}
   {{ident}}: {{tsType}}{{#nullable}} | null{{/nullable}};
 {{/fields}}
 }
 {{/hasFields}}{{^hasFields}} {}
-{{/hasFields}}{{/isShaped}}
+{{/hasFields}}{{/isClass}}{{/isShaped}}

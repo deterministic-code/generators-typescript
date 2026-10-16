@@ -411,4 +411,101 @@ describe("generate", () => {
     assert.doesNotMatch(child, /owner_id: string/);
   });
 
+  it("emits a class for non-zero defaults and keeps zero-only types as interfaces", async () => {
+    const entries = await generate({
+      reader: memoryReader({
+        [TYPES_YAML]: `types:
+  - flags:
+      tags: [datasource_type]
+      inherits: set
+      fields:
+        - is_enabled:
+            type: boolean
+            default_value: true
+        - is_disabled:
+            type: boolean
+            default_value: false
+        - count:
+            type: integer
+            default_value: 0
+        - rank:
+            type: integer
+            default_value: 1
+        - empty_name:
+            type: string
+            default_value: ""
+        - title:
+            type: string
+            default_value: hello
+        - blob:
+            type: binary
+            default_value: Hex('00')
+        - stamped:
+            type: datetime
+            default_value: UtcNow
+        - opted_out:
+            type: boolean
+            is_nullable: true
+            default_value: false
+        - token:
+            type: uuid
+            default_value: NewId
+        - price:
+            type: decimal
+            default_value: "1.50"
+  - zero_only:
+      tags: [datasource_type]
+      inherits: set
+      fields:
+        - is_disabled:
+            type: boolean
+            default_value: false
+  - account:
+      tags: [datasource_type]
+      inherits: set
+      fields:
+        - email:
+            type: string
+  - admin_account:
+      tags: [datasource_type]
+      inherits: account
+      fields:
+        - is_staff:
+            type: boolean
+            default_value: true
+`,
+      }),
+      settings: {},
+    });
+    const byName = indexEntries(entries);
+    const flags = entryBody(requireEntry(byName, "flags.ts"));
+    assert.match(flags, /export class Flags \{/);
+    assert.match(flags, /is_enabled: boolean = true;/);
+    assert.match(flags, /is_disabled!: boolean;/);
+    assert.doesNotMatch(flags, /is_disabled: boolean =/);
+    assert.match(flags, /count!: number;/);
+    assert.match(flags, /rank: number = 1;/);
+    assert.match(flags, /empty_name!: string;/);
+    assert.match(flags, /title: string = "hello";/);
+    assert.match(
+      flags,
+      /blob: string = Buffer\.from\(\[0\]\)\.toString\("base64"\);/,
+    );
+    assert.match(flags, /stamped: Date = new Date\(\);/);
+    assert.match(flags, /opted_out: boolean \| null = false;/);
+    assert.match(flags, /token: string = crypto\.randomUUID\(\);/);
+    assert.match(flags, /price: string = "1.50";/);
+    assert.match(flags, /id!: number;/);
+    const zero = entryBody(requireEntry(byName, "zeroOnly.ts"));
+    assert.match(zero, /export interface ZeroOnly \{/);
+    assert.doesNotMatch(zero, /export class ZeroOnly/);
+    const account = entryBody(requireEntry(byName, "account.ts"));
+    assert.match(account, /export class Account \{/);
+    assert.match(account, /email!: string;/);
+    const admin = entryBody(requireEntry(byName, "adminAccount.ts"));
+    assert.match(admin, /export class AdminAccount extends Account \{/);
+    assert.match(admin, /is_staff: boolean = true;/);
+    assert.match(admin, /import \{ Account \} from "\.\/account";/);
+  });
+
 });

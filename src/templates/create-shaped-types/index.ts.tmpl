@@ -1,2 +1,3 @@
-{{#types}}export type { {{className}} } from "./{{fileBase}}";
-{{/types}}
+{{#types}}{{#isClass}}export { {{className}} } from "./{{fileBase}}";
+{{/isClass}}{{^isClass}}export type { {{className}} } from "./{{fileBase}}";
+{{/isClass}}{{/types}}
