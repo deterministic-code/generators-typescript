@@ -65,7 +65,7 @@ export const defaultValueConverter = new DeterministicDefaultValueConverter({
   unsignedbiginteger: numeric("unsignedbiginteger"),
   float: numeric("float"),
   decimal: {
-    ...numeric("decimal"),
+    Numeric: token(spec.decimal.Numeric!, dq, /^"(.*)"$/),
     String: quoted,
   },
   boolean: {
@@ -87,8 +87,13 @@ export const defaultValueConverter = new DeterministicDefaultValueConverter({
   binary: {
     Hex: token(
       spec.binary.Hex!,
-      (arg) => `new Uint8Array([${hexToBytes(arg).join(", ")}])`,
-      /^new Uint8Array\(\[.*\]\)$/,
+      (arg) => {
+        const bytes = hexToBytes(arg);
+        return bytes.length === 0
+          ? '""'
+          : `Buffer.from([${bytes.join(", ")}]).toString("base64")`;
+      },
+      /^.*$/,
     ),
   },
   uuid: {
@@ -105,3 +110,25 @@ export const defaultValueConverter = new DeterministicDefaultValueConverter({
 
 export const toNative = (specType: string): string =>
   typeConverter.convert(specType);
+
+const isTsZeroExpr = (expr: string): boolean =>
+  expr === "false" || expr === "0" || expr === '""';
+
+/** Native initializer, or `undefined` when absent or the language zero. */
+export const nativeDefaultExpr = (
+  specType: string,
+  field: {
+    hasDefault?: boolean;
+    defaultValue?: string | number | boolean | null;
+    isNullable: boolean;
+  },
+): string | undefined => {
+  if (field.hasDefault !== true) return undefined;
+  const expr = defaultValueConverter.convert(
+    specType,
+    String(field.defaultValue),
+  );
+  if (expr === null) return undefined;
+  if (field.isNullable) return expr;
+  return isTsZeroExpr(expr) ? undefined : expr;
+};
