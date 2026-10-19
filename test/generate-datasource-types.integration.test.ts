@@ -453,6 +453,45 @@ describe("generate", () => {
         - price:
             type: decimal
             default_value: "1.50"
+        - local_now:
+            type: datetime
+            default_value: Now
+        - explicit_at:
+            type: datetime
+            default_value: "DateTime('2026-01-01T00:00:00Z')"
+        - empty_id:
+            type: uuid
+            default_value: Empty
+        - fixed_id:
+            type: uuid
+            default_value: "uuid('11111111-1111-4111-8111-111111111111')"
+        - empty_blob:
+            type: binary
+            default_value: "Hex('')"
+        - initial:
+            type: character
+            default_value: X
+        - ratio:
+            type: float
+            default_value: 1.5
+        - visits:
+            type: unsignedinteger
+            default_value: 1
+        - delta:
+            type: smallinteger
+            default_value: 1
+        - port:
+            type: unsignedsmallinteger
+            default_value: 1
+        - big_rank:
+            type: biginteger
+            default_value: 1
+        - huge:
+            type: unsignedbiginteger
+            default_value: 1
+        - amount:
+            type: number
+            default_value: 1
   - zero_only:
       tags: [datasource_type]
       inherits: set
@@ -495,6 +534,29 @@ describe("generate", () => {
     assert.match(flags, /opted_out: boolean \| null = false;/);
     assert.match(flags, /token: string = crypto\.randomUUID\(\);/);
     assert.match(flags, /price: string = "1.50";/);
+    assert.match(flags, /local_now: Date = new Date\(\);/);
+    assert.match(
+      flags,
+      /explicit_at: Date = new Date\("2026-01-01T00:00:00Z"\);/,
+    );
+    assert.match(
+      flags,
+      /empty_id: string = "00000000-0000-0000-0000-000000000000";/,
+    );
+    assert.match(
+      flags,
+      /fixed_id: string = "11111111-1111-4111-8111-111111111111";/,
+    );
+    assert.match(flags, /empty_blob!: string;/);
+    assert.doesNotMatch(flags, /empty_blob: string =/);
+    assert.match(flags, /initial: string = "X";/);
+    assert.match(flags, /ratio: number = 1.5;/);
+    assert.match(flags, /visits: number = 1;/);
+    assert.match(flags, /delta: number = 1;/);
+    assert.match(flags, /port: number = 1;/);
+    assert.match(flags, /big_rank: number = 1;/);
+    assert.match(flags, /huge: number = 1;/);
+    assert.match(flags, /amount: number = 1;/);
     assert.match(flags, /id!: number;/);
     const zero = entryBody(requireEntry(byName, "zeroOnly.ts"));
     assert.match(zero, /export interface ZeroOnly \{/);
