@@ -114,16 +114,34 @@ export const toNative = (specType: string): string =>
 const isTsZeroExpr = (expr: string): boolean =>
   expr === "false" || expr === "0" || expr === '""';
 
+export const collectionDefaultExpr = (field: {
+  isArray: boolean;
+  isMap?: boolean;
+  isNullable: boolean;
+  defaultValue?: string | number | boolean | null | readonly [] | object;
+}): string | undefined => {
+  if (!field.isArray && field.isMap !== true) return undefined;
+  if (field.isNullable && field.defaultValue === null) return undefined;
+  return field.isMap === true ? "{}" : "[]";
+};
+
 /** Native initializer, or `undefined` when absent or the language zero. */
 export const nativeDefaultExpr = (
   specType: string,
   field: {
     hasDefault?: boolean;
-    defaultValue?: string | number | boolean | null;
+    defaultValue?: string | number | boolean | null | readonly [] | object;
     isNullable: boolean;
   },
 ): string | undefined => {
   if (field.hasDefault !== true) return undefined;
+  if (
+    field.defaultValue === null ||
+    Array.isArray(field.defaultValue) ||
+    (typeof field.defaultValue === "object" && field.defaultValue !== null)
+  ) {
+    return undefined;
+  }
   const expr = defaultValueConverter.convert(
     specType,
     String(field.defaultValue),

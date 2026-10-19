@@ -21,7 +21,11 @@ import {
   type Type,
   type TypeField,
 } from "@deterministic-code/deterministic-generators-common/parser";
-import { nativeDefaultExpr, toNative } from "./deterministic-type-converter.ts";
+import {
+  collectionDefaultExpr,
+  nativeDefaultExpr,
+  toNative,
+} from "./deterministic-type-converter.ts";
 import { fieldRefKind, fieldsBeyondParent, isAlias } from "./common/view-shape.ts";
 import { bag, Emit } from "./emit.ts";
 import {
@@ -457,16 +461,17 @@ class Generator extends Emit {
     const fields = this.emitFields(type, expanded, flatten);
     const fieldTokens = fields.map((f) => {
       const initializer =
-        f.kind === "primitive"
+        collectionDefaultExpr(f) ??
+        (f.kind === "primitive"
           ? nativeDefaultExpr(fieldTypeOf(f, this.typesByName), f)
-          : undefined;
+          : undefined);
       return {
         ident: this.casing.fieldIdent(f.name),
         tsType: this.fieldTs(f, aliasByClass),
         nullable: f.isNullable,
         hasInitializer: isClass && initializer !== undefined,
         initializer: initializer ?? "",
-        definite: isClass && initializer === undefined,
+        definite: isClass && initializer === undefined && !f.isNullable,
       };
     });
     const refs = this.refs(type, expanded, flatten);
