@@ -54,7 +54,7 @@ class Generator extends Emit {
   }
 
   private customModuleKey(emitPath: string): string {
-    return customRelKey(emitPath, "routes");
+    return customRelKey(emitPath, this.casing.convertDirectories("routes"));
   }
 
   private entityRouter(candidate: RouteCandidate): GenerateEntry {
