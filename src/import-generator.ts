@@ -39,7 +39,7 @@ export class TypeScriptImportGenerator implements IImportGenerator {
   }
 
   datasourceRel(entity: string): string {
-    return this.rel("types/generated/datasource", this.datasource(entity));
+    return this.rel(this.layered("types/generated/datasource"), this.datasource(entity));
   }
 
   datasourceQual(entity: string): string {
@@ -58,21 +58,21 @@ export class TypeScriptImportGenerator implements IImportGenerator {
 
   datasourceValidatorRel(entity: string): string {
     return this.rel(
-      "types/generated/datasource/validators",
+      this.layered("types/generated/datasource/validators"),
       this.datasourceValidator(entity),
     );
   }
 
   datasourceTestRel(entity: string): string {
     return this.rel(
-      "types/generated/datasource",
+      this.layered("types/generated/datasource"),
       this.test(this.datasource(entity), entity),
     );
   }
 
   datasourceValidatorTestRel(entity: string): string {
     return this.rel(
-      "types/generated/datasource/validators",
+      this.layered("types/generated/datasource/validators"),
       this.test(this.datasourceValidator(entity), entity),
     );
   }
@@ -82,7 +82,7 @@ export class TypeScriptImportGenerator implements IImportGenerator {
   }
 
   viewRel(entity: string): string {
-    return this.rel("types/generated/views", this.view(entity));
+    return this.rel(this.layered("types/generated/views"), this.view(entity));
   }
 
   viewQual(entity: string): string {
@@ -95,18 +95,18 @@ export class TypeScriptImportGenerator implements IImportGenerator {
 
   viewValidatorRel(entity: string): string {
     return this.rel(
-      "types/generated/views/validators",
+      this.layered("types/generated/views/validators"),
       this.viewValidator(entity),
     );
   }
 
   viewTestRel(entity: string): string {
-    return this.rel("types/generated/views", this.test(this.view(entity), entity));
+    return this.rel(this.layered("types/generated/views"), this.test(this.view(entity), entity));
   }
 
   viewValidatorTestRel(entity: string): string {
     return this.rel(
-      "types/generated/views/validators",
+      this.layered("types/generated/views/validators"),
       this.test(this.viewValidator(entity), entity),
     );
   }
@@ -126,7 +126,7 @@ export class TypeScriptImportGenerator implements IImportGenerator {
   }
 
   serviceRel(entity: string): string {
-    return this.rel("services/generated", this.service(entity));
+    return this.rel(this.layered("services/generated"), this.service(entity));
   }
 
   serviceCustom(name: string, module?: string): string {
@@ -136,20 +136,20 @@ export class TypeScriptImportGenerator implements IImportGenerator {
   serviceCustomRel(entity: string): string {
     const file = `${this.serviceStem(entity)}.ts`;
     return this.organizeByFeature
-      ? `features/${this.casing.directory(entity)}/custom/${file}`
-      : `services/custom/${file}`;
+      ? `${this.featuresDir(entity)}/custom/${file}`
+      : `${this.layered("services")}/custom/${file}`;
   }
 
   serviceTest(entity: string): string {
     const file = `${this.serviceStem(entity)}.test.ts`;
     const path = this.organizeByFeature
-      ? `features/${this.casing.directory(entity)}/__tests__/${file}`
+      ? `${this.featuresDir(entity)}/__tests__/${file}`
       : file;
     return this.underBase(path);
   }
 
   serviceTestRel(entity: string): string {
-    return this.rel("services/generated/__tests__", this.serviceTest(entity));
+    return this.rel(this.layered("services/generated/__tests__"), this.serviceTest(entity));
   }
 
   serviceIntegrationTest(entity: string): string {
@@ -158,7 +158,7 @@ export class TypeScriptImportGenerator implements IImportGenerator {
 
   serviceIntegrationTestRel(entity: string): string {
     return this.rel(
-      "services/generated/__tests__",
+      this.layered("services/generated/__tests__"),
       this.serviceIntegrationTest(entity),
     );
   }
@@ -178,7 +178,7 @@ export class TypeScriptImportGenerator implements IImportGenerator {
   }
 
   routeRel(entity: string): string {
-    return this.rel("routes/generated", this.route(entity));
+    return this.rel(this.layered("routes/generated"), this.route(entity));
   }
 
   routeCustom(name: string, module?: string): string {
@@ -188,13 +188,13 @@ export class TypeScriptImportGenerator implements IImportGenerator {
   routeTest(entity: string): string {
     const file = `${this.casing.fileBase(entity)}.integration.test.ts`;
     const path = this.organizeByFeature
-      ? `features/${this.casing.directory(entity)}/__tests__/${file}`
+      ? `${this.featuresDir(entity)}/__tests__/${file}`
       : file;
     return this.underBase(path);
   }
 
   routeTestRel(entity: string): string {
-    return this.rel("routes/generated/__tests__", this.routeTest(entity));
+    return this.rel(this.layered("routes/generated/__tests__"), this.routeTest(entity));
   }
 
   enrichment(_targetTable: string): string {
@@ -262,8 +262,8 @@ export class TypeScriptImportGenerator implements IImportGenerator {
   /** Layered types/services/routes globs, or features when by-feature. Empty when flat. */
   tsconfigIncludes(): string[] {
     if (this.flat) return [];
-    if (this.organizeByFeature) return ["features/**/*.ts"];
-    return ["types/**/*.ts", "services/**/*.ts", "routes/**/*.ts"];
+    if (this.organizeByFeature) return [`${this.casing.convertDirectories("features")}/**/*.ts`];
+    return ["types", "services", "routes"].map((layer) => `${this.casing.convertDirectories(layer)}/**/*.ts`);
   }
 
   private rel(prefix: string, file: string): string {
@@ -275,8 +275,23 @@ export class TypeScriptImportGenerator implements IImportGenerator {
     return `${this.casing.fileBase(stem)}.ts`;
   }
 
+  private layered(path: string): string {
+    return path
+      .split("/")
+      .map((segment) =>
+        segment === "custom" || segment === "__tests__"
+          ? segment
+          : this.casing.convertDirectories(segment),
+      )
+      .join("/");
+  }
+
+  private featuresDir(entity: string): string {
+    return `${this.casing.convertDirectories("features")}/${this.casing.directory(entity)}`;
+  }
+
   private featurePath(entity: string, file: string): string {
-    return `features/${this.casing.directory(entity)}/${file}`;
+    return `${this.featuresDir(entity)}/${file}`;
   }
 
   private serviceStem(entity: string): string {
@@ -291,7 +306,7 @@ export class TypeScriptImportGenerator implements IImportGenerator {
   private viewLike(entity: string, featureExt: string): string {
     const file = `${this.casing.fileBase(entity)}${this.organizeByFeature ? featureExt : ""}.ts`;
     return this.organizeByFeature
-      ? `features/${this.casing.directory(entity)}/${file}`
+      ? `${this.featuresDir(entity)}/${file}`
       : file;
   }
 
@@ -310,7 +325,7 @@ export class TypeScriptImportGenerator implements IImportGenerator {
         ? this.tsFile(name)
         : `${this.casing.fileBase(`${name}_route`)}.ts`;
     const defaultStub = this.organizeByFeature
-      ? `features/${this.casing.directory(name)}/custom/${file}`
+      ? `${this.featuresDir(name)}/custom/${file}`
       : `../custom/${file}`;
     if (this.organizeByFeature) {
       if (

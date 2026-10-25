@@ -73,6 +73,22 @@ describe("TypeScriptImportGenerator layered (organize_by_feature unset)", () => 
       "services/generated/__tests__/userService.integration.test.ts",
     );
     assert.equal(imports.serviceCustomRel("user"), "services/custom/userService.ts");
+    const pascalDirs = createImportGenerator(".", {
+      "languages.typescript.casing.directories": "Pascal",
+    });
+    assert.equal(
+      pascalDirs.datasourceRel("user"),
+      "Types/Generated/Datasource/user.ts",
+    );
+    assert.equal(
+      pascalDirs.serviceRel("user"),
+      "Services/Generated/userService.ts",
+    );
+    assert.deepEqual(pascalDirs.tsconfigIncludes(), [
+      "Types/**/*.ts",
+      "Services/**/*.ts",
+      "Routes/**/*.ts",
+    ]);
     assert.equal(imports.route("user"), "user.ts");
     assert.equal(imports.routeRel("user"), "routes/generated/user.ts");
     assert.equal(imports.routeTest("user"), "user.integration.test.ts");

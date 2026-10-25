@@ -165,7 +165,7 @@ class Generator extends Emit {
 
   /** Map emit paths like `../custom/foo.ts` to Rel keys `services/custom/foo.ts`. */
   private customModuleKey(emitPath: string): string {
-    return customRelKey(emitPath, "services");
+    return customRelKey(emitPath, this.casing.convertDirectories("services"));
   }
 
   private custom(entry: CustomServiceEntry): GenerateEntry {

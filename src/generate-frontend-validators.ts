@@ -1,7 +1,13 @@
 import type { GenerateContext } from "@deterministic-code/generators-common/generate-context";
 import type { GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import { verifyEntries } from "@deterministic-code/generators-common/reference-verifier";
+import { createCasing } from "./common/default-casing.ts";
 import { Emit } from "./emit.ts";
+
+const layered = (settings: Record<string, string>, path: string): string => {
+  const casing = createCasing(settings);
+  return path.split("/").map((segment) => casing.convertDirectories(segment)).join("/");
+};
 import { generate as generateViewTypeValidators } from "./generate-view-type-validators.ts";
 import { referencesBackend } from "./inline-inherited.ts";
 import {
@@ -31,7 +37,7 @@ export const generate = async (
     },
     basePath: validators,
     datasourceBasePath: referenceBackendType
-      ? "types/generated/datasource/validators"
+      ? layered(ctx.settings, "types/generated/datasource/validators")
       : validators,
   });
   if (!referenceBackendType) verifyEntries(entries);
