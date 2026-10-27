@@ -37,11 +37,8 @@ export const bag = (attrs: {
   return out;
 };
 
-/** Map `../….ts` emit paths to project-relative Rel keys (`services/….ts`). */
-export const customRelKey = (
-  emitPath: string,
-  layer: "services" | "routes",
-): string =>
+/** Map `../….ts` emit paths to project-relative Rel keys using the cased layer directory. */
+export const customRelKey = (emitPath: string, layer: string): string =>
   emitPath.startsWith("../") ? `${layer}/${emitPath.slice(3)}` : emitPath;
 
 /** Settings plus pack import generators created once; lanes use `this.imports`. */
