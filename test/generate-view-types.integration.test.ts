@@ -277,6 +277,7 @@ describe("generate view types", () => {
       contact,
       /export interface Contact extends Omit<ContactsBase, "contact_source_id"> \{/,
     );
+    assert.match(contact, /export \{ contact as Contact \};/);
     assert.match(contact, /contact_source_name: string;/);
     assert.match(contact, /phones: Phone\[\];/);
     assert.doesNotMatch(contact, /first_name:/);
@@ -301,15 +302,9 @@ describe("generate view types", () => {
 
   it("writes the barrel with type re-exports", async () => {
     const index = await bodyOf("index.ts");
-    assert.match(index, /export \{ user \} from "\.\/user";/);
-    assert.match(index, /export type \{ User \} from "\.\/user";/);
-    assert.match(index, /export \{ payment \} from "\.\/payment";/);
-    assert.match(index, /export type \{ Payment \} from "\.\/payment";/);
-    assert.match(index, /export \{ userSummary \} from "\.\/userSummary";/);
-    assert.match(
-      index,
-      /export type \{ UserSummary \} from "\.\/userSummary";/,
-    );
+    assert.match(index, /export \{ user, User \} from "\.\/user";/);
+    assert.match(index, /export \{ payment, Payment \} from "\.\/payment";/);
+    assert.match(index, /export \{ userSummary, UserSummary \} from "\.\/userSummary";/);
   });
 
   it("writes codegen.schema_version into the file header", async () => {

@@ -1,3 +1,2 @@
-{{#types}}export { {{#camel}}{{className}}{{/camel}}{{#isClass}}, {{className}}{{/isClass}} } from "./{{fileBase}}";
-{{^isClass}}export type { {{className}} } from "./{{fileBase}}";
-{{/isClass}}{{/types}}
+{{#types}}export { {{#camel}}{{className}}{{/camel}}, {{className}} } from "./{{fileBase}}";
+{{/types}}

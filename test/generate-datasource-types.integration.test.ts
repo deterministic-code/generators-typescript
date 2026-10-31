@@ -173,6 +173,7 @@ describe("generate", () => {
     assert.doesNotMatch(user, /@deterministic-code\/deterministic/);
     assert.match(user, /export const user = \(init: Partial<User>\): User => \(\{ \.\.\.init \} as User\);/);
     assert.match(user, /export interface User \{/);
+    assert.match(user, /export \{ user as User \};/);
     assert.match(user, /id: number;/);
     assert.match(user, /uuid: string;/);
     assert.match(user, /created: Date;/);
@@ -189,10 +190,8 @@ describe("generate", () => {
     });
     const map = indexEntries(withIndex);
     const index = entryBody(requireEntry(map, "index.ts"));
-    assert.match(index, /export \{ user \} from "\.\/user";/);
-    assert.match(index, /export type \{ User \} from "\.\/user";/);
-    assert.match(index, /export \{ role \} from "\.\/role";/);
-    assert.match(index, /export type \{ Role \} from "\.\/role";/);
+    assert.match(index, /export \{ user, User \} from "\.\/user";/);
+    assert.match(index, /export \{ role, Role \} from "\.\/role";/);
   });
 
   it("writes codegen.schema_version into the file header", async () => {
