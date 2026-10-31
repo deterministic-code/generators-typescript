@@ -171,6 +171,7 @@ describe("generate", () => {
     assert.match(user, /schema-version: 1\.0/);
     assert.doesNotMatch(user, /StandardDataSource/);
     assert.doesNotMatch(user, /@deterministic-code\/deterministic/);
+    assert.match(user, /export const user = \(init: Partial<User>\): User => \(\{ \.\.\.init \} as User\);/);
     assert.match(user, /export interface User \{/);
     assert.match(user, /id: number;/);
     assert.match(user, /uuid: string;/);
@@ -188,7 +189,9 @@ describe("generate", () => {
     });
     const map = indexEntries(withIndex);
     const index = entryBody(requireEntry(map, "index.ts"));
+    assert.match(index, /export \{ user \} from "\.\/user";/);
     assert.match(index, /export type \{ User \} from "\.\/user";/);
+    assert.match(index, /export \{ role \} from "\.\/role";/);
     assert.match(index, /export type \{ Role \} from "\.\/role";/);
   });
 
@@ -518,6 +521,7 @@ describe("generate", () => {
     });
     const byName = indexEntries(entries);
     const flags = entryBody(requireEntry(byName, "flags.ts"));
+    assert.match(flags, /export const flags = \(init: Partial<Flags>\): Flags => \(\{ \.\.\.init \} as Flags\);/);
     assert.match(flags, /export class Flags \{/);
     assert.match(flags, /is_enabled: boolean = true;/);
     assert.match(flags, /is_disabled!: boolean;/);
