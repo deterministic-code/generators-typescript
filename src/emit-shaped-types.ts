@@ -84,6 +84,11 @@ const groupImports = (
 
 const classKey = (kind: ShapedKind, name: string): string => `${kind}:${name}`;
 
+const camel = () => (text: string, render: (value: string) => string) => {
+  const name = render(text);
+  return `${name[0]!.toLowerCase()}${name.slice(1)}`;
+};
+
 class Generator extends Emit {
   private readonly kind: ShapedKind;
   private readonly referenceBackendType: boolean;
@@ -448,55 +453,46 @@ class Generator extends Emit {
     const { schemaVersion, simpleDoc, descriptionDoc } = this.settings;
     const className = this.casing.convertTypes(type.name);
     const isClass = this.classSet.has(classKey(this.kind, type.name));
-    const parentProbe = this.extendsType(type, new Map());
     const flatten =
-      isClass && parentProbe !== undefined && parentProbe.startsWith("Omit<");
+      isClass && (this.extendsType(type, new Map())?.startsWith("Omit<") ?? false);
     const { imports, aliasByClass } = this.collectImports(
       type,
       expanded,
       flatten,
       isClass,
     );
-    const parent = flatten ? undefined : this.extendsType(type, aliasByClass);
     const fields = this.emitFields(type, expanded, flatten);
-    const fieldTokens = fields.map((f) => {
-      const initializer =
-        collectionDefaultExpr(f) ??
-        (f.kind === "primitive"
-          ? nativeDefaultExpr(fieldTypeOf(f, this.typesByName), f)
-          : undefined);
-      return {
-        ident: this.casing.fieldIdent(f.name),
-        tsType: this.fieldTs(f, aliasByClass),
-        nullable: f.isNullable,
-        hasInitializer: isClass && initializer !== undefined,
-        initializer: initializer ?? "",
-        definite: isClass && initializer === undefined && !f.isNullable,
-      };
-    });
     const refs = this.refs(type, expanded, flatten);
     return content(
       this.file(type.name),
       fill(this.templates.typeTmpl, {
         schemaVersion,
         imports,
-        hasImports: imports.length > 0,
         simpleDoc,
         descriptionDoc,
-        docNoun: this.kind === "datasource" ? "Type" : "View",
         className,
+        camel,
+        datasource: this.kind === "datasource",
         datasourceType: tableKind(type),
-        target: this.kind === "datasource" ? "ShapedType" : "ShapedView",
-        fieldCount: String(fieldTokens.length),
-        isUnion: false,
-        isShaped: true,
         isClass,
-        hasExtends: parent !== undefined,
-        extendsType: parent ?? "",
-        hasFields: fieldTokens.length > 0,
-        hasDictionary: fields.some((f) => f.isMap === true),
-        fields: fieldTokens,
-        unionMembers: "",
+        extendsType: flatten ? "" : (this.extendsType(type, aliasByClass) ?? ""),
+        fields: Object.assign(
+          fields.map((f) => {
+            const initializer =
+              collectionDefaultExpr(f) ??
+              (f.kind === "primitive"
+                ? nativeDefaultExpr(fieldTypeOf(f, this.typesByName), f)
+                : undefined);
+            return {
+              ident: this.casing.fieldIdent(f.name),
+              tsType: this.fieldTs(f, aliasByClass),
+              nullable: f.isNullable,
+              isMap: f.isMap === true,
+              initializer: isClass && initializer !== undefined ? ` = ${initializer}` : "",
+            };
+          }),
+          { dictionary: fields.some((f) => f.isMap === true) },
+        ),
       }),
       bag({
         module: this.rel(type.name),
@@ -513,6 +509,7 @@ class Generator extends Emit {
     return content(
       index,
       fill(this.templates.indexTmpl, {
+        camel,
         types: types.map((t) => ({
           className: this.casing.convertTypes(t.name),
           fileBase: this.casing.fileBase(t.name),

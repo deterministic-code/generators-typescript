@@ -1,25 +1,25 @@
 // schema-version: {{schemaVersion}}
 {{#imports}}import{{^isValue}} type{{/isValue}} { {{names}} } from "{{fromPath}}";
-{{/imports}}{{#hasImports}}
-{{/hasImports}}{{#simpleDoc}}/** {{docNoun}} {{className}}. */
+{{/imports}}{{#imports.0}}
+{{/imports.0}}{{#simpleDoc}}/** {{#datasource}}Type{{/datasource}}{{^datasource}}View{{/datasource}} {{className}}. */
 {{/simpleDoc}}{{#descriptionDoc}}/**
- * {{docNoun}} {{className}}.
+ * {{#datasource}}Type{{/datasource}}{{^datasource}}View{{/datasource}} {{className}}.
  * Datasource type: {{datasourceType}}.
- * Target: {{target}}.
- * Fields: {{fieldCount}}.
+ * Target: {{#datasource}}ShapedType{{/datasource}}{{^datasource}}ShapedView{{/datasource}}.
+ * Fields: {{fields.length}}.
  */
-{{/descriptionDoc}}{{#hasDictionary}}type Dictionary<K extends PropertyKey, V> = Record<K, V>;
-{{/hasDictionary}}{{#isUnion}}export type {{className}} = {{unionMembers}};
-{{/isUnion}}{{#isShaped}}{{#isClass}}export class {{className}}{{#hasExtends}} extends {{extendsType}}{{/hasExtends}}{{#hasFields}} {
+{{/descriptionDoc}}{{#fields.dictionary}}type Dictionary<K extends PropertyKey, V> = Record<K, V>;
+{{/fields.dictionary}}export const {{#camel}}{{className}}{{/camel}} = (init: Partial<{{className}}>): {{className}} => ({ ...init } as {{className}});
+{{#isClass}}export class {{className}}{{#extendsType}} extends {{extendsType}}{{/extendsType}}{{#fields.0}} {
 {{#fields}}
-  {{ident}}{{#definite}}!{{/definite}}: {{tsType}}{{#nullable}} | null{{/nullable}}{{#hasInitializer}} = {{&initializer}}{{/hasInitializer}};
+  {{ident}}{{#isClass}}{{^initializer}}{{^nullable}}!{{/nullable}}{{/initializer}}{{/isClass}}: {{tsType}}{{#nullable}} | null{{/nullable}}{{&initializer}};
 {{/fields}}
 }
-{{/hasFields}}{{^hasFields}} {}
-{{/hasFields}}{{/isClass}}{{^isClass}}export interface {{className}}{{#hasExtends}} extends {{extendsType}}{{/hasExtends}}{{#hasFields}} {
+{{/fields.0}}{{^fields.0}} {}
+{{/fields.0}}{{/isClass}}{{^isClass}}export interface {{className}}{{#extendsType}} extends {{extendsType}}{{/extendsType}}{{#fields.0}} {
 {{#fields}}
   {{ident}}: {{tsType}}{{#nullable}} | null{{/nullable}};
 {{/fields}}
 }
-{{/hasFields}}{{^hasFields}} {}
-{{/hasFields}}{{/isClass}}{{/isShaped}}
+{{/fields.0}}{{^fields.0}} {}
+{{/fields.0}}{{/isClass}}

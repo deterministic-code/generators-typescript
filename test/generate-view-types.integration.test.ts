@@ -301,8 +301,11 @@ describe("generate view types", () => {
 
   it("writes the barrel with type re-exports", async () => {
     const index = await bodyOf("index.ts");
+    assert.match(index, /export \{ user \} from "\.\/user";/);
     assert.match(index, /export type \{ User \} from "\.\/user";/);
+    assert.match(index, /export \{ payment \} from "\.\/payment";/);
     assert.match(index, /export type \{ Payment \} from "\.\/payment";/);
+    assert.match(index, /export \{ userSummary \} from "\.\/userSummary";/);
     assert.match(
       index,
       /export type \{ UserSummary \} from "\.\/userSummary";/,
@@ -495,6 +498,7 @@ describe("generate view types", () => {
       inherits: user
 `;
     const flags = await bodyOf("flags.ts", {}, yaml);
+    assert.match(flags, /export const flags = \(init: Partial<Flags>\): Flags => \(\{ \.\.\.init \} as Flags\);/);
     assert.match(flags, /export class Flags \{/);
     assert.match(flags, /is_enabled: boolean = true;/);
     assert.match(flags, /is_disabled!: boolean;/);
