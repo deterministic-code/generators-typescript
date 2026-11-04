@@ -12,7 +12,7 @@
 {{/fields.dictionary}}export const {{#camel}}{{className}}{{/camel}} = (init: Partial<{{className}}>): {{className}} => ({ ...init } as {{className}});
 {{#isClass}}export class {{className}}{{#extendsType}} extends {{extendsType}}{{/extendsType}}{{#fields.0}} {
 {{#fields}}
-  {{ident}}{{#isClass}}{{^initializer}}{{^nullable}}!{{/nullable}}{{/initializer}}{{/isClass}}: {{tsType}}{{#nullable}} | null{{/nullable}}{{&initializer}};
+  {{ident}}{{#isClass}}{{^initializer}}!{{/initializer}}{{/isClass}}: {{tsType}}{{#nullable}} | null{{/nullable}}{{&initializer}};
 {{/fields}}
 }
 {{/fields.0}}{{^fields.0}} {}

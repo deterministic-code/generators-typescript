@@ -528,7 +528,7 @@ describe("generate view types", () => {
     assert.match(flags, /tags: string\[\] = \[\];/);
     assert.match(flags, /extra: string\[\] = \[\];/);
     assert.match(flags, /attrs: Dictionary<string, string> = \{\};/);
-    assert.match(flags, /aliases: string\[\] \| null;/);
+    assert.match(flags, /aliases!: string\[\] \| null;/);
     assert.doesNotMatch(flags, /aliases: string\[\] \| null =/);
     const view = await bodyOf("userView.ts", {}, yaml);
     assert.match(view, /export interface UserView extends User \{/);
