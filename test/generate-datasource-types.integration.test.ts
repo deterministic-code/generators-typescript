@@ -450,6 +450,9 @@ describe("generate", () => {
             type: boolean
             is_nullable: true
             default_value: false
+        - note:
+            type: string
+            is_nullable: true
         - token:
             type: uuid
             default_value: NewId
@@ -536,6 +539,7 @@ describe("generate", () => {
     );
     assert.match(flags, /stamped: Date = new Date\(\);/);
     assert.match(flags, /opted_out: boolean \| null = false;/);
+    assert.match(flags, /note!: string \| null;/);
     assert.match(flags, /token: string = crypto\.randomUUID\(\);/);
     assert.match(flags, /price: string = "1.50";/);
     assert.match(flags, /local_now: Date = new Date\(\);/);
