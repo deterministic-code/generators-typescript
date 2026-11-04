@@ -57,8 +57,8 @@ export const generateFrontendSampleEntries = async (args: {
     ...typeTests,
     ...validators,
     ...validatorTests,
-    ...nestUnder("types/generated/datasource", datasourceTypes),
-    ...nestUnder("types/generated/datasource/validators", datasourceValidators),
+    ...nestUnder("types/datasource", datasourceTypes),
+    ...nestUnder("types/datasource/validators", datasourceValidators),
   ];
 };
 

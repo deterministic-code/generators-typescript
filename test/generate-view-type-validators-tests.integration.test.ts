@@ -213,13 +213,13 @@ describe("generate view type validators tests", () => {
       (entry) =>
         entry.kind === "content" &&
         entry.attributes?.module ===
-          "types/generated/views/validators/cardPayment.test.ts",
+          "types/view/validators/cardPayment.test.ts",
     );
     assert.ok(card);
     assert.equal(card.kind, "content");
     assert.equal(
       card.attributes?.imports,
-      "types/generated/views/validators/cardPayment.ts",
+      "types/view/validators/cardPayment.ts",
     );
     assert.equal(card.attributes?.uses, "CardPaymentSchema");
   });

@@ -285,12 +285,12 @@ describe("generate", () => {
     assert.equal(adminEntry.kind, "content");
     assert.equal(
       adminEntry.attributes?.module,
-      "types/generated/datasource/admin.ts",
+      "types/datasource/admin.ts",
     );
     assert.equal(adminEntry.attributes?.exports, "Admin");
     assert.equal(
       adminEntry.attributes?.imports,
-      "types/generated/datasource/user.ts",
+      "types/datasource/user.ts",
     );
     assert.equal(adminEntry.attributes?.uses, "User");
   });

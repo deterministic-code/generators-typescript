@@ -168,13 +168,13 @@ describe("generate view types tests", () => {
       (entry) =>
         entry.kind === "content" &&
         entry.attributes?.module ===
-          "types/generated/views/cardPayment.test.ts",
+          "types/view/cardPayment.test.ts",
     );
     assert.ok(card);
     assert.equal(card.kind, "content");
     assert.equal(
       card.attributes?.imports,
-      "types/generated/views/cardPayment.ts",
+      "types/view/cardPayment.ts",
     );
     assert.equal(card.attributes?.uses, "CardPayment");
   });
