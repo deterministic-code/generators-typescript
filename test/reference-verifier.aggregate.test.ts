@@ -136,7 +136,7 @@ describe("reference verifier aggregate", () => {
     assert.equal(source.kind, "content");
     assert.doesNotMatch(
       source.attributes?.imports ?? "",
-      /types\/generated\/datasource\/base\.ts/,
+      /types\/datasource\/base\.ts/,
     );
     assert.doesNotThrow(() => verifyEntries(entries));
   });
@@ -155,11 +155,11 @@ describe("reference verifier aggregate", () => {
     assert.equal(child.kind, "content");
     assert.match(
       child.attributes?.imports ?? "",
-      /types\/generated\/datasource\/base\.ts/,
+      /types\/datasource\/base\.ts/,
     );
     assert.throws(
       () => verifyEntries(entries),
-      /types\/generated\/datasource\/base\.ts/,
+      /types\/datasource\/base\.ts/,
     );
   });
 

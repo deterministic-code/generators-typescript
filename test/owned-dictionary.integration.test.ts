@@ -208,8 +208,8 @@ describe("owned dictionary codegen", () => {
 
   it("emits Settings as a row-shaped datasource type", async () => {
     const entries = indexEntries(await generateDatasourceTypes(ctx));
-    const settings = entryBody(requireEntry(entries, "settings.ts"));
-    assert.match(settings, /export interface Settings \{/);
+    const settings = entryBody(requireEntry(entries, "setting.ts"));
+    assert.match(settings, /export interface Setting \{/);
     assert.match(settings, /setting_id: number;/);
     assert.match(settings, /key: string;/);
     assert.match(settings, /value: string;/);
@@ -244,9 +244,9 @@ describe("owned dictionary codegen", () => {
     assert.match(card, /labels: Dictionary<string, string>;/);
     assert.equal(entries.has("contactPreferences.ts"), false);
     const contactView = entryBody(requireEntry(entries, "contact.ts"));
-    assert.match(contactView, /prefs: Dictionary<string, LocalePreferences>;/);
-    const locale = entryBody(requireEntry(entries, "localePreferences.ts"));
-    assert.match(locale, /export interface LocalePreferences \{/);
+    assert.match(contactView, /prefs: Dictionary<string, LocalePreference>;/);
+    const locale = entryBody(requireEntry(entries, "localePreference.ts"));
+    assert.match(locale, /export interface LocalePreference \{/);
   });
 
   it("validates File view settings as z.record, not a Settings schema", async () => {
@@ -256,9 +256,9 @@ describe("owned dictionary codegen", () => {
     assert.match(file, /settings: z\.record\(z\.string\(\), z\.string\(\)\)/);
     assert.doesNotMatch(file, /SettingsSchema/);
     const contact = entryBody(requireEntry(entries, "contact.ts"));
-    assert.match(contact, /prefs: z\.record\(z\.string\(\), z\.lazy\(\(\) => LocalePreferencesSchema\)\)/);
+    assert.match(contact, /prefs: z\.record\(z\.string\(\), z\.lazy\(\(\) => LocalePreferenceSchema\)\)/);
     const prefsRow = indexEntries(await generateDatasourceTypes(ctx));
-    const row = entryBody(requireEntry(prefsRow, "contactPreferences.ts"));
+    const row = entryBody(requireEntry(prefsRow, "contactPreference.ts"));
     assert.match(row, /locale: string;/);
     assert.match(row, /timezone: string;/);
     assert.doesNotMatch(row, /\bvalue:/);

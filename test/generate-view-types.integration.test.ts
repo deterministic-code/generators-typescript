@@ -253,7 +253,7 @@ describe("generate view types", () => {
     assert.equal(summary.attributes?.exports, "UserSummary");
     assert.match(
       summary.attributes?.imports ?? "",
-      /types\/generated\/datasource\/user\.ts/,
+      /types\/datasource\/user\.ts/,
     );
     assert.match(summary.attributes?.uses ?? "", /User/);
   });
@@ -497,9 +497,9 @@ describe("generate view types", () => {
       tags: [view_type]
       inherits: user
 `;
-    const flags = await bodyOf("flags.ts", {}, yaml);
-    assert.match(flags, /export const flags = \(init: Partial<Flags>\): Flags => \(\{ \.\.\.init \} as Flags\);/);
-    assert.match(flags, /export class Flags \{/);
+    const flags = await bodyOf("flag.ts", {}, yaml);
+    assert.match(flags, /export const flag = \(init: Partial<Flag>\): Flag => \(\{ \.\.\.init \} as Flag\);/);
+    assert.match(flags, /export class Flag \{/);
     assert.match(flags, /is_enabled: boolean = true;/);
     assert.match(flags, /is_disabled!: boolean;/);
     assert.match(flags, /empty_name!: string;/);

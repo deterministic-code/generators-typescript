@@ -76,7 +76,7 @@ class Generator extends Emit implements ShapeOpts {
   private tests(view: Type): GenerateEntry {
     const fields = shapedViewNodes(view, this);
     const src = this.imports.view(view.name);
-    const className = this.casing.convertTypes(view.name);
+    const className = this.casing.entityName(view.name);
     return content(
       this.imports.test(src, view.name),
       fill(typeTestTmpl, {

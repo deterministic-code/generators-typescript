@@ -147,7 +147,7 @@ class Generator extends Emit {
           imports: collected.imports,
           schemaBody: this.schemaBody(view, expandedByName.get(view.name)),
           withTypeAnnotation: true,
-          className: this.casing.convertTypes(view.name),
+          className: this.casing.entityName(view.name),
           schemaName,
           validatedTypeName,
         }),
@@ -171,7 +171,7 @@ class Generator extends Emit {
         return [{
           view,
           exports,
-          className: this.casing.convertTypes(view.name),
+          className: this.casing.entityName(view.name),
           validatedTypeName: this.casing.validatedTypeName(view.name),
           fileBase: this.casing.fileBase(view.name),
         }];

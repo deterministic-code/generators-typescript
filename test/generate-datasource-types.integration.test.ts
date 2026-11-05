@@ -523,9 +523,9 @@ describe("generate", () => {
       settings: {},
     });
     const byName = indexEntries(entries);
-    const flags = entryBody(requireEntry(byName, "flags.ts"));
-    assert.match(flags, /export const flags = \(init: Partial<Flags>\): Flags => \(\{ \.\.\.init \} as Flags\);/);
-    assert.match(flags, /export class Flags \{/);
+    const flags = entryBody(requireEntry(byName, "flag.ts"));
+    assert.match(flags, /export const flag = \(init: Partial<Flag>\): Flag => \(\{ \.\.\.init \} as Flag\);/);
+    assert.match(flags, /export class Flag \{/);
     assert.match(flags, /is_enabled: boolean = true;/);
     assert.match(flags, /is_disabled!: boolean;/);
     assert.doesNotMatch(flags, /is_disabled: boolean =/);
