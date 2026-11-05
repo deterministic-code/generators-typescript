@@ -1,4 +1,4 @@
-import { snakeToPascal } from "@deterministic-code/generator-sdk/case";
+import { snakeToPascal } from "../../sdk/case.ts";
 import {
   nestedRouterFileBase,
   nestedRouterFnName,
@@ -10,14 +10,14 @@ import {
   layoutFor,
   namesFor,
   type NamesForOptions,
-} from "@deterministic-code/generator-sdk/codegen/lib/ts-codegen-naming";
+} from "../../sdk/codegen/lib/ts-codegen-naming.ts";
 import {
   datasourceSettingsFor,
   type DatasourceOptions,
-} from "@deterministic-code/generator-sdk/codegen/lib/ts-datasource-settings";
+} from "../../sdk/codegen/lib/ts-datasource-settings.ts";
 import { libraryImportSpecifier } from "./library-import.ts";
 import { sampleIdFactory } from "./route-test-sample-id.ts";
-import type { GeneratedFile } from "@deterministic-code/generator-sdk/codegen/lib/routes-generate-types";
+import type { GeneratedFile } from "../../sdk/codegen/lib/routes-generate-types.ts";
 import type {
   NestedRouteDescriptor,
   DirectFkDescriptor,

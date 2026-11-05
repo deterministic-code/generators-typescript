@@ -1,0 +1,10 @@
+import { describe, it, expect } from "vitest";
+import { createBackendApp } from "../app.js";
+
+describe("createBackendApp", () => {
+  it("resolves an Express app without throwing", async () => {
+    const app = await createBackendApp();
+    expect(app).toBeDefined();
+    expect(typeof (app as { use?: unknown }).use).toBe("function");
+  });
+});

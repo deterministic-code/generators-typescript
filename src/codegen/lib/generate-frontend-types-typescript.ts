@@ -1,16 +1,16 @@
-import { isWriteDtoViewName } from "@deterministic-code/generator-sdk/lib/schema-build";
+import { isWriteDtoViewName } from "../../sdk/lib/schema-build.ts";
 import { buildFrontendComponents } from "./frontend-type-components.ts";
-import { layoutForSettings } from "@deterministic-code/generator-sdk/codegen/lib/ts-codegen-naming";
+import { layoutForSettings } from "../../sdk/codegen/lib/ts-codegen-naming.ts";
 import {
   readBindings,
   bindingDatasource,
   refName,
 } from "./frontend-bindings-routes.ts";
-import { CONTENT } from "@deterministic-code/generator-sdk/codegen/lib/generate-result";
+import { CONTENT } from "../../sdk/codegen/lib/generate-result.ts";
 import type { GenerateArgs, SchemaProp } from "./frontend-generate-types.ts";
-import type { CodegenNames } from "@deterministic-code/generator-sdk/codegen-naming";
-import type { CodegenFieldNames } from "@deterministic-code/generator-sdk/field-names";
-import type { CodegenLayout } from "@deterministic-code/generator-sdk/codegen-layout";
+import type { CodegenNames } from "../../sdk/codegen-naming.ts";
+import type { CodegenFieldNames } from "../../sdk/field-names.ts";
+import type { CodegenLayout } from "../../sdk/codegen-layout.ts";
 
 const SCHEMA_VERSION = "1.0";
 

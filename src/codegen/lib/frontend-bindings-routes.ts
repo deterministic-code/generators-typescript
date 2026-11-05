@@ -1,14 +1,14 @@
-import type { ParsedSettings } from "@deterministic-code/generator-sdk/read-settings";
+import type { ParsedSettings } from "../../sdk/read-settings.ts";
 import { access, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parse } from "yaml";
-import type { CodegenLayout } from "@deterministic-code/generator-sdk/codegen-layout";
-import { buildOpenApiDocFromInputs } from "@deterministic-code/generator-sdk/codegen/lib/generate-openapi-docs-shared";
-import { layoutForSettings } from "@deterministic-code/generator-sdk/codegen/lib/ts-codegen-naming";
+import type { CodegenLayout } from "../../sdk/codegen-layout.ts";
+import { buildOpenApiDocFromInputs } from "../../sdk/codegen/lib/generate-openapi-docs-shared.ts";
+import { layoutForSettings } from "../../sdk/codegen/lib/ts-codegen-naming.ts";
 import {
   CONTENT,
   type GenerateEntry,
-} from "@deterministic-code/generator-sdk/codegen/lib/generate-result";
+} from "../../sdk/codegen/lib/generate-result.ts";
 
 const HTTP_METHODS = ["get", "post", "put", "patch", "delete"] as const;
 type HttpMethod = (typeof HTTP_METHODS)[number];

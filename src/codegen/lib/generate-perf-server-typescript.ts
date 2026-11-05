@@ -1,9 +1,9 @@
-import { parseDatasourceTypes } from "@deterministic-code/generator-sdk/codegen/lib/parse-datasource-types";
-import { resolveLibraryReferenceMode } from "@deterministic-code/generator-sdk/read-settings";
+import { parseDatasourceTypes } from "../../sdk/codegen/lib/parse-datasource-types.ts";
+import { resolveLibraryReferenceMode } from "../../sdk/read-settings.ts";
 import { libraryImportSpecifier } from "./library-import.ts";
-import { CONTENT } from "@deterministic-code/generator-sdk/codegen/lib/generate-result";
-import { perfServerTypescriptEntries } from "@deterministic-code/generator-sdk/codegen/lib/migrate-perf-harness";
-import type { GeneratedFile } from "@deterministic-code/generator-sdk/codegen/lib/routes-generate-types";
+import { CONTENT } from "../../sdk/codegen/lib/generate-result.ts";
+import { perfServerTypescriptEntries } from "../../sdk/codegen/lib/migrate-perf-harness.ts";
+import type { GeneratedFile } from "../../sdk/codegen/lib/routes-generate-types.ts";
 
 interface DatasourceData {
   types?: unknown;

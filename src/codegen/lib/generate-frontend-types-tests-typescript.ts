@@ -1,22 +1,22 @@
-import { isWriteDtoViewName } from "@deterministic-code/generator-sdk/lib/schema-build";
+import { isWriteDtoViewName } from "../../sdk/lib/schema-build.ts";
 import { buildFrontendComponents } from "./frontend-type-components.ts";
-import { layoutForSettings } from "@deterministic-code/generator-sdk/codegen/lib/ts-codegen-naming";
+import { layoutForSettings } from "../../sdk/codegen/lib/ts-codegen-naming.ts";
 import { readBindings, bindingDatasource } from "./frontend-bindings-routes.ts";
 import {
   serializeSampleValue as serializeValue,
   accessExpr,
-} from "@deterministic-code/generator-sdk/codegen/lib/ts-sample-literal";
+} from "../../sdk/codegen/lib/ts-sample-literal.ts";
 import {
   sampleForComponent,
   scalarSetFields,
   nullableFieldNames,
 } from "./component-fixture.ts";
 import { escapeForTestName } from "./zod-test-cases.ts";
-import { CONTENT } from "@deterministic-code/generator-sdk/codegen/lib/generate-result";
+import { CONTENT } from "../../sdk/codegen/lib/generate-result.ts";
 import { frontendTestHarnessPatch } from "./frontend-test-harness.ts";
 import type { GenerateArgs } from "./frontend-generate-types.ts";
-import type { CodegenNames } from "@deterministic-code/generator-sdk/codegen-naming";
-import type { CodegenLayout } from "@deterministic-code/generator-sdk/codegen-layout";
+import type { CodegenNames } from "../../sdk/codegen-naming.ts";
+import type { CodegenLayout } from "../../sdk/codegen-layout.ts";
 
 type Components = Record<string, unknown>;
 

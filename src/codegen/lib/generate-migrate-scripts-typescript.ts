@@ -1,15 +1,15 @@
 import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { resolveLibraryReferenceMode } from "@deterministic-code/generator-sdk/read-settings";
+import { resolveLibraryReferenceMode } from "../../sdk/read-settings.ts";
 import { replaceMarkedBlockText } from "@deterministic-code/patch-merger";
 import { rewriteLibraryImports } from "./library-import.ts";
-import { setupSql } from "@deterministic-code/generator-sdk/lib/migrate-setup-sql";
+import { setupSql } from "../../sdk/lib/migrate-setup-sql.ts";
 import { PACK_TEMPLATES_DIR } from "../../pack-root.ts";
 import {
   apkClientsContent,
   dialectDriver,
-} from "@deterministic-code/generator-sdk/lib/migrate-scripts-plan";
+} from "../../sdk/lib/migrate-scripts-plan.ts";
 import {
   TEST_DB_RELATIVE_PATH,
   renderDbDriverShims,
@@ -23,24 +23,24 @@ import {
 import {
   dbFilePatches,
   entrypointPatch,
-} from "@deterministic-code/generator-sdk/codegen/lib/migrate-sibling-patches";
+} from "../../sdk/codegen/lib/migrate-sibling-patches.ts";
 import {
   CONTENT,
   PATCH,
-} from "@deterministic-code/generator-sdk/codegen/lib/generate-result";
+} from "../../sdk/codegen/lib/generate-result.ts";
 import {
   makeMigrateGenerate,
   MIGRATE_DIR_FLAG,
-} from "@deterministic-code/generator-sdk/codegen/lib/migrate-generate-helpers";
-import { COMBINED_FLAG } from "@deterministic-code/generator-sdk/codegen/lib/backend-lane";
-import { layoutForSettings } from "@deterministic-code/generator-sdk/codegen/lib/ts-codegen-naming";
+} from "../../sdk/codegen/lib/migrate-generate-helpers.ts";
+import { COMBINED_FLAG } from "../../sdk/codegen/lib/backend-lane.ts";
+import { layoutForSettings } from "../../sdk/codegen/lib/ts-codegen-naming.ts";
 import type {
   ContentEntry,
   PatchEntry,
   MigrateEntry,
   MigrateLayout,
   MigrateRenderOptions,
-} from "@deterministic-code/generator-sdk/codegen/lib/migrate-scripts-generate-types";
+} from "../../sdk/codegen/lib/migrate-scripts-generate-types.ts";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const templatesDir = PACK_TEMPLATES_DIR;

@@ -1,4 +1,4 @@
-import type { CodegenNames } from "@deterministic-code/generator-sdk/codegen-naming";
+import type { CodegenNames } from "../../sdk/codegen-naming.ts";
 
 type ClassNamer = Pick<CodegenNames, "className">;
 

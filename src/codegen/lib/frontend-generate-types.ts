@@ -1,4 +1,4 @@
-import type { ParsedSettings } from "@deterministic-code/generator-sdk/read-settings";
+import type { ParsedSettings } from "../../sdk/read-settings.ts";
 
 /** The loader-resolved settings tree accepted by the settings→naming/layout bridges (`namesForSettings`/`layoutForSettings` share this parameter). */
 type Settings = ParsedSettings;

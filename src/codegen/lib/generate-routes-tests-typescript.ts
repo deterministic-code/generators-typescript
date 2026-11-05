@@ -2,16 +2,16 @@ import {
   generateRoutesTestsFiles,
   dispatchRoutesTestsStep,
   routesStepGenerate,
-} from "@deterministic-code/generator-sdk/codegen/lib/routes-generate";
-import { camelPlural } from "@deterministic-code/generator-sdk/case";
-import type { CaseFormat } from "@deterministic-code/generator-sdk/case";
+} from "../../sdk/codegen/lib/routes-generate.ts";
+import { camelPlural } from "../../sdk/case.ts";
+import type { CaseFormat } from "../../sdk/case.ts";
 import {
   namesFor,
   layoutFor,
   type NamesForOptions,
-} from "@deterministic-code/generator-sdk/codegen/lib/ts-codegen-naming";
-import { collectCombinedRouteDescriptors } from "@deterministic-code/generator-sdk/codegen/lib/iterate-combined-routes";
-import { entityUsesOptimisticConcurrency } from "@deterministic-code/generator-sdk/lib/generate-sql";
+} from "../../sdk/codegen/lib/ts-codegen-naming.ts";
+import { collectCombinedRouteDescriptors } from "../../sdk/codegen/lib/iterate-combined-routes.ts";
+import { entityUsesOptimisticConcurrency } from "../../sdk/lib/generate-sql.ts";
 import {
   generateNestedDirectFkRouterTest,
   generateNestedM2mRouterTest,
@@ -21,7 +21,7 @@ import { libraryImportSpecifier } from "./library-import.ts";
 import type {
   GeneratedFile,
   RoutesGenerateConfig,
-} from "@deterministic-code/generator-sdk/codegen/lib/routes-generate-types";
+} from "../../sdk/codegen/lib/routes-generate-types.ts";
 import type { NestedRouteDescriptor } from "./nested-routes-generate-types.ts";
 
 interface Enrichment {

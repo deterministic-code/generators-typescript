@@ -1,0 +1,47 @@
+import { dq, hexToBytes, type ConverterModule } from "./base.ts";
+
+/** C# field converter: datasource_type → C# type + default-token literal/expression. */
+export default {
+  target: "csharp",
+  targetKind: "language",
+  datetimeStringType: "string",
+  conversions: [
+    { type: "string", native: "string" },
+    { type: "character", native: "string" },
+    { type: "number", native: "long" },
+    { type: "integer", native: "long" },
+    { type: "smallinteger", native: "short" },
+    { type: "biginteger", native: "long" },
+    { type: "unsignedinteger", native: "uint" },
+    { type: "unsignedsmallinteger", native: "ushort" },
+    { type: "unsignedbiginteger", native: "ulong" },
+    { type: "float", native: "double" },
+    { type: "decimal", native: "string" },
+    { type: "boolean", native: "bool" },
+    { type: "datetime", native: "System.DateTime" },
+    { type: "binary", native: "byte[]" },
+    { type: "uuid", native: "string" },
+    { type: "reference", native: "long" },
+  ],
+  defaults: {
+    Now: () => "System.DateTime.Now",
+    UtcNow: () => "System.DateTime.UtcNow",
+    NewId: () => "System.Guid.NewGuid()",
+    Empty: () => "System.Guid.Empty",
+    Uuid: (a) => dq(a),
+    DateTime: (a) => `System.DateTime.Parse(${dq(a)})`,
+    Hex: (a) => `new byte[] { ${hexToBytes(a as string).join(", ")} }`,
+    Boolean: (a) => (a ? "true" : "false"),
+    Numeric: (a) => a as string,
+    String: (a) => dq(a),
+  },
+  numericLiteral: {
+    short: (v) => `(short)${v}`,
+    ushort: (v) => `(ushort)${v}`,
+    double: (v) => `${v}d`,
+    long: (v) => `${v}L`,
+    ulong: (v) => `${v}UL`,
+    int: (v) => `${v}`,
+    uint: (v) => `${v}u`,
+  },
+} satisfies ConverterModule;

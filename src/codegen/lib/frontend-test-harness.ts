@@ -3,7 +3,7 @@ import {
   CONTENT,
   PATCH,
   type GenerateEntry,
-} from "@deterministic-code/generator-sdk/codegen/lib/generate-result";
+} from "../../sdk/codegen/lib/generate-result.ts";
 
 const VITEST_VERSION = "^2.1.0";
 const ZOD_VERSION = "^3.23.8";

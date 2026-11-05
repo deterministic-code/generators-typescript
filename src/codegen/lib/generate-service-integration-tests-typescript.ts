@@ -1,7 +1,7 @@
 import type {
   GeneratedFile,
   ServiceTestsGenerateConfig,
-} from "@deterministic-code/generator-sdk/codegen/lib/service-tests-generate-types";
+} from "../../sdk/codegen/lib/service-tests-generate-types.ts";
 import type {
   ClassifiedColumn,
   CreateStep,
@@ -9,26 +9,26 @@ import type {
   IntegrationTestCandidate,
   NamedField,
   ResolvedSpec,
-} from "@deterministic-code/generator-sdk/codegen/lib/service-integration-tests-generate-types";
+} from "../../sdk/codegen/lib/service-integration-tests-generate-types.ts";
 import {
   generateServiceIntegrationTestsFiles,
   dispatchServiceIntegrationTestsStep,
   servicesStepGenerate,
-} from "@deterministic-code/generator-sdk/codegen/lib/services-generate";
+} from "../../sdk/codegen/lib/services-generate.ts";
 import { joinImport, libraryImportSpecifier } from "./library-import.ts";
 import {
   resolveServiceIntegrationTestSpec,
   tsLiteral,
-} from "@deterministic-code/generator-sdk/codegen/lib/integration-test-spec";
-import type { IntegrationTestOpts } from "@deterministic-code/generator-sdk/codegen/lib/integration-test-spec";
+} from "../../sdk/codegen/lib/integration-test-spec.ts";
+import type { IntegrationTestOpts } from "../../sdk/codegen/lib/integration-test-spec.ts";
 import {
   layoutFor,
   namesFor,
   type NamesForOptions,
-} from "@deterministic-code/generator-sdk/codegen/lib/ts-codegen-naming";
-import { datasourceSettingsFor } from "@deterministic-code/generator-sdk/codegen/lib/ts-datasource-settings";
-import type { DatasourceSettings } from "@deterministic-code/generator-sdk/datasource-settings";
-import { classifyEntitySampleColumns } from "@deterministic-code/generator-sdk/codegen/lib/datasource-fk-deps";
+} from "../../sdk/codegen/lib/ts-codegen-naming.ts";
+import { datasourceSettingsFor } from "../../sdk/codegen/lib/ts-datasource-settings.ts";
+import type { DatasourceSettings } from "../../sdk/datasource-settings.ts";
+import { classifyEntitySampleColumns } from "../../sdk/codegen/lib/datasource-fk-deps.ts";
 
 interface TsGenerateOptions extends NamesForOptions {
   servicePath?: string;

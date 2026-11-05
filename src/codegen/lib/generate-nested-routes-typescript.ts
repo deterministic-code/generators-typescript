@@ -1,11 +1,11 @@
 import npmPluralize from "pluralize";
-import { toCase } from "@deterministic-code/generator-sdk/case";
-import type { CaseFormat } from "@deterministic-code/generator-sdk/case";
+import { toCase } from "../../sdk/case.ts";
+import type { CaseFormat } from "../../sdk/case.ts";
 import {
   DEFAULT_COMMENT_STYLE,
   renderDocComment,
   type CommentStyle,
-} from "@deterministic-code/generator-sdk/generate-doc-comment";
+} from "../../sdk/generate-doc-comment.ts";
 import { libraryImportSpecifier } from "./library-import.ts";
 import {
   routeServiceImport,
@@ -15,9 +15,9 @@ import {
   namesFor,
   layoutFor,
   type NamesForOptions,
-} from "@deterministic-code/generator-sdk/codegen/lib/ts-codegen-naming";
-import { inferPkForCandidate } from "@deterministic-code/generator-sdk/codegen/lib/infer-pk-for-candidate";
-import type { GeneratedFile } from "@deterministic-code/generator-sdk/codegen/lib/routes-generate-types";
+} from "../../sdk/codegen/lib/ts-codegen-naming.ts";
+import { inferPkForCandidate } from "../../sdk/codegen/lib/infer-pk-for-candidate.ts";
+import type { GeneratedFile } from "../../sdk/codegen/lib/routes-generate-types.ts";
 import type {
   NestedRouteDescriptor,
   DirectFkDescriptor,

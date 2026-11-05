@@ -1,6 +1,6 @@
-import { renderGroupedImports } from "@deterministic-code/generator-sdk/generator-shared";
+import { renderGroupedImports } from "../../sdk/generator-shared.ts";
 import { libraryImportSpecifier } from "./library-import.ts";
-import type { CodegenLayout } from "@deterministic-code/generator-sdk/codegen-layout";
+import type { CodegenLayout } from "../../sdk/codegen-layout.ts";
 
 interface ArtifactRef {
   entity: string;

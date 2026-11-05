@@ -1,13 +1,13 @@
 import { join } from "node:path";
-import { CodegenFieldNames } from "@deterministic-code/generator-sdk/field-names";
-import { namesForSettings } from "@deterministic-code/generator-sdk/codegen/lib/ts-codegen-naming";
-import { datetimeOptionFromSettings } from "@deterministic-code/generator-sdk/codegen/lib/generate-settings-options";
+import { CodegenFieldNames } from "../../sdk/field-names.ts";
+import { namesForSettings } from "../../sdk/codegen/lib/ts-codegen-naming.ts";
+import { datetimeOptionFromSettings } from "../../sdk/codegen/lib/generate-settings-options.ts";
 import { schemaSymbol, validatedSymbol } from "./zod-schema-names.ts";
 import { refName, validatorObjectEntries } from "./frontend-bindings-routes.ts";
-import { PATCH } from "@deterministic-code/generator-sdk/codegen/lib/generate-result";
-import type { GenerateEntry } from "@deterministic-code/generator-sdk/codegen/lib/generate-result";
+import { PATCH } from "../../sdk/codegen/lib/generate-result.ts";
+import type { GenerateEntry } from "../../sdk/codegen/lib/generate-result.ts";
 import type { GenerateArgs, SchemaProp } from "./frontend-generate-types.ts";
-import type { CodegenNames } from "@deterministic-code/generator-sdk/codegen-naming";
+import type { CodegenNames } from "../../sdk/codegen-naming.ts";
 
 const ZOD_VERSION = "^3.23.8";
 

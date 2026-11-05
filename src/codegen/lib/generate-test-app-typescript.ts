@@ -1,12 +1,12 @@
-import { buildTestAppSpec } from "@deterministic-code/generator-sdk/codegen/lib/integration-test-spec";
-import type { TestAppArgs } from "@deterministic-code/generator-sdk/codegen/lib/integration-test-spec";
+import { buildTestAppSpec } from "../../sdk/codegen/lib/integration-test-spec.ts";
+import type { TestAppArgs } from "../../sdk/codegen/lib/integration-test-spec.ts";
 import { libraryImportSpecifier } from "./library-import.ts";
 import {
   datasourceSettingsFor,
   settingsConfigLiteral,
-} from "@deterministic-code/generator-sdk/codegen/lib/ts-datasource-settings";
-import { SECTION_MARKERS } from "@deterministic-code/generator-sdk/section-markers";
-import type { GeneratedFile } from "@deterministic-code/generator-sdk/codegen/lib/routes-generate-types";
+} from "../../sdk/codegen/lib/ts-datasource-settings.ts";
+import { SECTION_MARKERS } from "../../sdk/section-markers.ts";
+import type { GeneratedFile } from "../../sdk/codegen/lib/routes-generate-types.ts";
 
 interface StubMethod {
   serviceMethod: string;

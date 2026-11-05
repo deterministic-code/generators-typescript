@@ -1,20 +1,20 @@
-import type { ParsedSettings } from "@deterministic-code/generator-sdk/read-settings";
-import { toCase } from "@deterministic-code/generator-sdk/case";
-import { testCasingOptionsFromSettings } from "@deterministic-code/generator-sdk/codegen/lib/generate-settings-options";
+import type { ParsedSettings } from "../../sdk/read-settings.ts";
+import { toCase } from "../../sdk/case.ts";
+import { testCasingOptionsFromSettings } from "../../sdk/codegen/lib/generate-settings-options.ts";
 import {
   layoutFor,
   namesFor,
   type NamesForOptions,
-} from "@deterministic-code/generator-sdk/codegen/lib/ts-codegen-naming";
-import { normalizeAll } from "@deterministic-code/generator-sdk/view-expand";
-import type { RawTypesDoc } from "@deterministic-code/generator-sdk/deterministic-shapes";
-import { viewGenerator } from "@deterministic-code/generator-sdk/codegen-context";
+} from "../../sdk/codegen/lib/ts-codegen-naming.ts";
+import { normalizeAll } from "../../sdk/view-expand.ts";
+import type { RawTypesDoc } from "../../sdk/deterministic-shapes.ts";
+import { viewGenerator } from "../../sdk/codegen-context.ts";
 import { TypescriptImports } from "./typescript-imports.ts";
 import {
   buildViewFixture,
   enumerateInvalidMutations,
-} from "@deterministic-code/generator-sdk/codegen/lib/fixture-builder";
-import { serializeSampleValue as serializeValue } from "@deterministic-code/generator-sdk/codegen/lib/ts-sample-literal";
+} from "../../sdk/codegen/lib/fixture-builder.ts";
+import { serializeSampleValue as serializeValue } from "../../sdk/codegen/lib/ts-sample-literal.ts";
 import { renderFieldAccessorCases } from "./ts-accessor-cases.ts";
 import { joinImport } from "./library-import.ts";
 import type {
@@ -23,7 +23,7 @@ import type {
   ShapedView,
   UnionView,
   View,
-} from "@deterministic-code/generator-sdk/codegen/lib/generate-view-shared";
+} from "../../sdk/codegen/lib/generate-view-shared.ts";
 
 type Flatten<T> = { [K in keyof T]: T[K] };
 

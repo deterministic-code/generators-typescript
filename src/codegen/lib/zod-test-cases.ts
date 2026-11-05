@@ -1,4 +1,4 @@
-import { serializeSampleValue as serializeValue } from "@deterministic-code/generator-sdk/codegen/lib/ts-sample-literal";
+import { serializeSampleValue as serializeValue } from "../../sdk/codegen/lib/ts-sample-literal.ts";
 
 export function escapeForTestName(s: string): string {
   return s.replace(/"/g, '\\"');

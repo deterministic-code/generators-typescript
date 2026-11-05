@@ -1,7 +1,7 @@
 import {
   DEFAULT_COMMENT_STYLE,
   renderDocComment,
-} from "@deterministic-code/generator-sdk/generate-doc-comment";
+} from "../../sdk/generate-doc-comment.ts";
 import {
   buildViewGenerator,
   shapedViewDocLines,
@@ -10,10 +10,10 @@ import {
   type UnionView,
   type View,
   type ViewField,
-} from "@deterministic-code/generator-sdk/codegen/lib/generate-view-shared";
-import { viewGenerator } from "@deterministic-code/generator-sdk/codegen-context";
+} from "../../sdk/codegen/lib/generate-view-shared.ts";
+import { viewGenerator } from "../../sdk/codegen-context.ts";
 import { TypescriptImports } from "./typescript-imports.ts";
-import { datetimeOptionFromSettings } from "@deterministic-code/generator-sdk/codegen/lib/generate-settings-options";
+import { datetimeOptionFromSettings } from "../../sdk/codegen/lib/generate-settings-options.ts";
 
 export const DEFAULT_GENERATE_OPTIONS = {
   baseClass: null,

@@ -1,26 +1,26 @@
-import type { ParsedSettings } from "@deterministic-code/generator-sdk/read-settings";
+import type { ParsedSettings } from "../../sdk/read-settings.ts";
 import {
   generateServicesFiles,
   dispatchServicesStep,
   servicesStepGenerate,
-} from "@deterministic-code/generator-sdk/codegen/lib/services-generate";
-import { ImportPaths } from "@deterministic-code/generator-sdk/import-paths";
+} from "../../sdk/codegen/lib/services-generate.ts";
+import { ImportPaths } from "../../sdk/import-paths.ts";
 import {
   DEFAULT_COMMENT_STYLE,
   renderDocComment,
   type CommentStyle,
-} from "@deterministic-code/generator-sdk/generate-doc-comment";
-import type { CaseFormat } from "@deterministic-code/generator-sdk/case";
-import type { CodegenNames } from "@deterministic-code/generator-sdk/codegen-naming";
-import type { CodegenLayout } from "@deterministic-code/generator-sdk/codegen-layout";
+} from "../../sdk/generate-doc-comment.ts";
+import type { CaseFormat } from "../../sdk/case.ts";
+import type { CodegenNames } from "../../sdk/codegen-naming.ts";
+import type { CodegenLayout } from "../../sdk/codegen-layout.ts";
 import { libraryImportSpecifier } from "./library-import.ts";
-import { serializeSampleValue } from "@deterministic-code/generator-sdk/codegen/lib/ts-sample-literal";
+import { serializeSampleValue } from "../../sdk/codegen/lib/ts-sample-literal.ts";
 import {
   layoutFor,
   namesFor,
-} from "@deterministic-code/generator-sdk/codegen/lib/ts-codegen-naming";
-import { CodegenFieldNames } from "@deterministic-code/generator-sdk/field-names";
-import { createTypeMapper } from "@deterministic-code/generator-sdk/codegen/lib/type-mapper";
+} from "../../sdk/codegen/lib/ts-codegen-naming.ts";
+import { CodegenFieldNames } from "../../sdk/field-names.ts";
+import { createTypeMapper } from "../../sdk/codegen/lib/type-mapper.ts";
 
 type AbstractTypeMapper = (
   type: string,

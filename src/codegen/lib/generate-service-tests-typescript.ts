@@ -1,18 +1,18 @@
 import type {
   GeneratedFile,
   ServiceTestsGenerateConfig,
-} from "@deterministic-code/generator-sdk/codegen/lib/service-tests-generate-types";
+} from "../../sdk/codegen/lib/service-tests-generate-types.ts";
 import {
   generateServiceTestsFiles,
   dispatchServiceTestsStep,
   servicesStepGenerate,
-} from "@deterministic-code/generator-sdk/codegen/lib/services-generate";
+} from "../../sdk/codegen/lib/services-generate.ts";
 import { joinImport, libraryImportSpecifier } from "./library-import.ts";
 import {
   layoutFor,
   namesFor,
   type NamesForOptions,
-} from "@deterministic-code/generator-sdk/codegen/lib/ts-codegen-naming";
+} from "../../sdk/codegen/lib/ts-codegen-naming.ts";
 import { sampleIdFactory } from "./route-test-sample-id.ts";
 
 interface PrimaryKeyInfo {

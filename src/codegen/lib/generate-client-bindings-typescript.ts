@@ -1,18 +1,18 @@
-import type { ParsedSettings } from "@deterministic-code/generator-sdk/read-settings";
-import type { RawTypesDoc } from "@deterministic-code/generator-sdk/deterministic-shapes";
+import type { ParsedSettings } from "../../sdk/read-settings.ts";
+import type { RawTypesDoc } from "../../sdk/deterministic-shapes.ts";
 import { join } from "node:path";
 import { parse } from "yaml";
-import { parseDatasourceTypes } from "@deterministic-code/generator-sdk/codegen/lib/parse-datasource-types";
+import { parseDatasourceTypes } from "../../sdk/codegen/lib/parse-datasource-types.ts";
 import {
   buildComponents,
   isWriteDtoViewName,
-} from "@deterministic-code/generator-sdk/lib/schema-build";
+} from "../../sdk/lib/schema-build.ts";
 import {
   namesForSettings,
   layoutForSettings,
-} from "@deterministic-code/generator-sdk/codegen/lib/ts-codegen-naming";
+} from "../../sdk/codegen/lib/ts-codegen-naming.ts";
 import { schemaSymbol, validatedSymbol } from "./zod-schema-names.ts";
-import { datetimeOptionFromSettings } from "@deterministic-code/generator-sdk/codegen/lib/generate-settings-options";
+import { datetimeOptionFromSettings } from "../../sdk/codegen/lib/generate-settings-options.ts";
 import {
   refName,
   readBindings,
@@ -23,7 +23,7 @@ import {
 import {
   CONTENT,
   PATCH,
-} from "@deterministic-code/generator-sdk/codegen/lib/generate-result";
+} from "../../sdk/codegen/lib/generate-result.ts";
 import {
   BODY_METHODS,
   cap,
@@ -31,8 +31,8 @@ import {
   pathParamsOf,
   templatePath,
 } from "./client-op-model.ts";
-import type { CodegenNames } from "@deterministic-code/generator-sdk/codegen-naming";
-import type { CodegenLayout } from "@deterministic-code/generator-sdk/codegen-layout";
+import type { CodegenNames } from "../../sdk/codegen-naming.ts";
+import type { CodegenLayout } from "../../sdk/codegen-layout.ts";
 
 type ResolvedSettings = ParsedSettings;
 

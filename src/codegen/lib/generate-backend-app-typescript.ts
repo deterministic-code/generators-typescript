@@ -1,56 +1,56 @@
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { SECTION_MARKERS } from "@deterministic-code/generator-sdk/section-markers";
+import { SECTION_MARKERS } from "../../sdk/section-markers.ts";
 import {
   DEV_PORTS,
   buildAppModel,
-} from "@deterministic-code/generator-sdk/create-backend-app-model";
+} from "../../sdk/create-backend-app-model.ts";
 import {
   makeChunkLoader,
   applyTokens,
   renderTemplate,
-} from "@deterministic-code/generator-sdk/codegen/lib/chunk-loader";
+} from "../../sdk/codegen/lib/chunk-loader.ts";
 import { PACK_TEMPLATES_DIR } from "../../pack-root.ts";
 
 const { loadChunk } = makeChunkLoader(PACK_TEMPLATES_DIR);
-import { pathExists } from "@deterministic-code/generator-sdk/path-exists";
+import { pathExists } from "../../sdk/path-exists.ts";
 import {
   readSettingsWithDefault,
   resolveLibraryReferenceMode,
   type ParsedSettings,
-} from "@deterministic-code/generator-sdk/read-settings";
-import { normalizeDialect } from "@deterministic-code/generator-sdk/lib/generate-sql";
-import { namesForSettings } from "@deterministic-code/generator-sdk/codegen/lib/ts-codegen-naming";
+} from "../../sdk/read-settings.ts";
+import { normalizeDialect } from "../../sdk/lib/generate-sql.ts";
+import { namesForSettings } from "../../sdk/codegen/lib/ts-codegen-naming.ts";
 import { resolveCustomGeneratePath } from "./generate-services-typescript.ts";
 import { resolveCustomRoutePath } from "./generate-routes-typescript.ts";
 import { generateTestApp } from "./generate-test-app-typescript.ts";
-import { datasourceSettingsForSettings } from "@deterministic-code/generator-sdk/codegen/lib/ts-datasource-settings";
+import { datasourceSettingsForSettings } from "../../sdk/codegen/lib/ts-datasource-settings.ts";
 import {
   COMPOSE_FILENAME,
   renderTypescriptComposeService,
-} from "@deterministic-code/generator-sdk/codegen/lib/compose-services";
+} from "../../sdk/codegen/lib/compose-services.ts";
 import {
   REPO_ROOT,
   firstExistingDir,
-} from "@deterministic-code/generator-sdk/codegen/lib/artifact-paths";
+} from "../../sdk/codegen/lib/artifact-paths.ts";
 import {
   CONTENT,
   PATCH,
   type GenerateEntry,
-} from "@deterministic-code/generator-sdk/codegen/lib/generate-result";
+} from "../../sdk/codegen/lib/generate-result.ts";
 import {
   DOCKERIGNORE_TRIGGER,
   dockerignoreSection,
 } from "@deterministic-code/patch-merger";
-import { loadBackendAppInputs } from "@deterministic-code/generator-sdk/codegen/lib/backend-app-inputs";
-import { makeBackendAppGenerate } from "@deterministic-code/generator-sdk/codegen/lib/backend-app-generate-helpers";
-import { isMultiLanguage } from "@deterministic-code/generator-sdk/codegen/lib/declared-languages";
+import { loadBackendAppInputs } from "../../sdk/codegen/lib/backend-app-inputs.ts";
+import { makeBackendAppGenerate } from "../../sdk/codegen/lib/backend-app-generate-helpers.ts";
+import { isMultiLanguage } from "../../sdk/codegen/lib/declared-languages.ts";
 import {
   backendLaneDir,
   COMBINED_FLAG,
-} from "@deterministic-code/generator-sdk/codegen/lib/backend-lane";
-import type { CodegenNames } from "@deterministic-code/generator-sdk/codegen-naming";
+} from "../../sdk/codegen/lib/backend-lane.ts";
+import type { CodegenNames } from "../../sdk/codegen-naming.ts";
 
 type AppModel = ReturnType<typeof buildAppModel>;
 

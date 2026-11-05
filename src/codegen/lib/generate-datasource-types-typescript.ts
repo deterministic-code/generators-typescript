@@ -1,17 +1,17 @@
-import { DEFAULT_COMMENT_STYLE } from "@deterministic-code/generator-sdk/generate-doc-comment";
-import { datasourceTypesGenerator } from "@deterministic-code/generator-sdk/codegen-context";
-import { datasourceTypesModule } from "@deterministic-code/generator-sdk/codegen/lib/generate-settings-options";
-import { normalizeDatasourceTable } from "@deterministic-code/generator-sdk/codegen/lib/datasource-normalize";
+import { DEFAULT_COMMENT_STYLE } from "../../sdk/generate-doc-comment.ts";
+import { datasourceTypesGenerator } from "../../sdk/codegen-context.ts";
+import { datasourceTypesModule } from "../../sdk/codegen/lib/generate-settings-options.ts";
+import { normalizeDatasourceTable } from "../../sdk/codegen/lib/datasource-normalize.ts";
 import { TypescriptImports } from "./typescript-imports.ts";
-import { createTypeMapper } from "@deterministic-code/generator-sdk/codegen/lib/type-mapper";
-import { datasourceSettingsFor } from "@deterministic-code/generator-sdk/codegen/lib/ts-datasource-settings";
-import { datasourceTypeDoc } from "@deterministic-code/generator-sdk/codegen/lib/datasource-types-generate-types";
+import { createTypeMapper } from "../../sdk/codegen/lib/type-mapper.ts";
+import { datasourceSettingsFor } from "../../sdk/codegen/lib/ts-datasource-settings.ts";
+import { datasourceTypeDoc } from "../../sdk/codegen/lib/datasource-types-generate-types.ts";
 import type {
   DatasourceField,
   GenerateCtx,
   GeneratedFile,
   NormalizedTable,
-} from "@deterministic-code/generator-sdk/codegen/lib/datasource-types-generate-types";
+} from "../../sdk/codegen/lib/datasource-types-generate-types.ts";
 
 interface TsGenerateOptions {
   baseClass: string;

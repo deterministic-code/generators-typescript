@@ -1,26 +1,26 @@
-import { toCase } from "@deterministic-code/generator-sdk/case";
+import { toCase } from "../../sdk/case.ts";
 import {
   entryOf,
   isFiniteInt,
-} from "@deterministic-code/generator-sdk/generator-shared";
-import { datasourceValidatorGenerator } from "@deterministic-code/generator-sdk/codegen-context";
-import type { CodegenNames } from "@deterministic-code/generator-sdk/codegen-naming";
-import type { CodegenFieldNames } from "@deterministic-code/generator-sdk/field-names";
-import type { CodegenLayout } from "@deterministic-code/generator-sdk/codegen-layout";
-import { validatorOptionsFromSettings } from "@deterministic-code/generator-sdk/codegen/lib/generate-settings-options";
-import { datasourceSettingsFor } from "@deterministic-code/generator-sdk/codegen/lib/ts-datasource-settings";
-import { loadFieldTypeCatalog } from "@deterministic-code/generator-sdk/lib/field-type-catalog";
-import { fieldConverterFor } from "@deterministic-code/generator-sdk/lib/field-converter";
+} from "../../sdk/generator-shared.ts";
+import { datasourceValidatorGenerator } from "../../sdk/codegen-context.ts";
+import type { CodegenNames } from "../../sdk/codegen-naming.ts";
+import type { CodegenFieldNames } from "../../sdk/field-names.ts";
+import type { CodegenLayout } from "../../sdk/codegen-layout.ts";
+import { validatorOptionsFromSettings } from "../../sdk/codegen/lib/generate-settings-options.ts";
+import { datasourceSettingsFor } from "../../sdk/codegen/lib/ts-datasource-settings.ts";
+import { loadFieldTypeCatalog } from "../../sdk/lib/field-type-catalog.ts";
+import { fieldConverterFor } from "../../sdk/lib/field-converter.ts";
 import {
   parseDefaultToken,
   GENERATIVE_TOKENS,
-} from "@deterministic-code/generator-sdk/lib/default-token";
+} from "../../sdk/lib/default-token.ts";
 import {
   STANDARD_COLUMNS,
   type DatasourceValidatorGenerateConfig,
   type GeneratedFile,
   type ValidatorFieldDef,
-} from "@deterministic-code/generator-sdk/codegen/lib/datasource-validator-generate-types";
+} from "../../sdk/codegen/lib/datasource-validator-generate-types.ts";
 
 interface TsFieldConverter {
   defaultLiteral(type: string, value: unknown): string;

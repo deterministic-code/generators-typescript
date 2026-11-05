@@ -1,16 +1,16 @@
-import type { ParsedSettings } from "@deterministic-code/generator-sdk/read-settings";
+import type { ParsedSettings } from "../../sdk/read-settings.ts";
 import {
   readBindings,
   bindingDatasource,
   resolveSelfDoc,
 } from "./frontend-bindings-routes.ts";
-import { layoutForSettings } from "@deterministic-code/generator-sdk/codegen/lib/ts-codegen-naming";
+import { layoutForSettings } from "../../sdk/codegen/lib/ts-codegen-naming.ts";
 import {
   buildLiveCtx,
   liveTags,
   renderLiveFile,
 } from "./client-live-lifecycle.ts";
-import { CONTENT } from "@deterministic-code/generator-sdk/codegen/lib/generate-result";
+import { CONTENT } from "../../sdk/codegen/lib/generate-result.ts";
 import { bindingsLiveHarnessEntries } from "./frontend-test-harness.ts";
 
 type ResolvedSettings = ParsedSettings;

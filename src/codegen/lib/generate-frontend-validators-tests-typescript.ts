@@ -1,5 +1,5 @@
-import { CodegenFieldNames } from "@deterministic-code/generator-sdk/field-names";
-import { namesForSettings } from "@deterministic-code/generator-sdk/codegen/lib/ts-codegen-naming";
+import { CodegenFieldNames } from "../../sdk/field-names.ts";
+import { namesForSettings } from "../../sdk/codegen/lib/ts-codegen-naming.ts";
 import { schemaSymbol } from "./zod-schema-names.ts";
 import { validatorObjectEntries } from "./frontend-bindings-routes.ts";
 import {
@@ -15,10 +15,10 @@ import {
   renderValidCase,
 } from "./zod-test-cases.ts";
 import { frontendTestHarnessPatch } from "./frontend-test-harness.ts";
-import type { GenerateEntry } from "@deterministic-code/generator-sdk/codegen/lib/generate-result";
+import type { GenerateEntry } from "../../sdk/codegen/lib/generate-result.ts";
 import type { GenerateArgs } from "./frontend-generate-types.ts";
-import type { CodegenNames } from "@deterministic-code/generator-sdk/codegen-naming";
-import type { CodegenLayout } from "@deterministic-code/generator-sdk/codegen-layout";
+import type { CodegenNames } from "../../sdk/codegen-naming.ts";
+import type { CodegenLayout } from "../../sdk/codegen-layout.ts";
 
 /** The validators fixtures feed zod at runtime: an ISO date-time string parses under both z.string() (string mode) and z.coerce.date() (native mode), so the tests stay settings-agnostic. */
 const FIXTURE_DATETIME = "string";

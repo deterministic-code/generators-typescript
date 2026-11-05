@@ -1,15 +1,15 @@
-import { toCase } from "@deterministic-code/generator-sdk/case";
-import { datasourceTestsModule } from "@deterministic-code/generator-sdk/codegen/lib/generate-settings-options";
+import { toCase } from "../../sdk/case.ts";
+import { datasourceTestsModule } from "../../sdk/codegen/lib/generate-settings-options.ts";
 import {
   layoutFor,
   namesFor,
   type NamesForOptions,
-} from "@deterministic-code/generator-sdk/codegen/lib/ts-codegen-naming";
+} from "../../sdk/codegen/lib/ts-codegen-naming.ts";
 import {
   buildDatasourceFixture,
   enumerateInvalidMutations,
-} from "@deterministic-code/generator-sdk/codegen/lib/fixture-builder";
-import { serializeSampleValue as serializeValue } from "@deterministic-code/generator-sdk/codegen/lib/ts-sample-literal";
+} from "../../sdk/codegen/lib/fixture-builder.ts";
+import { serializeSampleValue as serializeValue } from "../../sdk/codegen/lib/ts-sample-literal.ts";
 import { renderFieldAccessorCases } from "./ts-accessor-cases.ts";
 import {
   cloneFixture,

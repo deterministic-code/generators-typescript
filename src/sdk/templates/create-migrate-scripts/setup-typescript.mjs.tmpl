@@ -1,0 +1,89 @@
+#!/usr/bin/env node
+import Database from "better-sqlite3";
+import { readFile, readdir } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const projectRoot = resolve(here, "..");
+const dbPath = process.env.DB_PATH ?? process.env.SQLITE_PATH ?? "./dev.sqlite";
+const migrateDir = join(projectRoot, "sql", "sqlite", "migrations");
+
+const SETUP_DDL = [
+  `CREATE TABLE IF NOT EXISTS "migrates" (
+  "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+  "name" VARCHAR(255) NOT NULL UNIQUE,
+  "checksum" VARCHAR(64),
+  "created" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);`,
+  `CREATE TABLE IF NOT EXISTS "migrate_logs" (
+  "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+  "migrate_name" VARCHAR(255) NOT NULL,
+  "direction" VARCHAR(8) NOT NULL,
+  "status" VARCHAR(16) NOT NULL,
+  "finished_at" DATETIME,
+  "duration_ms" INTEGER,
+  "error_message" TEXT,
+  "created" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);`,
+];
+
+async function main() {
+  const db = new Database(dbPath);
+  try {
+    for (const ddl of SETUP_DDL) db.exec(ddl);
+
+    const appliedRows = db.prepare("SELECT name FROM migrates").all();
+    const applied = new Set(appliedRows.map((r) => r.name));
+
+    let files;
+    try {
+      files = (await readdir(migrateDir))
+        .filter((f) => f.endsWith("_up.sql"))
+        .sort();
+    } catch (err) {
+      if (err && err.code === "ENOENT") {
+        console.log("setup: no migrations dir found, schema_migrations only.");
+        return;
+      }
+      throw err;
+    }
+
+    let pending = 0;
+    for (const name of files) {
+      if (applied.has(name)) continue;
+      pending++;
+      const sql = await readFile(join(migrateDir, name), "utf8");
+      const start = Date.now();
+      try {
+        const apply = db.transaction(() => {
+          db.exec(sql);
+          db.prepare("INSERT INTO migrates (name) VALUES (?)").run(name);
+        });
+        apply();
+        const ms = Date.now() - start;
+        db.prepare(
+          "INSERT INTO migrate_logs (migrate_name, direction, status, finished_at, duration_ms) VALUES (?, 'up', 'success', CURRENT_TIMESTAMP, ?)",
+        ).run(name, ms);
+        console.log(`  applied ${name} (${ms}ms)`);
+      } catch (err) {
+        const ms = Date.now() - start;
+        db.prepare(
+          "INSERT INTO migrate_logs (migrate_name, direction, status, finished_at, duration_ms, error_message) VALUES (?, 'up', 'error', CURRENT_TIMESTAMP, ?, ?)",
+        ).run(name, ms, String(err?.message ?? err));
+        throw err;
+      }
+    }
+    if (pending === 0) console.log("setup: no pending migrations.");
+    else console.log(`setup: applied ${pending} migration(s).`);
+  } finally {
+    db.close();
+  }
+}
+
+main().catch((err) => {
+  console.error("setup failed:", err?.stack ?? err);
+  process.exit(1);
+});

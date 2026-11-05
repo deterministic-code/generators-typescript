@@ -3,3 +3,4 @@ node_modules
 .DS_Store
 runtime/dist
 runtime/node_modules
+dist/

@@ -1,0 +1,14 @@
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    environment: "node",
+    include: ["**/__tests__/**/*.test.ts"],
+    // openapi-conformance runs via `npm run test:e2e` (vitest.e2e.config.ts) and the perf client via `npm run test:perf` (vitest.perf.config.ts); both need a migrated database / live server that plain `npm test` doesn't provide.
+    exclude: [
+      "**/node_modules/**",
+      "**/*.openapi.integration.test.ts",
+      "**/*.perf.client.test.ts",
+    ],
+  },
+});

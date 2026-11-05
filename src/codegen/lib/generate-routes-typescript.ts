@@ -2,7 +2,7 @@ import {
   generateRoutesFiles,
   dispatchRoutesStep,
   routesStepGenerate,
-} from "@deterministic-code/generator-sdk/codegen/lib/routes-generate";
+} from "../../sdk/codegen/lib/routes-generate.ts";
 import {
   generateNestedDirectFkRouter,
   generateNestedM2mRouter,
@@ -11,26 +11,26 @@ import {
   snakeToCamel,
   snakeToKebab,
   camelPlural,
-} from "@deterministic-code/generator-sdk/case";
-import { kebab } from "@deterministic-code/generator-sdk/case";
-import { ImportPaths } from "@deterministic-code/generator-sdk/import-paths";
+} from "../../sdk/case.ts";
+import { kebab } from "../../sdk/case.ts";
+import { ImportPaths } from "../../sdk/import-paths.ts";
 import {
   DEFAULT_COMMENT_STYLE,
   renderDocComment,
   type CommentStyle,
-} from "@deterministic-code/generator-sdk/generate-doc-comment";
-import type { CodegenNames } from "@deterministic-code/generator-sdk/codegen-naming";
+} from "../../sdk/generate-doc-comment.ts";
+import type { CodegenNames } from "../../sdk/codegen-naming.ts";
 import { libraryImportSpecifier } from "./library-import.ts";
-import { entityUsesOptimisticConcurrency } from "@deterministic-code/generator-sdk/lib/generate-sql";
+import { entityUsesOptimisticConcurrency } from "../../sdk/lib/generate-sql.ts";
 import {
   namesFor,
   layoutFor,
   type NamesForOptions,
-} from "@deterministic-code/generator-sdk/codegen/lib/ts-codegen-naming";
+} from "../../sdk/codegen/lib/ts-codegen-naming.ts";
 import type {
   GeneratedFile,
   RoutesGenerateConfig,
-} from "@deterministic-code/generator-sdk/codegen/lib/routes-generate-types";
+} from "../../sdk/codegen/lib/routes-generate-types.ts";
 
 interface RouteGenerateOptions extends NamesForOptions {
   style?: CommentStyle;

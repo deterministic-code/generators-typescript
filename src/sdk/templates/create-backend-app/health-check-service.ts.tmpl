@@ -1,0 +1,11 @@
+export interface IHealthCheckService {
+  check(): Promise<{ status: string }>;
+}
+
+export class HealthCheckService implements IHealthCheckService {
+  static readonly dependencies = [] as const;
+
+  async check(): Promise<{ status: string }> {
+    return { status: "ok" };
+  }
+}

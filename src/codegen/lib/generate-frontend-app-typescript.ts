@@ -1,16 +1,16 @@
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { renderTemplate } from "@deterministic-code/generator-sdk/codegen/lib/chunk-loader";
+import { renderTemplate } from "../../sdk/codegen/lib/chunk-loader.ts";
 import { PACK_TEMPLATES_DIR } from "../../pack-root.ts";
 import {
   CONTENT,
   PATCH,
-} from "@deterministic-code/generator-sdk/codegen/lib/generate-result";
-import { COMBINED_FLAG } from "@deterministic-code/generator-sdk/codegen/lib/backend-lane";
+} from "../../sdk/codegen/lib/generate-result.ts";
+import { COMBINED_FLAG } from "../../sdk/codegen/lib/backend-lane.ts";
 import {
   FRONTEND_SERVICE,
   FRONTEND_PORT,
-} from "@deterministic-code/generator-sdk/codegen/lib/compose-services";
+} from "../../sdk/codegen/lib/compose-services.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const templatesDir = resolve(PACK_TEMPLATES_DIR, "create-frontend-app");

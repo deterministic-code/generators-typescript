@@ -1,10 +1,10 @@
 import { parse } from "yaml";
-import { parseDatasourceTypes } from "@deterministic-code/generator-sdk/codegen/lib/parse-datasource-types";
-import { CodegenFieldNames } from "@deterministic-code/generator-sdk/field-names";
-import { buildComponents } from "@deterministic-code/generator-sdk/lib/schema-build";
-import { namesForSettings } from "@deterministic-code/generator-sdk/codegen/lib/ts-codegen-naming";
-import { datetimeOptionFromSettings } from "@deterministic-code/generator-sdk/codegen/lib/generate-settings-options";
-import type { RawTypesDoc } from "@deterministic-code/generator-sdk/deterministic-shapes";
+import { parseDatasourceTypes } from "../../sdk/codegen/lib/parse-datasource-types.ts";
+import { CodegenFieldNames } from "../../sdk/field-names.ts";
+import { buildComponents } from "../../sdk/lib/schema-build.ts";
+import { namesForSettings } from "../../sdk/codegen/lib/ts-codegen-naming.ts";
+import { datetimeOptionFromSettings } from "../../sdk/codegen/lib/generate-settings-options.ts";
+import type { RawTypesDoc } from "../../sdk/deterministic-shapes.ts";
 import type { GenerateArgs } from "./frontend-generate-types.ts";
 
 interface FrontendComponentsInputs {

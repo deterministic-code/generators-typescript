@@ -1,6 +1,6 @@
-import { RuntimeValue } from "@deterministic-code/generator-sdk/codegen/lib/ts-sample-literal";
-import { converterTypeForSchema } from "@deterministic-code/generator-sdk/lib/schema-build";
-import { NUMERIC_TYPES } from "@deterministic-code/generator-sdk/lib/field-converter";
+import { RuntimeValue } from "../../sdk/codegen/lib/ts-sample-literal.ts";
+import { converterTypeForSchema } from "../../sdk/lib/schema-build.ts";
+import { NUMERIC_TYPES } from "../../sdk/lib/field-converter.ts";
 
 interface SchemaNode {
   $ref?: string;

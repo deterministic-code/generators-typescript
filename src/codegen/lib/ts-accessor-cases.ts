@@ -1,7 +1,7 @@
 import {
   accessExpr,
   distinctNextTs,
-} from "@deterministic-code/generator-sdk/codegen/lib/ts-sample-literal";
+} from "../../sdk/codegen/lib/ts-sample-literal.ts";
 import { escapeForTestName } from "./zod-test-cases.ts";
 
 interface FieldAccessorCasesArgs {

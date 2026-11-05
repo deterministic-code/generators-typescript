@@ -1,18 +1,18 @@
-import type { ParsedSettings } from "@deterministic-code/generator-sdk/read-settings";
-import { toCase } from "@deterministic-code/generator-sdk/case";
-import { viewGenerator } from "@deterministic-code/generator-sdk/codegen-context";
+import type { ParsedSettings } from "../../sdk/read-settings.ts";
+import { toCase } from "../../sdk/case.ts";
+import { viewGenerator } from "../../sdk/codegen-context.ts";
 import { TypescriptImports } from "./typescript-imports.ts";
 import {
   datetimeMergeGenerator,
   validatorOptionsFromSettings,
-} from "@deterministic-code/generator-sdk/codegen/lib/generate-settings-options";
-import { datasourceSettingsFor } from "@deterministic-code/generator-sdk/codegen/lib/ts-datasource-settings";
+} from "../../sdk/codegen/lib/generate-settings-options.ts";
+import { datasourceSettingsFor } from "../../sdk/codegen/lib/ts-datasource-settings.ts";
 import type {
   ShapedView,
   UnionView,
   View,
   ViewField,
-} from "@deterministic-code/generator-sdk/codegen/lib/generate-view-shared";
+} from "../../sdk/codegen/lib/generate-view-shared.ts";
 
 export const DEFAULT_GENERATE_OPTIONS = {
   schemaVersion: "1.0",

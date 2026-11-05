@@ -3,36 +3,36 @@ import {
   dispatchRouteE2eStep,
   routesStepGenerate,
   type LanguageGeneratorModule,
-} from "@deterministic-code/generator-sdk/codegen/lib/routes-generate";
+} from "../../sdk/codegen/lib/routes-generate.ts";
 import {
   snakeToCamel,
   snakeToKebab,
-} from "@deterministic-code/generator-sdk/case";
+} from "../../sdk/case.ts";
 import {
   columnIsUnique,
   iterateCombinedRoutes,
-} from "@deterministic-code/generator-sdk/lib/routes-expand";
-import { indexDatasourceByName as indexDatasource } from "@deterministic-code/generator-sdk/lib/datasource-index";
-import { findForeignKeyTo } from "@deterministic-code/generator-sdk/codegen/lib/iterate-combined-routes";
+} from "../../sdk/lib/routes-expand.ts";
+import { indexDatasourceByName as indexDatasource } from "../../sdk/lib/datasource-index.ts";
+import { findForeignKeyTo } from "../../sdk/codegen/lib/iterate-combined-routes.ts";
 import {
   STANDARD_COLUMNS,
   RawTsExpr,
   tsLiteral,
-} from "@deterministic-code/generator-sdk/codegen/lib/integration-test-spec";
+} from "../../sdk/codegen/lib/integration-test-spec.ts";
 import { libraryImportSpecifier } from "./library-import.ts";
 import {
   namesFor,
   layoutFor,
-} from "@deterministic-code/generator-sdk/codegen/lib/ts-codegen-naming";
+} from "../../sdk/codegen/lib/ts-codegen-naming.ts";
 import {
   datasourceSettingsFor,
   settingsConfigLiteral,
-} from "@deterministic-code/generator-sdk/codegen/lib/ts-datasource-settings";
+} from "../../sdk/codegen/lib/ts-datasource-settings.ts";
 import type {
   GeneratedFile,
   RoutesGenerateConfig,
-} from "@deterministic-code/generator-sdk/codegen/lib/routes-generate-types";
-import type { DatasourceSettings } from "@deterministic-code/generator-sdk/datasource-settings";
+} from "../../sdk/codegen/lib/routes-generate-types.ts";
+import type { DatasourceSettings } from "../../sdk/datasource-settings.ts";
 
 interface FieldDef {
   type?: string;

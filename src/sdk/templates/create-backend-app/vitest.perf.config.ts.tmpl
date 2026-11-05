@@ -1,0 +1,28 @@
+import { defineConfig } from "vitest/config";
+
+// Standalone config for the REST perf-load client. `npm run test:perf`
+// invokes vitest against this file so the suite runs in isolation from
+// the project's unit tests (`npm test` excludes *.perf.client.test.ts
+// via vitest.config.ts) and from the openapi conformance e2e.
+//
+// The verify pipeline runs `npm run test:perf` per dialect with
+// PERF_BASE_URL pointing at a freshly-launched dist/server.js and
+// PERF_DIALECT set so each backend (sqlite, postgres, mysql,
+// sqlserver, oracle) emits dialect-tagged [perf-e2e][Finish]
+// trace-format lines (parity with Rust's app_perf_client.rs).
+export default defineConfig({
+  test: {
+    environment: "node",
+    include: ["**/__tests__/**/*.perf.client.test.ts"],
+    exclude: ["**/node_modules/**"],
+    testTimeout: 5 * 60_000,
+    // beforeAll hits a fresh dialect docker — 10s default kills postgres cold-start.
+    hookTimeout: 20 * 60_000,
+    // Pass worker-thread console.log straight to parent stdout so the
+    // [perf-e2e][Finish] trace-format lines reach the verify pipeline's
+    // console_output. Without this, vitest buffers worker console
+    // output and only flushes on failure — passing perf runs would
+    // lose every metric.
+    disableConsoleIntercept: true,
+  },
+});

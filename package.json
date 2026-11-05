@@ -15,14 +15,18 @@
     "src"
   ],
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.build.json && cp -R src/templates dist/",
+    "prepare": "npm run build",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && cp -R src/templates dist/ && cp src/sdk/default-settings.yaml dist/sdk/ && cp -R src/sdk/field-types dist/sdk/ && cp -R src/sdk/templates dist/sdk/",
     "typecheck": "tsc -p tsconfig.build.json --noEmit"
   },
   "dependencies": {
-    "@deterministic-code/generator-sdk": "github:deterministic-code/generators-common",
-    "@deterministic-code/patch-merger": "github:deterministic-code/patch-merger"
+    "@deterministic-code/patch-merger": "github:deterministic-code/patch-merger",
+    "change-case": "^5.4.4",
+    "js-yaml": "^4.1.0",
+    "pluralize": "^8.0.0"
   },
   "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.10.0",
     "@types/pluralize": "^0.0.33",
     "typescript": "^5.8.0"

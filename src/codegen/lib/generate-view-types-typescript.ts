@@ -1,5 +1,5 @@
-import { STEPS } from "@deterministic-code/generator-sdk/import-paths";
+import { STEPS } from "../../sdk/import-paths.ts";
 import { createGenerator } from "./generate-view-typescript.ts";
-import { makeViewGenerate } from "@deterministic-code/generator-sdk/codegen/lib/view-generate-config";
+import { makeViewGenerate } from "../../sdk/codegen/lib/view-generate-config.ts";
 
 export const generate = makeViewGenerate(createGenerator, STEPS.VIEW_TYPES, "typescript");

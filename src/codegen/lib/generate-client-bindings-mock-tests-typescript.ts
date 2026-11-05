@@ -1,4 +1,4 @@
-import type { ParsedSettings } from "@deterministic-code/generator-sdk/read-settings";
+import type { ParsedSettings } from "../../sdk/read-settings.ts";
 import { clientBindingTestEntries } from "./frontend-bindings-routes.ts";
 import {
   BODY_METHODS,
@@ -7,10 +7,10 @@ import {
   pathParamsOf,
 } from "./client-op-model.ts";
 import { sampleForSchema } from "./component-fixture.ts";
-import { serializeSampleValue as serializeValue } from "@deterministic-code/generator-sdk/codegen/lib/ts-sample-literal";
-import { CONTENT } from "@deterministic-code/generator-sdk/codegen/lib/generate-result";
+import { serializeSampleValue as serializeValue } from "../../sdk/codegen/lib/ts-sample-literal.ts";
+import { CONTENT } from "../../sdk/codegen/lib/generate-result.ts";
 import { frontendTestHarnessPatch } from "./frontend-test-harness.ts";
-import type { CodegenLayout } from "@deterministic-code/generator-sdk/codegen-layout";
+import type { CodegenLayout } from "../../sdk/codegen-layout.ts";
 
 interface RouteRow {
   method: string;
