@@ -198,7 +198,7 @@ class Generator extends Emit {
         this.kind === "view" &&
         this.referenceBackendType &&
         kind === "datasource" &&
-        entity === self
+        typeName === this.casing.entityName(self)
           ? this.casing.baseTypeName(entity)
           : undefined;
       if (alias !== undefined) aliasByClass.set(entity, alias);

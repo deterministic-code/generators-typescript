@@ -291,6 +291,26 @@ describe("generate view types", () => {
     assert.match(user, /export interface User extends UserBase \{/);
   });
 
+  it("aliases when users and user render as the same type name", async () => {
+    const yaml = `types:
+  - user:
+      tags: [datasource_type]
+      inherits: set
+      fields:
+        - email:
+            type: string
+  - users:
+      tags: [view_type]
+      inherits: user
+`;
+    const user = await bodyOf("user.ts", {}, yaml);
+    assert.match(
+      user,
+      /import type \{ User as UserBase \} from "\.\.\/datasource\/user";/,
+    );
+    assert.match(user, /export interface User extends UserBase \{/);
+  });
+
   it("re-exports a plural spec name from the typeStem file", async () => {
     const yaml = `types:
   - locale_preferences:
