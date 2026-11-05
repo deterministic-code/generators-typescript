@@ -244,34 +244,34 @@ export const bootContactsSample = async (
   const byFeature = variant.organizeByFeature;
   const layered = {
     datasource: placeLayered(
-      "types/generated/datasource",
+      "types/datasource",
       lanes.datasource,
       byFeature,
     ),
     datasourceValidators: placeLayered(
-      "types/generated/datasource/validators",
+      "types/datasource/validators",
       lanes.datasourceValidators,
       byFeature,
     ),
     datasourceTests: placeLayered(
-      "types/generated/datasource",
+      "types/datasource",
       lanes.datasourceTests,
       byFeature,
     ),
     datasourceValidatorTests: placeLayered(
-      "types/generated/datasource/validators",
+      "types/datasource/validators",
       lanes.datasourceValidatorTests,
       byFeature,
     ),
-    views: placeLayered("types/generated/views", lanes.views, byFeature),
-    viewTests: placeLayered("types/generated/views", lanes.viewTests, byFeature),
+    views: placeLayered("types/view", lanes.views, byFeature),
+    viewTests: placeLayered("types/view", lanes.viewTests, byFeature),
     viewValidators: placeLayered(
-      "types/generated/views/validators",
+      "types/view/validators",
       lanes.viewValidators,
       byFeature,
     ),
     viewValidatorTests: placeLayered(
-      "types/generated/views/validators",
+      "types/view/validators",
       lanes.viewValidatorTests,
       byFeature,
     ),
@@ -363,7 +363,7 @@ export const viewValidatorPath = (
   const laid = createImportGenerator(".", settings).viewValidator(entity);
   return variant.organizeByFeature
     ? laid
-    : `types/generated/views/validators/${laid}`;
+    : `types/view/validators/${laid}`;
 };
 
 export const datasourceTypePath = (
@@ -374,7 +374,7 @@ export const datasourceTypePath = (
   const laid = createImportGenerator(".", settings).datasource(entity);
   return variant.organizeByFeature
     ? laid
-    : `types/generated/datasource/${laid}`;
+    : `types/datasource/${laid}`;
 };
 
 export const customServicePath = (

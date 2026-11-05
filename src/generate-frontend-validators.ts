@@ -1,15 +1,18 @@
 import type { GenerateContext } from "@deterministic-code/generators-common/generate-context";
 import type { GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
+import { Paths } from "@deterministic-code/generators-common/paths";
 import { verifyEntries } from "@deterministic-code/generators-common/reference-verifier";
 import { createCasing } from "./common/default-casing.ts";
 import { Emit } from "./emit.ts";
+import { generate as generateViewTypeValidators } from "./generate-view-type-validators.ts";
+import { referencesBackend } from "./inline-inherited.ts";
 
 const layered = (settings: Record<string, string>, path: string): string => {
   const casing = createCasing(settings);
   return path.split("/").map((segment) => casing.convertDirectories(segment)).join("/");
 };
-import { generate as generateViewTypeValidators } from "./generate-view-type-validators.ts";
-import { referencesBackend } from "./inline-inherited.ts";
+
+const paths = new Paths();
 import {
   indexTmpl,
   schemaInheritTmpl,
@@ -37,7 +40,7 @@ export const generate = async (
     },
     basePath: validators,
     datasourceBasePath: referenceBackendType
-      ? layered(ctx.settings, "types/generated/datasource/validators")
+      ? layered(ctx.settings, `${paths.typesDir("datasource")}/validators`)
       : validators,
   });
   if (!referenceBackendType) verifyEntries(entries);

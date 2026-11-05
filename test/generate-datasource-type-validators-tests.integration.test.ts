@@ -103,13 +103,13 @@ describe("generate datasource type validators tests", () => {
       (entry) =>
         entry.kind === "content" &&
         entry.attributes?.module ===
-          "types/generated/datasource/validators/user.test.ts",
+          "types/datasource/validators/user.test.ts",
     );
     assert.ok(user);
     assert.equal(user.kind, "content");
     assert.equal(
       user.attributes?.imports,
-      "types/generated/datasource/validators/user.ts",
+      "types/datasource/validators/user.ts",
     );
     assert.equal(user.attributes?.uses, "UserSchema");
   });

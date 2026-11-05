@@ -123,14 +123,14 @@ describe("reference verifier aggregate", () => {
       (entry) => entry.attributes?.module,
     );
     assert.equal(
-      modules.includes("types/generated/datasource/base.ts"),
+      modules.includes("types/datasource/base.ts"),
       false,
     );
     const source = entries.find(
       (entry) =>
         entry.kind === "content" &&
         entry.attributes?.module ===
-          "types/generated/datasource/contactSource.ts",
+          "types/datasource/contactSource.ts",
     );
     assert.ok(source);
     assert.equal(source.kind, "content");
@@ -149,7 +149,7 @@ describe("reference verifier aggregate", () => {
     const child = entries.find(
       (entry) =>
         entry.kind === "content" &&
-        entry.attributes?.module === "types/generated/views/child.ts",
+        entry.attributes?.module === "types/view/child.ts",
     );
     assert.ok(child);
     assert.equal(child.kind, "content");
@@ -245,7 +245,7 @@ describe("reference verifier aggregate", () => {
       ...(await generateViewTypes({ reader, settings })),
       content("brokenService.ts", "", {
         module: "services/generated/brokenService.ts",
-        imports: "types/generated/views/user.ts",
+        imports: "types/view/user.ts",
         uses: "user",
       }),
     ];

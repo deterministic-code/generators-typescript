@@ -245,7 +245,7 @@ describe("generate view type validators", () => {
       (entry) =>
         entry.kind === "content" &&
         entry.attributes?.module ===
-          "types/generated/views/validators/userSummary.ts",
+          "types/view/validators/userSummary.ts",
     );
     assert.ok(summary);
     assert.equal(summary.kind, "content");

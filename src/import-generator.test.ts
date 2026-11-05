@@ -15,47 +15,47 @@ describe("TypeScriptImportGenerator layered (organize_by_feature unset)", () => 
   it("emits identity files and prefixed Rel paths", () => {
     const imports = layered();
     assert.equal(imports.datasource("user"), "user.ts");
-    assert.equal(imports.datasourceRel("user"), "types/generated/datasource/user.ts");
+    assert.equal(imports.datasourceRel("user"), "types/datasource/user.ts");
     assert.equal(imports.datasourceQual("user"), "User");
     assert.equal(imports.datasourceValidator("user"), "user.ts");
     assert.equal(
       imports.datasourceValidatorRel("user"),
-      "types/generated/datasource/validators/user.ts",
+      "types/datasource/validators/user.ts",
     );
     assert.equal(
       imports.datasourceTestRel("user"),
-      "types/generated/datasource/user.test.ts",
+      "types/datasource/user.test.ts",
     );
     assert.equal(
       imports.datasourceValidatorTestRel("user"),
-      "types/generated/datasource/validators/user.test.ts",
+      "types/datasource/validators/user.test.ts",
     );
     assert.equal(
       imports.validatorTestRel("datasource", "user"),
-      "types/generated/datasource/validators/user.test.ts",
+      "types/datasource/validators/user.test.ts",
     );
     assert.equal(imports.view("card_payment"), "cardPayment.ts");
     assert.equal(
       imports.viewRel("card_payment"),
-      "types/generated/views/cardPayment.ts",
+      "types/view/cardPayment.ts",
     );
     assert.equal(imports.viewQual("card_payment"), "CardPayment");
     assert.equal(imports.viewValidator("card_payment"), "cardPayment.ts");
     assert.equal(
       imports.viewValidatorRel("card_payment"),
-      "types/generated/views/validators/cardPayment.ts",
+      "types/view/validators/cardPayment.ts",
     );
     assert.equal(
       imports.viewTestRel("card_payment"),
-      "types/generated/views/cardPayment.test.ts",
+      "types/view/cardPayment.test.ts",
     );
     assert.equal(
       imports.viewValidatorTestRel("card_payment"),
-      "types/generated/views/validators/cardPayment.test.ts",
+      "types/view/validators/cardPayment.test.ts",
     );
     assert.equal(
       imports.validatorTestRel("view", "card_payment"),
-      "types/generated/views/validators/cardPayment.test.ts",
+      "types/view/validators/cardPayment.test.ts",
     );
     assert.equal(imports.service("user"), "userService.ts");
     assert.equal(imports.serviceRel("user"), "services/generated/userService.ts");
@@ -178,7 +178,7 @@ describe("TypeScriptImportGenerator layered (organize_by_feature unset)", () => 
       assert.equal(imports.index("user.ts"), "index.ts", value);
       assert.equal(
         imports.datasourceRel("user"),
-        "types/generated/datasource/user.ts",
+        "types/datasource/user.ts",
         value,
       );
     }

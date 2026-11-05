@@ -48,8 +48,8 @@ describe("frontend-app types e2e", { timeout: 180_000 }, () => {
         "frontend/src/validators/project.test.ts",
         "frontend/src/validators/task.ts",
         "frontend/src/validators/task.test.ts",
-        "types/generated/datasource/project.ts",
-        "types/generated/datasource/validators/project.ts",
+        "types/datasource/project.ts",
+        "types/datasource/validators/project.ts",
       ].map((rel) => requireFile(join(appDir, rel))),
     );
   });

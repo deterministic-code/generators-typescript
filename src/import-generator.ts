@@ -1,5 +1,6 @@
 import { posix } from "node:path";
 import type { IImportGenerator } from "@deterministic-code/generators-common/import-generator";
+import { Paths, type TypeKind } from "@deterministic-code/generators-common/paths";
 import { createCasing, type PackCasing } from "./common/default-casing.ts";
 
 const importSpec = (fromFile: string, toFile: string): string => {
@@ -19,6 +20,7 @@ export class TypeScriptImportGenerator implements IImportGenerator {
   private readonly flat: boolean;
   private readonly basePath: string;
   private readonly casing: PackCasing;
+  private readonly paths = new Paths();
 
   constructor(basePath: string, settings: Record<string, string>) {
     this.basePath = basePath;
@@ -39,7 +41,7 @@ export class TypeScriptImportGenerator implements IImportGenerator {
   }
 
   datasourceRel(entity: string): string {
-    return this.rel(this.layered("types/generated/datasource"), this.datasource(entity));
+    return this.rel(this.typesLayer("datasource"), this.datasource(entity));
   }
 
   datasourceQual(entity: string): string {
@@ -58,21 +60,21 @@ export class TypeScriptImportGenerator implements IImportGenerator {
 
   datasourceValidatorRel(entity: string): string {
     return this.rel(
-      this.layered("types/generated/datasource/validators"),
+      this.typesLayer("datasource", "validators"),
       this.datasourceValidator(entity),
     );
   }
 
   datasourceTestRel(entity: string): string {
     return this.rel(
-      this.layered("types/generated/datasource"),
+      this.typesLayer("datasource"),
       this.test(this.datasource(entity), entity),
     );
   }
 
   datasourceValidatorTestRel(entity: string): string {
     return this.rel(
-      this.layered("types/generated/datasource/validators"),
+      this.typesLayer("datasource", "validators"),
       this.test(this.datasourceValidator(entity), entity),
     );
   }
@@ -82,7 +84,7 @@ export class TypeScriptImportGenerator implements IImportGenerator {
   }
 
   viewRel(entity: string): string {
-    return this.rel(this.layered("types/generated/views"), this.view(entity));
+    return this.rel(this.typesLayer("view"), this.view(entity));
   }
 
   viewQual(entity: string): string {
@@ -95,18 +97,18 @@ export class TypeScriptImportGenerator implements IImportGenerator {
 
   viewValidatorRel(entity: string): string {
     return this.rel(
-      this.layered("types/generated/views/validators"),
+      this.typesLayer("view", "validators"),
       this.viewValidator(entity),
     );
   }
 
   viewTestRel(entity: string): string {
-    return this.rel(this.layered("types/generated/views"), this.test(this.view(entity), entity));
+    return this.rel(this.typesLayer("view"), this.test(this.view(entity), entity));
   }
 
   viewValidatorTestRel(entity: string): string {
     return this.rel(
-      this.layered("types/generated/views/validators"),
+      this.typesLayer("view", "validators"),
       this.test(this.viewValidator(entity), entity),
     );
   }
@@ -273,6 +275,12 @@ export class TypeScriptImportGenerator implements IImportGenerator {
 
   private tsFile(stem: string): string {
     return `${this.casing.fileBase(stem)}.ts`;
+  }
+
+  private typesLayer(kind: TypeKind, extra?: string): string {
+    const dir =
+      extra === undefined ? this.paths.typesDir(kind) : `${this.paths.typesDir(kind)}/${extra}`;
+    return this.layered(dir);
   }
 
   private layered(path: string): string {

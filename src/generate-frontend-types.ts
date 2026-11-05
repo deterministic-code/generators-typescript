@@ -1,5 +1,6 @@
 import type { GenerateContext } from "@deterministic-code/generators-common/generate-context";
 import type { GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
+import { Paths } from "@deterministic-code/generators-common/paths";
 import { verifyEntries } from "@deterministic-code/generators-common/reference-verifier";
 import { createCasing } from "./common/default-casing.ts";
 import { Emit } from "./emit.ts";
@@ -11,6 +12,8 @@ const layered = (settings: Record<string, string>, path: string): string => {
   return path.split("/").map((segment) => casing.convertDirectories(segment)).join("/");
 };
 
+const paths = new Paths();
+
 /** Self-checks when the lane is closed; backend-type refs need host `finalizeEntries`. */
 export const generate = async (
   ctx: GenerateContext,
@@ -21,7 +24,7 @@ export const generate = async (
     referenceBackendType,
     basePath: views,
     datasourceBasePath: referenceBackendType
-      ? layered(ctx.settings, "types/generated/datasource")
+      ? layered(ctx.settings, paths.typesDir("datasource"))
       : views,
   });
   if (!referenceBackendType) verifyEntries(entries);

@@ -115,13 +115,13 @@ describe("generate datasource types tests", () => {
       (entry) =>
         entry.kind === "content" &&
         entry.attributes?.module ===
-          "types/generated/datasource/user.test.ts",
+          "types/datasource/user.test.ts",
     );
     assert.ok(user);
     assert.equal(user.kind, "content");
     assert.equal(
       user.attributes?.imports,
-      "types/generated/datasource/user.ts",
+      "types/datasource/user.ts",
     );
     assert.equal(user.attributes?.uses, "User");
   });

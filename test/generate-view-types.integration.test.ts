@@ -246,7 +246,7 @@ describe("generate view types", () => {
     const summary = entries.find(
       (entry) =>
         entry.kind === "content" &&
-        entry.attributes?.module === "types/generated/views/userSummary.ts",
+        entry.attributes?.module === "types/view/userSummary.ts",
     );
     assert.ok(summary);
     assert.equal(summary.kind, "content");
