@@ -291,6 +291,21 @@ describe("generate view types", () => {
     assert.match(user, /export interface User extends UserBase \{/);
   });
 
+  it("re-exports a plural spec name from the typeStem file", async () => {
+    const yaml = `types:
+  - locale_preferences:
+      tags: [view_type]
+      fields:
+        - locale:
+            type: string
+`;
+    const emitted = await generateWith({}, yaml);
+    assert.equal(emitted.some((e) => e.filename.endsWith("localePreference.ts")), true);
+    const index = await bodyOf("index.ts", {}, yaml);
+    assert.match(index, /from "\.\/localePreference"/);
+    assert.doesNotMatch(index, /from "\.\/localePreferences"/);
+  });
+
   it("skips the barrel when codegen.create_index is false", async () => {
     const emitted = await generateWith({ "codegen.create_index": "false" });
     assert.equal(
