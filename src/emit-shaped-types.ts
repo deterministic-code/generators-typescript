@@ -1,3 +1,4 @@
+import { posix } from "node:path";
 import { fill } from "@deterministic-code/generators-common/fill";
 import type { GenerateContext } from "@deterministic-code/generators-common/generate-context";
 import { content, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
@@ -512,7 +513,7 @@ class Generator extends Emit {
         camel,
         types: types.map((t) => ({
           className: this.casing.entityName(t.name),
-          fileBase: this.casing.fileBase(t.name),
+          fileBase: posix.basename(this.file(t.name), ".ts"),
           isClass: this.classSet.has(classKey(this.kind, t.name)),
         })),
       }),
