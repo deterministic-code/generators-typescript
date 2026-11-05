@@ -123,7 +123,7 @@ class Generator extends Emit {
         zodExpr: zodForField(resolved, field.name === "id"),
       };
     });
-    const className = this.casing.convertTypes(table.name);
+    const className = this.casing.entityName(table.name);
     const schemaName = this.casing.schemaName(table.name);
     const validatedTypeName = this.casing.validatedTypeName(table.name);
     return content(
@@ -157,7 +157,7 @@ class Generator extends Emit {
       fill(indexTmpl, {
         withTypeAnnotation: true,
         types: types.map((t) => {
-          const className = this.casing.convertTypes(t.name);
+          const className = this.casing.entityName(t.name);
           return {
             schemaName: this.casing.schemaName(t.name),
             className,

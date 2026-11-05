@@ -78,7 +78,7 @@ describe("TypeScriptImportGenerator layered (organize_by_feature unset)", () => 
     });
     assert.equal(
       pascalDirs.datasourceRel("user"),
-      "Types/Generated/Datasource/user.ts",
+      "Types/Datasource/user.ts",
     );
     assert.equal(
       pascalDirs.serviceRel("user"),

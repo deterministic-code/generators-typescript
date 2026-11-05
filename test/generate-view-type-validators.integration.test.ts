@@ -252,7 +252,7 @@ describe("generate view type validators", () => {
     assert.match(summary.attributes?.exports ?? "", /UserSummarySchema/);
     assert.match(
       summary.attributes?.imports ?? "",
-      /types\/generated\/datasource\/validators\/user\.ts/,
+      /types\/datasource\/validators\/user\.ts/,
     );
     assert.match(summary.attributes?.uses ?? "", /UserSchema/);
   });

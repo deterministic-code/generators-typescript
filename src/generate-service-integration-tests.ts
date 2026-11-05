@@ -123,7 +123,7 @@ class Generator extends Emit {
     const byPath = new Map<string, string[]>();
     const add = (entity: string) => {
       const fromPath = this.imports.spec(fromRel, this.typeRel(entity));
-      const typeName = this.casing.convertTypes(entity);
+      const typeName = this.casing.entityName(entity);
       const names = byPath.get(fromPath) ?? [];
       if (!names.includes(typeName)) names.push(typeName);
       byPath.set(fromPath, names);
@@ -213,7 +213,7 @@ class Generator extends Emit {
           this.imports.serviceIntegrationTestRel(entity),
           this.imports.serviceRel(entity),
         ),
-        rowTypeName: this.casing.convertTypes(entity),
+        rowTypeName: this.casing.entityName(entity),
         createTypeName:
           mutate === undefined ? false : this.casing.convertTypes(mutate),
         tableNameJson: this.tableNameJson(entity),
@@ -262,7 +262,7 @@ class Generator extends Emit {
       return {
         varName: ref.serviceVar,
         className: ref.className,
-        rowTypeName: this.casing.convertTypes(name),
+        rowTypeName: this.casing.entityName(name),
         tableNameJson: this.tableNameJson(name),
         entityNameJson: JSON.stringify(name),
         isUuidPk: this.pkEntry(this.byName.get(name)!).isUuidPk,

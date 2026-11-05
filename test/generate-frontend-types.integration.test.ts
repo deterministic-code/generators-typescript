@@ -168,7 +168,7 @@ describe("generate-frontend-types", () => {
     const card = byBase(frontend).get("cardPayment.ts") ?? "";
     assert.match(
       card,
-      /from "\.\.\/\.\.\/\.\.\/types\/generated\/datasource\/tag"/,
+      /from "\.\.\/\.\.\/\.\.\/types\/datasource\/tag"/,
     );
     assert.match(card, /from "\.\/userSummary"/);
   });
@@ -211,7 +211,7 @@ describe("generate-frontend-validators", () => {
     const card = byBase(frontend).get("cardPayment.ts") ?? "";
     assert.match(
       card,
-      /from "\.\.\/\.\.\/\.\.\/types\/generated\/datasource\/validators\/tag"/,
+      /from "\.\.\/\.\.\/\.\.\/types\/datasource\/validators\/tag"/,
     );
     assert.match(card, /from "\.\/userSummary"/);
   });

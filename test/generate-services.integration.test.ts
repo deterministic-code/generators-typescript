@@ -107,7 +107,7 @@ describe("generate-services", () => {
     assert.match(user, /async find_by_email\(email: string\)/);
     assert.match(
       user,
-      /from "\.\.\/\.\.\/types\/generated\/datasource\/user"/,
+      /from "\.\.\/\.\.\/types\/datasource\/user"/,
     );
     const role = textOf(entries, "roleService.ts");
     assert.match(role, /export class RoleService \{/);

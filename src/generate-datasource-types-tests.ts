@@ -63,7 +63,7 @@ class Generator extends Emit {
       fieldTokens(f, (name) => this.casing.fieldIdent(name), typesByName),
     );
     const src = this.imports.datasource(table.name);
-    const className = this.casing.convertTypes(table.name);
+    const className = this.casing.entityName(table.name);
     return content(
       this.imports.test(src, table.name),
       fill(typeTestTmpl, {

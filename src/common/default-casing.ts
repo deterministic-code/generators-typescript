@@ -2,6 +2,7 @@ import {
   createCasingStrategy,
   type ICasingStrategy,
 } from "@deterministic-code/generators-common/casing-strategy";
+import { Paths } from "@deterministic-code/generators-common/paths";
 
 export const GENERATOR_LANGUAGE = "typescript";
 
@@ -17,6 +18,7 @@ const featureEntity = (entity: string): string => {
 };
 
 export type PackCasing = ICasingStrategy & {
+  entityName: (specName: string) => string
   fileBase: (stem: string) => string
   directory: (entity: string) => string
   filePath: (stem: string) => string
@@ -45,7 +47,9 @@ export const createCasing = (
   settings: Record<string, string>,
 ): PackCasing => {
   const casing = createCasingStrategy(GENERATOR_LANGUAGE, settings);
+  const paths = new Paths();
   const fileBase = (stem: string): string => casing.convertFileName(stem);
+  const entityName = (specName: string): string => casing.convertTypes(paths.typeStem(specName));
   const directory = (entity: string): string =>
     casing.convertDirectories(featureEntity(entity));
   const filePath = (stem: string): string => `${fileBase(stem)}.ts`;
@@ -56,6 +60,7 @@ export const createCasing = (
     convertTypes: (text: string) => casing.convertTypes(text),
     convertFields,
     convertDirectories: (text: string) => casing.convertDirectories(text),
+    entityName,
     fileBase,
     directory,
     filePath,
@@ -65,9 +70,10 @@ export const createCasing = (
       casing.convertTypes(`i_${entity}_service`),
     authoredInterfaceName: (name: string) => casing.convertTypes(`i_${name}`),
     baseTypeName: (entity: string) => casing.convertTypes(`${entity}_base`),
-    schemaName: (name: string) => casing.convertTypes(`${name}_schema`),
+    schemaName: (name: string) =>
+      casing.convertTypes(`${paths.typeStem(name)}_schema`),
     validatedTypeName: (name: string) =>
-      casing.convertTypes(`${name}_validated`),
+      casing.convertTypes(`${paths.typeStem(name)}_validated`),
     routerFnName: (entity: string) => casing.convertTypes(`${entity}_router`),
     hookName: (entity: string, method: string) =>
       casing.convertTypes(`use_${entity}_${method}`),

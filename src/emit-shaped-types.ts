@@ -192,7 +192,7 @@ class Generator extends Emit {
       if (entity === self && (this.kind === "datasource" || kind === "view")) {
         continue;
       }
-      const typeName = this.casing.convertTypes(entity);
+      const typeName = this.casing.entityName(entity);
       const alias =
         this.kind === "view" &&
         this.referenceBackendType &&
@@ -266,7 +266,7 @@ class Generator extends Emit {
     const refKind = fieldRefKind(field, this.typesByName);
     return refKind === "primitive"
       ? toNative(field.base)
-      : (aliasByClass.get(field.base) ?? this.casing.convertTypes(field.base));
+      : (aliasByClass.get(field.base) ?? this.casing.entityName(field.base));
   }
 
   private fieldTs(
@@ -321,7 +321,7 @@ class Generator extends Emit {
       }
     }
     const parent =
-      aliasByClass.get(parentName) ?? this.casing.convertTypes(parentName);
+      aliasByClass.get(parentName) ?? this.casing.entityName(parentName);
     const omitKeys = type.removeFields ?? [];
     if (omitKeys.length === 0) return parent;
     return `Omit<${parent}, ${omitKeys.map((k) => JSON.stringify(this.casing.convertFields(k))).join(" | ")}>`;
@@ -451,7 +451,7 @@ class Generator extends Emit {
 
   private type(type: Type, expanded: Type | undefined): GenerateEntry {
     const { schemaVersion, simpleDoc, descriptionDoc } = this.settings;
-    const className = this.casing.convertTypes(type.name);
+    const className = this.casing.entityName(type.name);
     const isClass = this.classSet.has(classKey(this.kind, type.name));
     const flatten =
       isClass && (this.extendsType(type, new Map())?.startsWith("Omit<") ?? false);
@@ -498,20 +498,20 @@ class Generator extends Emit {
         module: this.rel(type.name),
         exports: className,
         imports: refs.map((r) => this.relKey(r)),
-        uses: refs.map((r) => this.casing.convertTypes(r.entity)),
+        uses: refs.map((r) => this.casing.entityName(r.entity)),
       }),
     );
   }
 
   private index(types: Type[], index: string): GenerateEntry {
     const modules = types.map((t) => this.rel(t.name));
-    const exports = types.map((t) => this.casing.convertTypes(t.name)).join(", ");
+    const exports = types.map((t) => this.casing.entityName(t.name)).join(", ");
     return content(
       index,
       fill(this.templates.indexTmpl, {
         camel,
         types: types.map((t) => ({
-          className: this.casing.convertTypes(t.name),
+          className: this.casing.entityName(t.name),
           fileBase: this.casing.fileBase(t.name),
           isClass: this.classSet.has(classKey(this.kind, t.name)),
         })),

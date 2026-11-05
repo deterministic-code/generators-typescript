@@ -31,9 +31,10 @@ export class TypeScriptImportGenerator implements IImportGenerator {
   }
 
   datasource(entity: string): string {
+    const stem = this.paths.typeStem(entity);
     const file = this.organizeByFeature
-      ? `${this.casing.fileBase(entity)}.datasource.ts`
-      : this.tsFile(entity);
+      ? `${this.casing.fileBase(stem)}.datasource.ts`
+      : this.tsFile(stem);
     const path = this.organizeByFeature
       ? this.featurePath(entity, file)
       : file;
@@ -45,7 +46,7 @@ export class TypeScriptImportGenerator implements IImportGenerator {
   }
 
   datasourceQual(entity: string): string {
-    return this.casing.convertTypes(entity);
+    return this.casing.entityName(entity);
   }
 
   datasourceValidator(entity: string): string {
@@ -88,7 +89,7 @@ export class TypeScriptImportGenerator implements IImportGenerator {
   }
 
   viewQual(entity: string): string {
-    return this.casing.convertTypes(entity);
+    return this.casing.entityName(entity);
   }
 
   viewValidator(entity: string): string {
@@ -312,7 +313,7 @@ export class TypeScriptImportGenerator implements IImportGenerator {
   }
 
   private viewLike(entity: string, featureExt: string): string {
-    const file = `${this.casing.fileBase(entity)}${this.organizeByFeature ? featureExt : ""}.ts`;
+    const file = `${this.casing.fileBase(this.paths.typeStem(entity))}${this.organizeByFeature ? featureExt : ""}.ts`;
     return this.organizeByFeature
       ? `${this.featuresDir(entity)}/${file}`
       : file;
