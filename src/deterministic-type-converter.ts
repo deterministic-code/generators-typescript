@@ -112,7 +112,7 @@ export const toNative = (specType: string): string =>
   typeConverter.convert(specType);
 
 const isTsZeroExpr = (expr: string): boolean =>
-  expr === "false" || expr === "0" || expr === '""';
+  expr === "0" || expr === '""';
 
 export const collectionDefaultExpr = (field: {
   isArray: boolean;
