@@ -527,8 +527,7 @@ describe("generate", () => {
     assert.match(flags, /export const flag = \(init: Partial<Flag>\): Flag => \(\{ \.\.\.init \} as Flag\);/);
     assert.match(flags, /export class Flag \{/);
     assert.match(flags, /is_enabled: boolean = true;/);
-    assert.match(flags, /is_disabled!: boolean;/);
-    assert.doesNotMatch(flags, /is_disabled: boolean =/);
+    assert.match(flags, /is_disabled: boolean = false;/);
     assert.match(flags, /count!: number;/);
     assert.match(flags, /rank: number = 1;/);
     assert.match(flags, /empty_name!: string;/);
@@ -567,8 +566,8 @@ describe("generate", () => {
     assert.match(flags, /amount: number = 1;/);
     assert.match(flags, /id!: number;/);
     const zero = entryBody(requireEntry(byName, "zeroOnly.ts"));
-    assert.match(zero, /export interface ZeroOnly \{/);
-    assert.doesNotMatch(zero, /export class ZeroOnly/);
+    assert.match(zero, /export class ZeroOnly \{/);
+    assert.match(zero, /is_disabled: boolean = false;/);
     const account = entryBody(requireEntry(byName, "account.ts"));
     assert.match(account, /export class Account \{/);
     assert.match(account, /email!: string;/);

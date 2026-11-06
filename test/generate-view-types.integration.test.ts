@@ -536,7 +536,7 @@ describe("generate view types", () => {
     assert.match(flags, /export const flag = \(init: Partial<Flag>\): Flag => \(\{ \.\.\.init \} as Flag\);/);
     assert.match(flags, /export class Flag \{/);
     assert.match(flags, /is_enabled: boolean = true;/);
-    assert.match(flags, /is_disabled!: boolean;/);
+    assert.match(flags, /is_disabled: boolean = false;/);
     assert.match(flags, /empty_name!: string;/);
     assert.match(flags, /rank: number = 1;/);
     assert.match(flags, /opted_out: boolean \| null = false;/);
