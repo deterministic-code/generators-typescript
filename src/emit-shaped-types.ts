@@ -7,7 +7,6 @@ import {
   datasourceTypesOf,
   dictionaryEntryFields,
   dictionaryOfField,
-  fieldTypeOf,
   isCollectionField,
   persistedColumnFields,
   tableKind,
@@ -275,7 +274,7 @@ class Generator extends Emit {
     aliasByClass: Map<string, string>,
   ): string {
     if (this.kind === "datasource") {
-      return toNative(fieldTypeOf(field, this.typesByName));
+      return toNative(field.type);
     }
     const dict = dictionaryOfField(field, this.typesByName);
     const entry = dict === undefined ? undefined : dictionaryEntryFields(dict);
@@ -379,7 +378,7 @@ class Generator extends Emit {
     ).some(
       (field) =>
         field.kind === "primitive" &&
-        nativeDefaultExpr(fieldTypeOf(field, this.typesByName), field) !==
+        nativeDefaultExpr(field.type, field) !==
           undefined,
     );
   }
@@ -482,7 +481,7 @@ class Generator extends Emit {
             const initializer =
               collectionDefaultExpr(f) ??
               (f.kind === "primitive"
-                ? nativeDefaultExpr(fieldTypeOf(f, this.typesByName), f)
+                ? nativeDefaultExpr(f.type, f)
                 : undefined);
             return {
               ident: this.casing.fieldIdent(f.name),

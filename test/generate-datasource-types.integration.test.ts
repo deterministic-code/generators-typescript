@@ -20,7 +20,7 @@ const FIXTURE_YAML = `types:
             type: string
             size: 256
         - role_id:
-            type: number
+            type: integer
             references: role.id
         - uuid:
             type: uuid
@@ -375,7 +375,7 @@ describe("generate", () => {
       inherits: set
       fields:
         - contact_id:
-            type: number
+            type: integer
             references: contact.id
         - city:
             type: string

@@ -15,7 +15,7 @@ const FIXTURE_YAML = `types:
             size: 256
             min_size: 3
         - role_id:
-            type: number
+            type: integer
             references: role.id
         - nick_name:
             type: string

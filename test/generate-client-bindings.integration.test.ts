@@ -16,7 +16,7 @@ const TYPES = `types:
         - email:
             type: string
         - role_id:
-            type: number
+            type: integer
             references: role.id
   - role:
       tags: [datasource_type, view_type, readonly_lookup]
@@ -40,7 +40,7 @@ const TYPES = `types:
         - title:
             type: string
         - project_id:
-            type: number
+            type: integer
             references: project.id
   - card_payment:
       tags: [datasource_type, view_type]

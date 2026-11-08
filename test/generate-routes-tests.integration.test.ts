@@ -12,7 +12,7 @@ const DS_YAML = `types:
         - email:
             type: string
         - role_id:
-            type: number
+            type: integer
             references: role.id
   - role:
       tags: [datasource_type, view_type, readonly_lookup]

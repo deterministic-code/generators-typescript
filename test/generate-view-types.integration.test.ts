@@ -19,7 +19,7 @@ const VIEW_YAML = `types:
         - email:
             type: string
         - role_id:
-            type: number
+            type: integer
             references: role.id
         - nick_name:
             type: string
@@ -404,6 +404,8 @@ describe("generate view types", () => {
       fields:
         - city:
             type: string
+        - contact_id:
+            type: integer
   - contact:
       tags: [datasource_type, view_type]
       inherits: set

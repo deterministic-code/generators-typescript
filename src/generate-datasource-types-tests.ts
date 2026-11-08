@@ -4,7 +4,6 @@ import type { GenerateContext } from "@deterministic-code/generators-common/gene
 import { content, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import {
   datasourceTypesOf,
-  fieldTypeOf,
   persistedColumnFields,
   TYPES_YAML,
 } from "@deterministic-code/generators-common/spec-types";
@@ -30,10 +29,9 @@ const escapeTestName = (name: string): string =>
 const fieldTokens = (
   field: TypeField,
   fieldIdent: (name: string) => string,
-  typesByName: ReadonlyMap<string, Type>,
 ) => {
   const ident = fieldIdent(field.name);
-  const specType = fieldTypeOf(field, typesByName);
+  const specType = field.type;
   const expr = fieldExpr(fakeTestData, specType, {
     nativeType: toNative(specType),
     size: fieldSize(field),
@@ -60,7 +58,7 @@ class Generator extends Emit {
 
   private tests(table: Type, typesByName: Map<string, Type>): GenerateEntry {
     const fields = persistedColumnFields(table, typesByName).map((f) =>
-      fieldTokens(f, (name) => this.casing.fieldIdent(name), typesByName),
+      fieldTokens(f, (name) => this.casing.fieldIdent(name)),
     );
     const src = this.imports.datasource(table.name);
     const className = this.casing.entityName(table.name);
