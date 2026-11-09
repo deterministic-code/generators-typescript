@@ -29,7 +29,7 @@ const CONTACTS_DS = `types:
       inherits: set
       fields:
         - contact_source_id:
-            type: number
+            type: integer
             references: contact_source.id
         - first_name:
             type: string
@@ -46,7 +46,7 @@ const CONTACTS_DS = `types:
       inherits: set
       fields:
         - contact_id:
-            type: number
+            type: integer
             references: contact.id
         - line1:
             type: string
@@ -77,10 +77,10 @@ const CONTACTS_DS = `types:
             type: integer
             is_id: true
         - contact_id:
-            type: number
+            type: integer
             references: contact.id
         - contact_group_id:
-            type: number
+            type: integer
             references: contact_group.id
         - created:
             type: datetime
@@ -244,7 +244,7 @@ describe("generate-service-integration-tests", () => {
       inherits: set
       fields:
         - contact_id:
-            type: number
+            type: integer
             references: contacts_base.id
         - line1:
             type: string

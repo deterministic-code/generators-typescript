@@ -13,7 +13,7 @@ const VIEW_YAML = `types:
         - email:
             type: string
         - role_id:
-            type: number
+            type: integer
             references: role.id
         - nick_name:
             type: string

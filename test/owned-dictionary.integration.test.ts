@@ -209,10 +209,10 @@ describe("owned dictionary codegen", () => {
   it("emits Settings as a row-shaped datasource type", async () => {
     const entries = indexEntries(await generateDatasourceTypes(ctx));
     const settings = entryBody(requireEntry(entries, "setting.ts"));
-    assert.match(settings, /export interface Setting \{/);
-    assert.match(settings, /setting_id: number;/);
-    assert.match(settings, /key: string;/);
-    assert.match(settings, /value: string;/);
+    assert.match(settings, /export class Setting \{/);
+    assert.match(settings, /setting_id!: number;/);
+    assert.match(settings, /key: string = "";/);
+    assert.match(settings, /value: string = "";/);
     assert.doesNotMatch(settings, /\bid:/);
     assert.doesNotMatch(settings, /Dictionary/);
     const file = entryBody(requireEntry(entries, "file.ts"));
@@ -225,28 +225,30 @@ describe("owned dictionary codegen", () => {
     assert.equal(entries.has("settings.ts"), false);
     const file = entryBody(requireEntry(entries, "file.ts"));
     assert.match(file, /type Dictionary<K extends PropertyKey, V> = Record<K, V>;/);
-    assert.match(file, /export interface File extends FileBase \{/);
-    assert.match(file, /settings: Dictionary<string, string>;/);
+    assert.doesNotMatch(file, /extends FileBase/);
+    assert.match(file, /export class File \{/);
+    assert.match(file, /name: string = "";/);
+    assert.match(file, /settings: Dictionary<string, string> = \{\};/);
     assert.doesNotMatch(file, /\bkey:/);
     assert.doesNotMatch(file, /\bvalue:/);
     assert.doesNotMatch(file, /setting_id/);
     const typed = entryBody(requireEntry(entries, "typedContact.ts"));
-    assert.match(typed, /export interface TypedContact \{/);
-    assert.match(typed, /id: number;/);
-    assert.match(typed, /email: string;/);
-    assert.match(typed, /contact_source_name: string;/);
-    assert.match(typed, /contact_type_name: string;/);
+    assert.match(typed, /export class TypedContact \{/);
+    assert.match(typed, /id!: number;/);
+    assert.match(typed, /email: string = "";/);
+    assert.match(typed, /contact_source_name: string = "";/);
+    assert.match(typed, /contact_type_name: string = "";/);
     assert.doesNotMatch(typed, /Dictionary/);
     const role = entryBody(requireEntry(entries, "role.ts"));
     assert.doesNotMatch(role, /Dictionary/);
     assert.equal(entries.has("cardLabels.ts"), false);
     const card = entryBody(requireEntry(entries, "contactCard.ts"));
-    assert.match(card, /labels: Dictionary<string, string>;/);
+    assert.match(card, /labels: Dictionary<string, string> = \{\};/);
     assert.equal(entries.has("contactPreferences.ts"), false);
     const contactView = entryBody(requireEntry(entries, "contact.ts"));
-    assert.match(contactView, /prefs: Dictionary<string, LocalePreference>;/);
+    assert.match(contactView, /prefs: Dictionary<string, LocalePreference> = \{\};/);
     const locale = entryBody(requireEntry(entries, "localePreference.ts"));
-    assert.match(locale, /export interface LocalePreference \{/);
+    assert.match(locale, /export class LocalePreference \{/);
   });
 
   it("validates File view settings as z.record, not a Settings schema", async () => {
@@ -259,8 +261,8 @@ describe("owned dictionary codegen", () => {
     assert.match(contact, /prefs: z\.record\(z\.string\(\), z\.lazy\(\(\) => LocalePreferenceSchema\)\)/);
     const prefsRow = indexEntries(await generateDatasourceTypes(ctx));
     const row = entryBody(requireEntry(prefsRow, "contactPreference.ts"));
-    assert.match(row, /locale: string;/);
-    assert.match(row, /timezone: string;/);
+    assert.match(row, /locale: string = "";/);
+    assert.match(row, /timezone: string = "";/);
     assert.doesNotMatch(row, /\bvalue:/);
   });
 

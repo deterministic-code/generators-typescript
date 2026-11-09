@@ -4,7 +4,6 @@ import type { GenerateContext } from "@deterministic-code/generators-common/gene
 import { content, type GenerateEntry } from "@deterministic-code/generators-common/generate-entry";
 import {
   datasourceTypesOf,
-  fieldTypeOf,
   persistedColumnFields,
   TYPES_YAML,
 } from "@deterministic-code/generators-common/spec-types";
@@ -75,10 +74,9 @@ const wrongTypeExpr = (type: string): string | undefined => {
 const fieldTok = (
   field: TypeField,
   fieldIdent: (name: string) => string,
-  typesByName: ReadonlyMap<string, Type>,
 ): FieldTok => {
   const ident = fieldIdent(field.name);
-  const specType = fieldTypeOf(field, typesByName);
+  const specType = field.type;
   const sampleExpr = fieldExpr(fakeTestData, specType, {
     nativeType: toNative(specType),
     size: fieldSize(field),
@@ -167,7 +165,7 @@ class Generator extends Emit {
 
   private tests(table: Type, typesByName: Map<string, Type>): GenerateEntry {
     const fields = persistedColumnFields(table, typesByName).map((f) =>
-      fieldTok(f, (name) => this.casing.fieldIdent(name), typesByName),
+      fieldTok(f, (name) => this.casing.fieldIdent(name)),
     );
     const src = this.imports.datasourceValidator(table.name);
     const schemaName = this.casing.schemaName(table.name);

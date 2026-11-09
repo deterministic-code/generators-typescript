@@ -20,7 +20,7 @@ const FIXTURE_YAML = `types:
             type: string
             size: 256
         - role_id:
-            type: number
+            type: integer
             references: role.id
         - uuid:
             type: uuid
@@ -171,16 +171,16 @@ describe("generate", () => {
     assert.match(user, /schema-version: 1\.0/);
     assert.doesNotMatch(user, /StandardDataSource/);
     assert.doesNotMatch(user, /@deterministic-code\/deterministic/);
-    assert.match(user, /export const user = \(init: Partial<User>\): User => \(\{ \.\.\.init \} as User\);/);
-    assert.match(user, /export interface User \{/);
-    assert.match(user, /id: number;/);
-    assert.match(user, /uuid: string;/);
-    assert.match(user, /created: Date;/);
-    assert.match(user, /updated: Date;/);
-    assert.match(user, /email: string;/);
-    assert.match(user, /role_id: number;/);
-    assert.match(user, /created_at: Date;/);
-    assert.match(user, /nick_name: string \| null;/);
+    assert.match(user, /export const user = \(init: Partial<User>\): User => Object\.assign\(new User\(\), init\);/);
+    assert.match(user, /export class User \{/);
+    assert.match(user, /id!: number;/);
+    assert.match(user, /uuid: string = "";/);
+    assert.match(user, /created!: Date;/);
+    assert.match(user, /updated!: Date;/);
+    assert.match(user, /email: string = "";/);
+    assert.match(user, /role_id!: number;/);
+    assert.match(user, /created_at!: Date;/);
+    assert.match(user, /nick_name!: string \| null;/);
   });
 
   it("emits a barrel when codegen.create_index is true", async () => {
@@ -189,10 +189,9 @@ describe("generate", () => {
     });
     const map = indexEntries(withIndex);
     const index = entryBody(requireEntry(map, "index.ts"));
-    assert.match(index, /export \{ user \} from "\.\/user";/);
-    assert.match(index, /export type \{ User \} from "\.\/user";/);
-    assert.match(index, /export \{ role \} from "\.\/role";/);
-    assert.match(index, /export type \{ Role \} from "\.\/role";/);
+    assert.match(index, /export \{ user, User \} from "\.\/user";/);
+    assert.match(index, /export \{ role, Role \} from "\.\/role";/);
+    assert.doesNotMatch(index, /export type \{/);
   });
 
   it("writes codegen.schema_version into the file header", async () => {
@@ -238,10 +237,10 @@ describe("generate", () => {
     const source = entryBody(
       requireEntry(indexEntries(entries), "contactSource.ts"),
     );
-    assert.match(source, /export interface ContactSource \{/);
+    assert.match(source, /export class ContactSource \{/);
     assert.doesNotMatch(source, /StandardDataSource/);
-    assert.match(source, /id: number;/);
-    assert.match(source, /name: string;/);
+    assert.match(source, /id!: number;/);
+    assert.match(source, /name: string = "";/);
     assert.doesNotMatch(source, /^\s*created:/m);
     assert.doesNotMatch(source, /^\s*updated:/m);
   });
@@ -269,17 +268,14 @@ describe("generate", () => {
     });
     const byName = indexEntries(entries);
     const user = entryBody(requireEntry(byName, "user.ts"));
-    assert.match(user, /export interface User \{/);
-    assert.match(user, /id: number;/);
-    assert.match(user, /email: string;/);
+    assert.match(user, /export class User \{/);
+    assert.match(user, /id!: number;/);
+    assert.match(user, /email: string = "";/);
     const admin = entryBody(requireEntry(byName, "admin.ts"));
-    assert.match(admin, /import type \{ User \} from "\.\/user";/);
-    assert.match(
-      admin,
-      /export interface Admin extends Omit<User, "email"> \{/,
-    );
-    assert.match(admin, /level: number;/);
-    assert.doesNotMatch(admin, /^\s*id:/m);
+    assert.doesNotMatch(admin, /Omit</);
+    assert.match(admin, /export class Admin \{/);
+    assert.match(admin, /id!: number;/);
+    assert.match(admin, /level!: number;/);
     assert.doesNotMatch(admin, /^\s*email:/m);
     const adminEntry = requireEntry(byName, "admin.ts");
     assert.equal(adminEntry.kind, "content");
@@ -288,11 +284,8 @@ describe("generate", () => {
       "types/datasource/admin.ts",
     );
     assert.equal(adminEntry.attributes?.exports, "Admin");
-    assert.equal(
-      adminEntry.attributes?.imports,
-      "types/datasource/user.ts",
-    );
-    assert.equal(adminEntry.attributes?.uses, "User");
+    assert.equal(adminEntry.attributes?.imports, undefined);
+    assert.equal(adminEntry.attributes?.uses, undefined);
   });
 
   it("flattens an untagged inherit source instead of extending it", async () => {
@@ -319,12 +312,12 @@ describe("generate", () => {
     const byName = indexEntries(entries);
     assert.equal(byName.has("base.ts"), false);
     const source = entryBody(requireEntry(byName, "contactSource.ts"));
-    assert.match(source, /export interface ContactSource \{/);
+    assert.match(source, /export class ContactSource \{/);
     assert.doesNotMatch(source, /extends /);
     assert.doesNotMatch(source, /from "\.\/base"/);
-    assert.match(source, /id: number;/);
-    assert.match(source, /created: Date;/);
-    assert.match(source, /name: string;/);
+    assert.match(source, /id!: number;/);
+    assert.match(source, /created!: Date;/);
+    assert.match(source, /name: string = "";/);
   });
 
   it("renders a composed union datasource type", async () => {
@@ -351,9 +344,9 @@ describe("generate", () => {
     const payment = entryBody(
       requireEntry(indexEntries(entries), "payment.ts"),
     );
-    assert.match(payment, /export interface Payment \{/);
-    assert.match(payment, /amount: string;/);
-    assert.match(payment, /tendered: string;/);
+    assert.match(payment, /export class Payment \{/);
+    assert.match(payment, /amount: string = "";/);
+    assert.match(payment, /tendered: string = "";/);
     assert.doesNotMatch(payment, /StandardDataSource/);
   });
 
@@ -375,7 +368,7 @@ describe("generate", () => {
       inherits: set
       fields:
         - contact_id:
-            type: number
+            type: integer
             references: contact.id
         - city:
             type: string
@@ -384,11 +377,11 @@ describe("generate", () => {
       settings: {},
     });
     const contact = entryBody(requireEntry(indexEntries(entries), "contact.ts"));
-    assert.match(contact, /email: string;/);
+    assert.match(contact, /email: string = "";/);
     assert.doesNotMatch(contact, /addresses/);
     const address = entryBody(requireEntry(indexEntries(entries), "address.ts"));
-    assert.match(address, /contact_id: number;/);
-    assert.match(address, /city: string;/);
+    assert.match(address, /contact_id!: number;/);
+    assert.match(address, /city: string = "";/);
   });
 
   it("infers FK type from the referenced parent field", async () => {
@@ -410,7 +403,7 @@ describe("generate", () => {
       settings: { application_name: "catalog-api" },
     });
     const child = entryBody(requireEntry(indexEntries(entries), "child.ts"));
-    assert.match(child, /owner_id: number;/);
+    assert.match(child, /owner_id!: number;/);
     assert.doesNotMatch(child, /owner_id: string/);
   });
 
@@ -524,13 +517,13 @@ describe("generate", () => {
     });
     const byName = indexEntries(entries);
     const flags = entryBody(requireEntry(byName, "flag.ts"));
-    assert.match(flags, /export const flag = \(init: Partial<Flag>\): Flag => \(\{ \.\.\.init \} as Flag\);/);
+    assert.match(flags, /export const flag = \(init: Partial<Flag>\): Flag => Object\.assign\(new Flag\(\), init\);/);
     assert.match(flags, /export class Flag \{/);
     assert.match(flags, /is_enabled: boolean = true;/);
     assert.match(flags, /is_disabled: boolean = false;/);
     assert.match(flags, /count!: number;/);
     assert.match(flags, /rank: number = 1;/);
-    assert.match(flags, /empty_name!: string;/);
+    assert.match(flags, /empty_name: string = "";/);
     assert.match(flags, /title: string = "hello";/);
     assert.match(
       flags,
@@ -554,8 +547,7 @@ describe("generate", () => {
       flags,
       /fixed_id: string = "11111111-1111-4111-8111-111111111111";/,
     );
-    assert.match(flags, /empty_blob!: string;/);
-    assert.doesNotMatch(flags, /empty_blob: string =/);
+    assert.match(flags, /empty_blob: string = "";/);
     assert.match(flags, /initial: string = "X";/);
     assert.match(flags, /ratio: number = 1.5;/);
     assert.match(flags, /visits: number = 1;/);
@@ -570,7 +562,7 @@ describe("generate", () => {
     assert.match(zero, /is_disabled: boolean = false;/);
     const account = entryBody(requireEntry(byName, "account.ts"));
     assert.match(account, /export class Account \{/);
-    assert.match(account, /email!: string;/);
+    assert.match(account, /email: string = "";/);
     const admin = entryBody(requireEntry(byName, "adminAccount.ts"));
     assert.match(admin, /export class AdminAccount extends Account \{/);
     assert.match(admin, /is_staff: boolean = true;/);

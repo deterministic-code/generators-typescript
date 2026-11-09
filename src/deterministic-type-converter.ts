@@ -112,7 +112,19 @@ export const toNative = (specType: string): string =>
   typeConverter.convert(specType);
 
 const isTsZeroExpr = (expr: string): boolean =>
-  expr === "0" || expr === '""';
+  expr === "0" || expr === '""' || expr === "false";
+
+/** Language zero for MergeZeros. Integers and foreign keys stay uninitialized. */
+export const tsLanguageZero = (
+  specType: string,
+  field: { isNullable: boolean; isArray: boolean; isMap?: boolean },
+): string | undefined => {
+  if (field.isNullable || field.isArray || field.isMap === true) return undefined;
+  const native = toNative(specType);
+  if (native === "string") return '""';
+  if (native === "boolean") return "false";
+  return undefined;
+};
 
 export const collectionDefaultExpr = (field: {
   isArray: boolean;

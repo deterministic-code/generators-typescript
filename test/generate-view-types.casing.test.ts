@@ -37,8 +37,8 @@ describe("generate view types casing", () => {
     const files = await byFilename({});
     assert.ok(files.has("notificationType.ts"));
     const body = files.get("notificationType.ts")!;
-    assert.match(body, /export interface NotificationType /);
-    assert.match(body, /channel_name: string;/);
+    assert.match(body, /export class NotificationType /);
+    assert.match(body, /channel_name: string = "";/);
   });
 
   it("Pascal file names", async () => {
@@ -59,7 +59,7 @@ describe("generate view types casing", () => {
     const files = await byFilename({
       "languages.typescript.casing.fields": "Camel",
     });
-    assert.match(files.get("notificationType.ts")!, /channelName: string;/);
+    assert.match(files.get("notificationType.ts")!, /channelName: string = "";/);
   });
 
   it("Kebab directories with Pascal files under by-feature", async () => {

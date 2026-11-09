@@ -20,7 +20,7 @@ const VIEW_YAML = `types:
         - email:
             type: string
         - role_id:
-            type: number
+            type: integer
             references: role.id
         - nick_name:
             type: string
@@ -133,8 +133,9 @@ describe("generate-frontend-types", () => {
     const user = files.get("user.ts") ?? "";
     const card = files.get("cardPayment.ts") ?? "";
     assert.doesNotMatch(user, /extends /);
-    assert.match(user, /email: string;/);
-    assert.match(user, /role_id: number;/);
+    assert.match(user, /export class User \{/);
+    assert.match(user, /email: string = "";/);
+    assert.match(user, /role_id!: number;/);
     assert.match(card, /from "\.\/tag"/);
     assert.doesNotMatch(card, /types\/generated\/datasource/);
     assert.equal(
@@ -157,8 +158,8 @@ describe("generate-frontend-types", () => {
       settings: {},
     });
     const cash = byBase(frontend).get("cashPayment.ts") ?? "";
-    assert.match(cash, /export interface CashPayment/);
-    assert.match(cash, /amount: string;/);
+    assert.match(cash, /export class CashPayment/);
+    assert.match(cash, /amount: string = "";/);
     assert.doesNotMatch(cash, /extends /);
   });
 
