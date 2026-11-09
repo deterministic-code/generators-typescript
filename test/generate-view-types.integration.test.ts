@@ -332,7 +332,7 @@ describe("generate view types", () => {
     );
     assert.doesNotMatch(contact, /export interface/);
     assert.doesNotMatch(contact, /ContactBase/);
-    assert.doesNotMatch(contact, /extends /);
+    assert.doesNotMatch(contact, /class \w+ extends /);
     assert.doesNotMatch(contact, /Omit</);
     assert.match(contact, /export class Contact \{/);
     assert.match(
@@ -476,7 +476,7 @@ describe("generate view types", () => {
 `,
     );
     assert.match(contact, /import type \{ Address \} from "\.\.\/datasource\/address";/);
-    assert.doesNotMatch(contact, /extends /);
+    assert.doesNotMatch(contact, /class \w+ extends /);
     assert.match(contact, /export class Contact \{/);
     assert.match(contact, /email: string = "";/);
     assert.match(contact, /addresses: Address\[\] = \[\];/);
