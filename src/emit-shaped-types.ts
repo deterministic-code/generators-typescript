@@ -338,7 +338,8 @@ class Generator extends Emit {
   private type(type: Type, expanded: Type | undefined): GenerateEntry {
     const { schemaVersion, simpleDoc, descriptionDoc } = this.settings;
     const className = this.casing.entityName(type.name);
-    const isClass = this.classSet.has(classKey(this.kind, type.name));
+    const isClass =
+      this.kind === "view" || this.classSet.has(classKey(this.kind, type.name));
     const flatten =
       isClass && (this.extendsType(type, new Map())?.startsWith("Omit<") ?? false);
     const { imports, aliasByClass } = this.collectImports(
@@ -399,7 +400,9 @@ class Generator extends Emit {
         types: types.map((t) => ({
           className: this.casing.entityName(t.name),
           fileBase: posix.basename(this.file(t.name), ".ts"),
-          isClass: this.classSet.has(classKey(this.kind, t.name)),
+          isClass:
+            this.kind === "view" ||
+            this.classSet.has(classKey(this.kind, t.name)),
         })),
       }),
       bag({

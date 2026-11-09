@@ -88,16 +88,28 @@ const CONTACT_ENRICH_YAML = `types:
       tags: [view_type]
       inherits: contacts_base
       union: [contact_source]
+      extract:
+        - contact_source.name
       mapping:
         name: contact_source_name
-      remove_fields: [contact_source.id]
+      remove_fields: [contact_source_id]
       fields:
         - phones:
             type: phone[]
+        - settings:
+            type: labels{}
   - phone:
       tags: [view_type]
       fields:
         - number:
+            type: string
+  - labels:
+      tags: [view_type]
+      inherits: dictionary
+      fields:
+        - key:
+            type: string
+        - value:
             type: string
 `;
 
@@ -270,13 +282,67 @@ describe("generate view types", () => {
 
   it("lists lookup names instead of removed foreign keys", async () => {
     const contact = await bodyOf("contact.ts", {}, CONTACT_ENRICH_YAML);
+    assert.doesNotMatch(contact, /export interface/);
     assert.doesNotMatch(contact, /Omit</);
     assert.match(contact, /export class Contact \{/);
     assert.match(contact, /export const contact = \(init: Partial<Contact>\): Contact => Object\.assign\(new Contact\(\), init\);/);
     assert.match(contact, /first_name: string = "";/);
     assert.match(contact, /contact_source_name: string = "";/);
     assert.match(contact, /phones: Phone\[\] = \[\];/);
+    assert.match(contact, /settings: Dictionary<string, string> = \{\};/);
     assert.doesNotMatch(contact, /contact_source_id/);
+  });
+
+  it("inlines an inherited datasource parent instead of extending it", async () => {
+    const yaml = `types:
+  - contact_base:
+      tags: [datasource_type]
+      inherits: set
+      fields:
+        - name:
+            type: string
+        - given_name:
+            type: string
+  - contact:
+      tags: [view_type]
+      inherits: contact_base
+      fields:
+        - addresses:
+            type: address[]
+        - attributes:
+            type: labels{}
+  - address:
+      tags: [view_type]
+      fields:
+        - city:
+            type: string
+  - labels:
+      tags: [view_type]
+      inherits: dictionary
+      fields:
+        - key:
+            type: string
+        - value:
+            type: string
+`;
+    const contact = await bodyOf(
+      "contact.ts",
+      { "languages.typescript.casing.fields": "Camel" },
+      yaml,
+    );
+    assert.doesNotMatch(contact, /export interface/);
+    assert.doesNotMatch(contact, /ContactBase/);
+    assert.doesNotMatch(contact, /extends /);
+    assert.doesNotMatch(contact, /Omit</);
+    assert.match(contact, /export class Contact \{/);
+    assert.match(
+      contact,
+      /export const contact = \(init: Partial<Contact>\): Contact => Object\.assign\(new Contact\(\), init\);/,
+    );
+    assert.match(contact, /name: string = "";/);
+    assert.match(contact, /givenName: string = "";/);
+    assert.match(contact, /addresses: Address\[\] = \[\];/);
+    assert.match(contact, /attributes: Dictionary<string, string> = \{\};/);
   });
 
   it("emits a dual-tagged view as its own class", async () => {
