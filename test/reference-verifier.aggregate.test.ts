@@ -141,7 +141,7 @@ describe("reference verifier aggregate", () => {
     assert.doesNotThrow(() => verifyEntries(entries));
   });
 
-  it("fails view types when a view inherits a parent this lane does not emit", async () => {
+  it("lists an inherited view without importing a datasource parent", async () => {
     const entries = await generateViewTypes({
       reader: memoryReader({ "types.yaml": VIEW_INHERITS_BASE }),
       settings: {},
@@ -153,14 +153,8 @@ describe("reference verifier aggregate", () => {
     );
     assert.ok(child);
     assert.equal(child.kind, "content");
-    assert.match(
-      child.attributes?.imports ?? "",
-      /types\/datasource\/base\.ts/,
-    );
-    assert.throws(
-      () => verifyEntries(entries),
-      /types\/datasource\/base\.ts/,
-    );
+    assert.equal(child.attributes?.imports, undefined);
+    assert.doesNotThrow(() => verifyEntries(entries));
   });
 
   it("finalizes datasource + view + validator + test + service + route entries together", async () => {

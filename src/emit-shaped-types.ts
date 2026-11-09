@@ -7,7 +7,6 @@ import {
   datasourceTypesOf,
   dictionaryEntryFields,
   dictionaryOfField,
-  isCollectionField,
   persistedColumnFields,
   tableKind,
   TYPES_YAML,
@@ -25,8 +24,9 @@ import {
   collectionDefaultExpr,
   nativeDefaultExpr,
   toNative,
+  tsLanguageZero,
 } from "./deterministic-type-converter.ts";
-import { fieldRefKind, fieldsBeyondParent, isAlias } from "./common/view-shape.ts";
+import { fieldRefKind } from "./common/view-shape.ts";
 import { bag, Emit } from "./emit.ts";
 import {
   indexTmpl as defaultIndexTmpl,
@@ -229,19 +229,6 @@ class Generator extends Emit {
         : [];
     }
     const refs: Array<{ entity: string; kind: "view" | "datasource" }> = [];
-    const parentName = isAlias(type) ? type.name : type.inherits;
-    const parentType =
-      parentName === undefined ? undefined : this.typesByName.get(parentName);
-    if (
-      !flatten &&
-      this.referenceBackendType &&
-      parentName !== undefined &&
-      (isAlias(type) || !BUILTIN_PARENTS.has(parentName)) &&
-      (isAlias(type) ||
-        (parentType !== undefined && typeHasTag(parentType, "datasource_type")))
-    ) {
-      refs.push({ entity: parentName, kind: "datasource" });
-    }
     for (const f of this.emitFields(type, expanded, flatten)) {
       const mapped = dictionaryOfField(f, this.typesByName);
       const entry = mapped === undefined ? undefined : dictionaryEntryFields(mapped);
@@ -289,36 +276,13 @@ class Generator extends Emit {
     type: Type,
     aliasByClass: Map<string, string>,
     kind: ShapedKind = this.kind,
-    referenceBackendType: boolean = this.referenceBackendType,
   ): string | undefined {
-    if (kind === "view" && !referenceBackendType) return undefined;
-    const parentName =
-      kind === "view" && isAlias(type) ? type.name : type.inherits;
-    if (
-      parentName === undefined ||
-      (!(kind === "view" && isAlias(type)) &&
-        BUILTIN_PARENTS.has(parentName))
-    ) {
+    if (kind === "view") return undefined;
+    const parentName = type.inherits;
+    if (parentName === undefined || BUILTIN_PARENTS.has(parentName)) return undefined;
+    const parentType = this.typesByName.get(parentName);
+    if (parentType === undefined || !typeHasTag(parentType, "datasource_type")) {
       return undefined;
-    }
-    if (kind === "view") {
-      const parentType = this.typesByName.get(parentName);
-      if (
-        parentType !== undefined &&
-        !typeHasTag(parentType, "datasource_type") &&
-        !isAlias(type)
-      ) {
-        return undefined;
-      }
-    }
-    if (kind === "datasource") {
-      const parentType = this.typesByName.get(parentName);
-      if (
-        parentType === undefined ||
-        !typeHasTag(parentType, "datasource_type")
-      ) {
-        return undefined;
-      }
     }
     const parent =
       aliasByClass.get(parentName) ?? this.casing.entityName(parentName);
@@ -334,117 +298,39 @@ class Generator extends Emit {
       : fields;
   }
 
+  private droppedViewFields(type: Type): Set<string> {
+    return new Set(
+      (type.removeFields ?? []).map((key) => this.casing.fieldIdent(key)),
+    );
+  }
+
   private emitFields(
     type: Type,
     expanded: Type | undefined,
     flatten = false,
     kind: ShapedKind = this.kind,
-    referenceBackendType: boolean = this.referenceBackendType,
   ): TypeField[] {
-    if (flatten) return this.remainingFields(type, expanded);
-    if (kind === "view" && referenceBackendType && isAlias(type)) {
-      return (expanded?.fields ?? type.fields).filter(isCollectionField);
+    if (kind === "view") {
+      const dropped = this.droppedViewFields(type);
+      return (expanded?.fields ?? type.fields).filter(
+        (field) => !dropped.has(this.casing.fieldIdent(field.name)),
+      );
     }
-    if (this.extendsType(type, new Map(), kind, referenceBackendType) !== undefined) {
-      if (kind === "datasource") {
-        return persistedColumnFields(type, this.typesByName);
-      }
-      const parentName = isAlias(type) ? type.name : type.inherits;
-      const parent =
-        parentName === undefined ? undefined : this.typesByName.get(parentName);
-      return fieldsBeyondParent(expanded?.fields ?? type.fields, parent);
+    if (flatten) return this.remainingFields(type, expanded);
+    if (this.extendsType(type, new Map(), kind) !== undefined) {
+      return persistedColumnFields(type, this.typesByName);
     }
     const fields = expanded?.fields ?? type.fields;
-    return kind === "datasource"
-      ? persistedColumnFields(
-          { ...type, fields },
-          this.typesByName,
-        )
-      : fields;
-  }
-
-  private hasNonZeroDefault(
-    type: Type,
-    expanded: Type | undefined,
-    kind: ShapedKind,
-    referenceBackendType: boolean,
-  ): boolean {
-    return this.emitFields(
-      type,
-      expanded,
-      false,
-      kind,
-      referenceBackendType,
-    ).some(
-      (field) =>
-        field.kind === "primitive" &&
-        nativeDefaultExpr(field.type, field) !==
-          undefined,
-    );
-  }
-
-  private namedParent(
-    type: Type,
-    kind: ShapedKind,
-    referenceBackendType: boolean,
-  ): { entity: string; kind: ShapedKind } | undefined {
-    const rendered = this.extendsType(
-      type,
-      new Map(),
-      kind,
-      referenceBackendType,
-    );
-    if (rendered === undefined || rendered.startsWith("Omit<")) return undefined;
-    if (kind === "datasource") {
-      return type.inherits === undefined
-        ? undefined
-        : { entity: type.inherits, kind: "datasource" };
-    }
-    const parentName = isAlias(type) ? type.name : type.inherits;
-    return parentName === undefined
-      ? undefined
-      : { entity: parentName, kind: "datasource" };
+    return persistedColumnFields({ ...type, fields }, this.typesByName);
   }
 
   private computeClassSet(deterministic: IDeterministic): Set<string> {
-    const expandedDatasource = new Map(
-      datasourceTypesOf(deterministic).map((type) => [type.name, type]),
-    );
-    const expandedViews = new Map(
-      viewTypesOf(deterministic).map((type) => [type.name, type]),
-    );
-    const parents = new Map<string, { entity: string; kind: ShapedKind }>();
-    const seeds = new Set<string>();
-    const consider = (
-      type: Type,
-      expanded: Type | undefined,
-      kind: ShapedKind,
-    ): void => {
-      if (type.kind === "union") return;
-      if (kind === "view" && isAlias(type)) return;
-      const key = classKey(kind, type.name);
-      if (this.hasNonZeroDefault(type, expanded, kind, true)) seeds.add(key);
-      const parent = this.namedParent(type, kind, true);
-      if (parent !== undefined) parents.set(key, parent);
-    };
+    const classes = new Set<string>();
     for (const type of typesWithTag(deterministic.types, "datasource_type")) {
-      consider(type, expandedDatasource.get(type.name), "datasource");
+      classes.add(classKey("datasource", type.name));
     }
     for (const type of authoredViewTypesOf(deterministic)) {
-      consider(type, expandedViews.get(type.name), "view");
-    }
-    const classes = new Set(seeds);
-    let grew = true;
-    while (grew) {
-      grew = false;
-      for (const key of [...classes]) {
-        const parent = parents.get(key);
-        if (parent === undefined) continue;
-        const parentKey = classKey(parent.kind, parent.entity);
-        if (classes.has(parentKey)) continue;
-        classes.add(parentKey);
-        grew = true;
-      }
+      classes.add(classKey("view", type.name));
     }
     return classes;
   }
@@ -481,7 +367,7 @@ class Generator extends Emit {
             const initializer =
               collectionDefaultExpr(f) ??
               (f.kind === "primitive"
-                ? nativeDefaultExpr(f.type, f)
+                ? nativeDefaultExpr(f.type, f) ?? tsLanguageZero(f.type, f)
                 : undefined);
             return {
               ident: this.casing.fieldIdent(f.name),

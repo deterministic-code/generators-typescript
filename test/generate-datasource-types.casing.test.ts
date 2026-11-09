@@ -40,8 +40,8 @@ describe("generate datasource types casing", () => {
       ["index.ts", "notificationType.ts"],
     );
     const body = files.get("notificationType.ts")!;
-    assert.match(body, /export interface NotificationType /);
-    assert.match(body, /channel_name: string;/);
+    assert.match(body, /export class NotificationType /);
+    assert.match(body, /channel_name: string = "";/);
   });
 
   it("Pascal file names", async () => {
@@ -51,7 +51,7 @@ describe("generate datasource types casing", () => {
     assert.ok(files.has("NotificationType.ts"));
     assert.match(
       files.get("NotificationType.ts")!,
-      /export interface NotificationType /,
+      /export class NotificationType /,
     );
   });
 
@@ -75,7 +75,7 @@ describe("generate datasource types casing", () => {
     });
     assert.match(
       files.get("notificationType.ts")!,
-      /export interface notification_type /,
+      /export class notification_type /,
     );
   });
 
@@ -85,7 +85,7 @@ describe("generate datasource types casing", () => {
     });
     assert.match(
       files.get("notificationType.ts")!,
-      /export interface notificationType /,
+      /export class notificationType /,
     );
   });
 
@@ -93,14 +93,14 @@ describe("generate datasource types casing", () => {
     const files = await byFilename({
       "languages.typescript.casing.fields": "Camel",
     });
-    assert.match(files.get("notificationType.ts")!, /channelName: string;/);
+    assert.match(files.get("notificationType.ts")!, /channelName: string = "";/);
   });
 
   it("Pascal fields", async () => {
     const files = await byFilename({
       "languages.typescript.casing.fields": "Pascal",
     });
-    assert.match(files.get("notificationType.ts")!, /ChannelName: string;/);
+    assert.match(files.get("notificationType.ts")!, /ChannelName: string = "";/);
   });
 
   it("Kebab directories with Pascal files under by-feature", async () => {

@@ -9,7 +9,9 @@
  * Fields: {{fields.length}}.
  */
 {{/descriptionDoc}}{{#fields.dictionary}}type Dictionary<K extends PropertyKey, V> = Record<K, V>;
-{{/fields.dictionary}}export const {{#camel}}{{className}}{{/camel}} = (init: Partial<{{className}}>): {{className}} => ({ ...init } as {{className}});
+{{/fields.dictionary}}{{#isClass}}export const {{#camel}}{{className}}{{/camel}} = (init: Partial<{{className}}>): {{className}} => Object.assign(new {{className}}(), init);
+{{/isClass}}{{^isClass}}export const {{#camel}}{{className}}{{/camel}} = (init: Partial<{{className}}>): {{className}} => ({ ...init } as {{className}});
+{{/isClass}}
 {{#isClass}}export class {{className}}{{#extendsType}} extends {{extendsType}}{{/extendsType}}{{#fields.0}} {
 {{#fields}}
   {{ident}}{{#isClass}}{{^initializer}}!{{/initializer}}{{/isClass}}: {{tsType}}{{#nullable}} | null{{/nullable}}{{&initializer}};

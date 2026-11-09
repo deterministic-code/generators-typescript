@@ -228,17 +228,17 @@ describe("generate view types", () => {
       /import type \{ UserSummary \} from "\.\/userSummary";/,
     );
     assert.match(card, /\/\*\* View CardPayment\. \*\//);
-    assert.match(card, /export interface CardPayment \{/);
-    assert.match(card, /amount: string;/);
-    assert.match(card, /paid_at: Date;/);
-    assert.match(card, /tags: Tag\[\];/);
-    assert.match(card, /owner: UserSummary;/);
-    assert.match(card, /note: string \| null;/);
+    assert.match(card, /export class CardPayment \{/);
+    assert.match(card, /amount: string = "";/);
+    assert.match(card, /paid_at!: Date;/);
+    assert.match(card, /tags: Tag\[\] = \[\];/);
+    assert.match(card, /owner!: UserSummary;/);
+    assert.match(card, /note!: string \| null;/);
   });
 
   it("renders an empty shaped view", async () => {
     const payment = await bodyOf("payment.ts");
-    assert.match(payment, /export interface Payment \{\}/);
+    assert.match(payment, /export class Payment \{\}/);
   });
 
   it("declares Rel bag keys and the inherited datasource edge", async () => {
@@ -251,47 +251,45 @@ describe("generate view types", () => {
     assert.ok(summary);
     assert.equal(summary.kind, "content");
     assert.equal(summary.attributes?.exports, "UserSummary");
-    assert.match(
-      summary.attributes?.imports ?? "",
-      /types\/datasource\/user\.ts/,
-    );
-    assert.match(summary.attributes?.uses ?? "", /User/);
+    assert.equal(summary.attributes?.imports, undefined);
+    assert.equal(summary.attributes?.uses, undefined);
   });
 
-  it("extends the inherited datasource type and omits enrichment FKs plus explicit omit", async () => {
+  it("lists inherited view fields and drops removed columns", async () => {
     const summary = await bodyOf("userSummary.ts");
-    assert.match(
-      summary,
-      /import type \{ User \} from "\.\.\/datasource\/user";/,
-    );
-    assert.match(
-      summary,
-      /export interface UserSummary extends Omit<User, "nick_name" \| "role_id"> \{/,
-    );
-    assert.match(summary, /display_name: string;/);
+    assert.doesNotMatch(summary, /Omit</);
+    assert.doesNotMatch(summary, /extends /);
+    assert.match(summary, /export class UserSummary \{/);
+    assert.match(summary, /export const userSummary = \(init: Partial<UserSummary>\): UserSummary => Object\.assign\(new UserSummary\(\), init\);/);
+    assert.match(summary, /id!: number;/);
+    assert.match(summary, /email: string = "";/);
+    assert.match(summary, /display_name: string = "";/);
+    assert.doesNotMatch(summary, /nick_name/);
+    assert.doesNotMatch(summary, /role_id/);
   });
 
-  it("extends a datasource parent with union-mapped enrichment columns", async () => {
+  it("lists lookup names instead of removed foreign keys", async () => {
     const contact = await bodyOf("contact.ts", {}, CONTACT_ENRICH_YAML);
-    assert.match(
-      contact,
-      /export interface Contact extends Omit<ContactsBase, "contact_source_id"> \{/,
-    );
-    assert.match(contact, /contact_source_name: string;/);
-    assert.match(contact, /phones: Phone\[\];/);
-    assert.doesNotMatch(contact, /first_name:/);
+    assert.doesNotMatch(contact, /Omit</);
+    assert.match(contact, /export class Contact \{/);
+    assert.match(contact, /export const contact = \(init: Partial<Contact>\): Contact => Object\.assign\(new Contact\(\), init\);/);
+    assert.match(contact, /first_name: string = "";/);
+    assert.match(contact, /contact_source_name: string = "";/);
+    assert.match(contact, /phones: Phone\[\] = \[\];/);
+    assert.doesNotMatch(contact, /contact_source_id/);
   });
 
-  it("aliases a colliding inherited datasource class name", async () => {
+  it("emits a dual-tagged view as its own class", async () => {
     const user = await bodyOf("user.ts");
-    assert.match(
-      user,
-      /import type \{ User as UserBase \} from "\.\.\/datasource\/user";/,
-    );
-    assert.match(user, /export interface User extends UserBase \{/);
+    assert.doesNotMatch(user, /UserBase/);
+    assert.doesNotMatch(user, /extends /);
+    assert.match(user, /export class User \{/);
+    assert.match(user, /email: string = "";/);
+    assert.match(user, /role_id!: number;/);
+    assert.match(user, /nick_name!: string \| null;/);
   });
 
-  it("aliases when users and user render as the same type name", async () => {
+  it("emits a same-named view without extending the datasource class", async () => {
     const yaml = `types:
   - user:
       tags: [datasource_type]
@@ -304,11 +302,10 @@ describe("generate view types", () => {
       inherits: user
 `;
     const user = await bodyOf("user.ts", {}, yaml);
-    assert.match(
-      user,
-      /import type \{ User as UserBase \} from "\.\.\/datasource\/user";/,
-    );
-    assert.match(user, /export interface User extends UserBase \{/);
+    assert.doesNotMatch(user, /UserBase/);
+    assert.doesNotMatch(user, /extends /);
+    assert.match(user, /export class User \{/);
+    assert.match(user, /email: string = "";/);
   });
 
   it("re-exports a plural spec name from the typeStem file", async () => {
@@ -336,15 +333,10 @@ describe("generate view types", () => {
 
   it("writes the barrel with type re-exports", async () => {
     const index = await bodyOf("index.ts");
-    assert.match(index, /export \{ user \} from "\.\/user";/);
-    assert.match(index, /export type \{ User \} from "\.\/user";/);
-    assert.match(index, /export \{ payment \} from "\.\/payment";/);
-    assert.match(index, /export type \{ Payment \} from "\.\/payment";/);
-    assert.match(index, /export \{ userSummary \} from "\.\/userSummary";/);
-    assert.match(
-      index,
-      /export type \{ UserSummary \} from "\.\/userSummary";/,
-    );
+    assert.match(index, /export \{ user, User \} from "\.\/user";/);
+    assert.match(index, /export \{ payment, Payment \} from "\.\/payment";/);
+    assert.match(index, /export \{ userSummary, UserSummary \} from "\.\/userSummary";/);
+    assert.doesNotMatch(index, /export type \{/);
   });
 
   it("writes codegen.schema_version into the file header", async () => {
@@ -389,7 +381,7 @@ describe("generate view types", () => {
 `,
     );
     assert.match(contact, /import type \{ Tag \} from "\.\.\/datasource\/tag";/);
-    assert.match(contact, /address: Tag;/);
+    assert.match(contact, /address!: Tag;/);
     assert.doesNotMatch(contact, /address: Tag\[\];/);
   });
 
@@ -418,11 +410,13 @@ describe("generate view types", () => {
 `,
     );
     assert.match(contact, /import type \{ Address \} from "\.\.\/datasource\/address";/);
-    assert.match(contact, /export interface Contact extends ContactBase \{/);
-    assert.match(contact, /addresses: Address\[\];/);
+    assert.doesNotMatch(contact, /extends /);
+    assert.match(contact, /export class Contact \{/);
+    assert.match(contact, /email: string = "";/);
+    assert.match(contact, /addresses: Address\[\] = \[\];/);
   });
 
-  it("emits a class for non-zero defaults and keeps a default-less view as an interface", async () => {
+  it("emits a class with language zeros and spec token initializers", async () => {
     const yaml = `types:
   - flags:
       tags: [view_type]
@@ -535,11 +529,11 @@ describe("generate view types", () => {
       inherits: user
 `;
     const flags = await bodyOf("flag.ts", {}, yaml);
-    assert.match(flags, /export const flag = \(init: Partial<Flag>\): Flag => \(\{ \.\.\.init \} as Flag\);/);
+    assert.match(flags, /export const flag = \(init: Partial<Flag>\): Flag => Object\.assign\(new Flag\(\), init\);/);
     assert.match(flags, /export class Flag \{/);
     assert.match(flags, /is_enabled: boolean = true;/);
     assert.match(flags, /is_disabled: boolean = false;/);
-    assert.match(flags, /empty_name!: string;/);
+    assert.match(flags, /empty_name: string = "";/);
     assert.match(flags, /rank: number = 1;/);
     assert.match(flags, /opted_out: boolean \| null = false;/);
     assert.match(flags, /price: string = "1.50";/);
@@ -556,8 +550,7 @@ describe("generate view types", () => {
       flags,
       /fixed_id: string = "11111111-1111-4111-8111-111111111111";/,
     );
-    assert.match(flags, /empty_blob!: string;/);
-    assert.doesNotMatch(flags, /empty_blob: string =/);
+    assert.match(flags, /empty_blob: string = "";/);
     assert.match(flags, /initial: string = "X";/);
     assert.match(flags, /ratio: number = 1.5;/);
     assert.match(flags, /visits: number = 1;/);
@@ -568,8 +561,9 @@ describe("generate view types", () => {
     assert.match(flags, /aliases!: string\[\] \| null;/);
     assert.doesNotMatch(flags, /aliases: string\[\] \| null =/);
     const view = await bodyOf("userView.ts", {}, yaml);
-    assert.match(view, /export interface UserView extends User \{/);
-    assert.doesNotMatch(view, /export class UserView/);
+    assert.doesNotMatch(view, /extends /);
+    assert.match(view, /export class UserView \{/);
+    assert.match(view, /is_enabled: boolean = true;/);
   });
 
 });
